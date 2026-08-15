@@ -1,0 +1,4 @@
+tags:
+  smoke:
+    # Gerçek sunucuya bağlanır; PLANNER_EMAIL / PLANNER_PASSWORD yoksa atlanır.
+    skip: false

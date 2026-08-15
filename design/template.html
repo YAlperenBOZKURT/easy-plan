@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="21101396-d4d3-405f-ae68-4b5d574f3135"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ============================================================
+   HAFTALIK PLANLAYICI — DESIGN TOKENS
+   Light = :root. Dark = @media (prefers-color-scheme: dark).
+   .theme-light / .theme-dark exist ONLY for this spec page so both
+   themes can be shown side by side — delete them when porting.
+   ============================================================ */
+:root{
+  --bg:#f5f7f9; --surface:#ffffff; --surface-2:#eef1f5; --surface-hover:#e7ebf1;
+  --border:#e2e7ee; --border-strong:#c8d1db;
+  --text:#161d26; --text-muted:#5b6673; --text-faint:#8f9aa6;
+  --accent:#2f6fed; --accent-fg:#ffffff; --danger:#d33c58;
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px;
+  --shadow-sm:0 1px 2px rgba(16,24,32,.06);
+  --shadow-md:0 6px 18px -6px rgba(16,24,32,.14);
+  --shadow-lg:0 24px 48px -16px rgba(16,24,32,.22);
+  --c-red:#d9566a; --c-orange:#cf7c38; --c-amber:#b08a12; --c-green:#3d9c68;
+  --c-teal:#2f9a95; --c-blue:#3a78e0; --c-violet:#7a5ede; --c-pink:#cf5595;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d1117; --surface:#141a21; --surface-2:#1a212a; --surface-hover:#212a35;
+    --border:#242d38; --border-strong:#374350;
+    --text:#e5ebf2; --text-muted:#98a4b2; --text-faint:#69757f;
+    --accent:#79b0ff; --accent-fg:#0b1220; --danger:#ff7b8e;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.40);
+    --shadow-md:0 8px 22px -8px rgba(0,0,0,.55);
+    --shadow-lg:0 28px 56px -18px rgba(0,0,0,.65);
+    --c-red:#ff9aa5; --c-orange:#ffb489; --c-amber:#ecc96f; --c-green:#88d8a6;
+    --c-teal:#77d2ce; --c-blue:#96c0ff; --c-violet:#bba7ff; --c-pink:#ff9fc8;
+  }
+}
+/* --- spec-page-only theme scopes (remove on port) --- */
+.theme-light{
+  --bg:#f5f7f9; --surface:#ffffff; --surface-2:#eef1f5; --surface-hover:#e7ebf1;
+  --border:#e2e7ee; --border-strong:#c8d1db;
+  --text:#161d26; --text-muted:#5b6673; --text-faint:#8f9aa6;
+  --accent:#2f6fed; --accent-fg:#ffffff; --danger:#d33c58;
+  --shadow-sm:0 1px 2px rgba(16,24,32,.06);
+  --shadow-md:0 6px 18px -6px rgba(16,24,32,.14);
+  --shadow-lg:0 24px 48px -16px rgba(16,24,32,.22);
+  --c-red:#d9566a; --c-orange:#cf7c38; --c-amber:#b08a12; --c-green:#3d9c68;
+  --c-teal:#2f9a95; --c-blue:#3a78e0; --c-violet:#7a5ede; --c-pink:#cf5595;
+}
+.theme-dark{
+  --bg:#0d1117; --surface:#141a21; --surface-2:#1a212a; --surface-hover:#212a35;
+  --border:#242d38; --border-strong:#374350;
+  --text:#e5ebf2; --text-muted:#98a4b2; --text-faint:#69757f;
+  --accent:#79b0ff; --accent-fg:#0b1220; --danger:#ff7b8e;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.40);
+  --shadow-md:0 8px 22px -8px rgba(0,0,0,.55);
+  --shadow-lg:0 28px 56px -18px rgba(0,0,0,.65);
+  --c-red:#ff9aa5; --c-orange:#ffb489; --c-amber:#ecc96f; --c-green:#88d8a6;
+  --c-teal:#77d2ce; --c-blue:#96c0ff; --c-violet:#bba7ff; --c-pink:#ff9fc8;
+}
+
+/* ===================== BASE ===================== */
+*{box-sizing:border-box}
+body{margin:0}
+.spec{
+  background:var(--bg); color:var(--text); min-height:100vh; padding:40px 32px 96px;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+.spec h1,.spec h2,.spec h3{letter-spacing:-.02em; margin:0; font-weight:600; text-wrap:pretty}
+.num{font-variant-numeric:tabular-nums}
+
+/* scrollbars */
+*{scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:999px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--text-faint);background-clip:content-box;border:3px solid transparent}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ===================== APP SHELL ===================== */
+.app{background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid var(--border);background:var(--surface)}
+.topbar-left,.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar-range{font-variant-numeric:tabular-nums;color:var(--text-muted);font-size:13.5px;margin-left:6px}
+.board{display:flex;align-items:flex-start;gap:14px;padding:18px;overflow-x:auto;flex:1}
+
+/* ===================== DAY COLUMN ===================== */
+.col{flex:1 1 0;min-width:0;align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm)}
+.col-head{display:flex;align-items:baseline;gap:8px;padding:2px 4px 2px}
+.col-day{font-weight:600;font-size:13.5px;letter-spacing:-.01em}
+.col-date{font-size:12.5px;color:var(--text-faint);font-variant-numeric:tabular-nums;margin-left:auto}
+.col-body{display:flex;flex-direction:column;gap:10px}
+.col.today{border-color:color-mix(in oklab,var(--accent) 45%,var(--border));box-shadow:0 0 0 1px color-mix(in oklab,var(--accent) 28%,transparent),var(--shadow-md);background:color-mix(in oklab,var(--accent) 4%,var(--surface))}
+.col.today .col-day{color:var(--accent)}
+.col.past{opacity:.5}
+.col.past .col-day{font-weight:500}
+.col.drop-target{border-color:var(--accent);border-style:dashed;background:color-mix(in oklab,var(--accent) 7%,var(--surface))}
+
+/* ===================== CARD ===================== */
+.card{
+  --c:var(--c-blue); position:relative;
+  border:1px solid color-mix(in oklab,var(--c) 50%,transparent);
+  background:color-mix(in oklab,var(--c) 7%,var(--surface));
+  border-radius:var(--r-md); padding:9px 10px 10px;
+  display:flex;flex-direction:column;gap:6px;cursor:grab;
+  transition:box-shadow .16s,border-color .16s,transform .16s,background .16s;
+}
+.card:hover{box-shadow:var(--shadow-md);border-color:color-mix(in oklab,var(--c) 75%,transparent)}
+.card-time{display:flex;justify-content:center}
+.time-badge{
+  font-size:11.5px;font-weight:600;letter-spacing:.01em;font-variant-numeric:tabular-nums;
+  padding:2px 9px;border-radius:999px;
+  background:color-mix(in oklab,var(--c) 20%,var(--surface));
+  color:color-mix(in oklab,var(--c) 78%,var(--text));
+  border:1px solid color-mix(in oklab,var(--c) 32%,transparent);
+}
+.card-title{font-size:13.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-note{font-size:12px;color:var(--text-muted);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-images{display:grid;gap:4px;margin-top:1px}
+.card-images.one{grid-template-columns:1fr}
+.card-images.one .ph{height:88px}
+.card-images.multi{grid-template-columns:repeat(3,1fr)}
+.card-images.multi .ph{height:48px}
+.ph{border-radius:var(--r-sm);background:
+  linear-gradient(135deg,color-mix(in oklab,var(--c) 22%,var(--surface-2)),color-mix(in oklab,var(--c) 6%,var(--surface-2)));
+  border:1px solid color-mix(in oklab,var(--c) 18%,var(--border));overflow:hidden}
+.card-meta{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.card-meta span{display:inline-flex;align-items:center;gap:3px}
+.card-actions{display:none;gap:6px;padding-top:2px}
+.card.active{border-color:color-mix(in oklab,var(--c) 85%,transparent);box-shadow:var(--shadow-md)}
+.card.active .card-actions{display:flex}
+.card.done{
+  background-color:color-mix(in oklab,var(--c) 6%,var(--surface));
+  background-image:repeating-linear-gradient(45deg,
+    color-mix(in oklab,var(--c) 16%,transparent) 0 6px,
+    transparent 6px 13px);
+  border-color:color-mix(in oklab,var(--c) 35%,transparent);
+}
+.card.done .card-title,.card.done .card-note,.card.done .time-badge,.card.done .card-images{opacity:.45}
+.card.done .card-title{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:color-mix(in oklab,var(--c) 70%,transparent)}
+.card.ghost{opacity:.3;border-style:dashed;box-shadow:none;background:transparent}
+.card.lifted{transform:rotate(1.4deg) scale(1.025);box-shadow:var(--shadow-lg);cursor:grabbing;border-color:color-mix(in oklab,var(--c) 90%,transparent)}
+.card.disabled{opacity:.45;pointer-events:none}
+.done-flag{position:absolute;top:8px;right:9px;font-size:11px;color:color-mix(in oklab,var(--c) 80%,var(--text))}
+
+/* ===================== BUTTONS ===================== */
+.add-btn{
+  width:100%;min-height:36px;border:1px dashed var(--border-strong);background:transparent;color:var(--text-muted);
+  border-radius:var(--r-md);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;
+  transition:.15s; display:inline-flex;align-items:center;justify-content:center;gap:6px;
+}
+.add-btn:hover{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 8%,transparent)}
+.btn{
+  --c:var(--border-strong);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:34px;padding:6px 13px;border-radius:var(--r-sm);
+  border:1px solid color-mix(in oklab,var(--c) 65%,transparent);
+  background:transparent;color:var(--text);font:inherit;font-size:13px;font-weight:500;
+  cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.btn:hover{background:color-mix(in oklab,var(--c) 12%,transparent);border-color:var(--c)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn-primary{--c:var(--accent);background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.btn-primary:hover{background:color-mix(in oklab,var(--accent) 85%,var(--text));border-color:transparent}
+.btn-ghost{border-color:transparent;color:var(--text-muted)}
+.btn-ghost:hover{background:var(--surface-hover);color:var(--text)}
+.btn-sm{min-height:28px;padding:3px 9px;font-size:12px;border-radius:var(--r-sm)}
+.btn-icon{min-height:34px;width:34px;padding:0;font-size:15px;color:var(--text-muted)}
+.btn-icon:hover{color:var(--text)}
+.btn-blue{--c:var(--c-blue);color:color-mix(in oklab,var(--c-blue) 80%,var(--text))}
+.btn-blue:hover{background:color-mix(in oklab,var(--c-blue) 18%,transparent)}
+.btn-green{--c:var(--c-green);color:color-mix(in oklab,var(--c-green) 80%,var(--text))}
+.btn-green:hover{background:color-mix(in oklab,var(--c-green) 18%,transparent)}
+.btn-red{--c:var(--c-red);color:color-mix(in oklab,var(--c-red) 80%,var(--text))}
+.btn-red:hover{background:color-mix(in oklab,var(--c-red) 18%,transparent)}
+
+/* ===================== MENU ===================== */
+.menu-wrap{position:relative}
+.menu{
+  position:absolute;top:calc(100% + 6px);right:0;min-width:196px;z-index:20;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  box-shadow:var(--shadow-lg);padding:6px;display:flex;flex-direction:column;gap:2px;
+}
+.menu-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);font-size:13px;color:var(--text);cursor:pointer;background:none;border:0;font:inherit;text-align:left;min-height:38px}
+.menu-item:hover{background:var(--surface-hover)}
+.menu-item .dot{width:7px;height:7px;border-radius:999px;flex:none;background:var(--c-blue)}
+.menu-item.danger{color:var(--danger)}
+
+/* ===================== OVERLAY / MODAL ===================== */
+.overlay{position:absolute;inset:0;background:color-mix(in oklab,var(--bg) 45%,rgba(5,8,12,.6));backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px;z-index:30}
+.modal{width:100%;max-width:430px;max-height:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;font-weight:600;font-size:14.5px;letter-spacing:-.01em;border-bottom:1px solid var(--border)}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border);background:var(--surface-2)}
+
+/* ===================== FIELDS ===================== */
+.field{display:flex;flex-direction:column;gap:6px;flex:1 1 0;min-width:0}
+.label{font-size:11.5px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--text-faint)}
+.row{display:flex;gap:10px;align-items:flex-end}
+.field input,.field textarea,.field select{
+  width:100%;font:inherit;font-size:13.5px;color:var(--text);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:var(--r-md);padding:9px 11px;min-height:38px;
+  transition:.15s;font-variant-numeric:tabular-nums;
+}
+.field textarea{min-height:78px;resize:vertical;line-height:1.45}
+.field input::placeholder,.field textarea::placeholder{color:var(--text-faint)}
+.field input:hover,.field textarea:hover,.field select:hover{border-color:var(--border-strong)}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 20%,transparent)}
+.field input:disabled{opacity:.5;cursor:not-allowed}
+.field .hint{font-size:11.5px;color:var(--text-faint)}
+.field .err{font-size:11.5px;color:var(--danger)}
+.field.invalid input{border-color:var(--danger);box-shadow:0 0 0 3px color-mix(in oklab,var(--danger) 18%,transparent)}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:5px 12px;border-radius:999px;
+  border:1px solid var(--border-strong);background:transparent;color:var(--text-muted);
+  font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:.15s;font-variant-numeric:tabular-nums;
+}
+.chip:hover{border-color:var(--text-faint);color:var(--text);background:var(--surface-hover)}
+.chip.on{background:color-mix(in oklab,var(--accent) 16%,var(--surface));border-color:var(--accent);color:color-mix(in oklab,var(--accent) 82%,var(--text));font-weight:600}
+.chip.on::before{content:"✓";font-size:11px}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+
+/* swatches */
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatch{width:30px;height:30px;border-radius:999px;border:1px solid color-mix(in oklab,var(--c) 60%,transparent);background:color-mix(in oklab,var(--c) 62%,var(--surface));cursor:pointer;padding:0;transition:.15s;position:relative}
+.swatch:hover{transform:scale(1.08)}
+.swatch.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--c)}
+.swatch.on::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--surface)}
+
+/* dropzone + thumbs */
+.dropzone{border:1.5px dashed var(--border-strong);border-radius:var(--r-lg);padding:20px;text-align:center;color:var(--text-muted);font-size:12.5px;cursor:pointer;transition:.15s;background:color-mix(in oklab,var(--surface-2) 60%,transparent)}
+.dropzone:hover,.dropzone.over{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 8%,transparent)}
+.thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.thumb{position:relative;aspect-ratio:1;border-radius:var(--r-md);border:1px solid var(--border);overflow:hidden;background:linear-gradient(135deg,var(--surface-hover),var(--surface-2))}
+.thumb .x{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:999px;border:0;background:color-mix(in oklab,var(--bg) 70%,rgba(0,0,0,.6));color:var(--text);font-size:11px;cursor:pointer;display:grid;place-items:center}
+
+/* ===================== AUTH ===================== */
+.auth-card{width:100%;max-width:372px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-md);padding:26px;display:flex;flex-direction:column;gap:16px}
+.auth-title{font-size:20px;font-weight:600;letter-spacing:-.02em}
+
+/* ===================== ADMIN ===================== */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-sm)}
+.stat-label{font-size:11.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--text-faint)}
+.stat-value{font-size:24px;font-weight:600;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-sm)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13.5px}
+.panel table{width:100%;border-collapse:collapse;font-size:13px}
+.panel th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-faint);padding:9px 16px;border-bottom:1px solid var(--border)}
+.panel td{padding:11px 16px;border-bottom:1px solid color-mix(in oklab,var(--border) 60%,transparent);vertical-align:middle}
+.panel tr:last-child td{border-bottom:0}
+.panel tbody tr:hover{background:var(--surface-hover)}
+.panel td.num,.panel th.num{font-variant-numeric:tabular-nums;text-align:right}
+.who{display:flex;flex-direction:column;gap:1px}
+.who b{font-weight:600;font-size:13px}
+.who span{color:var(--text-faint);font-size:11.5px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;letter-spacing:.02em;padding:3px 9px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-muted)}
+.tag.admin{color:color-mix(in oklab,var(--c-violet) 80%,var(--text));border-color:color-mix(in oklab,var(--c-violet) 55%,transparent);background:color-mix(in oklab,var(--c-violet) 12%,transparent)}
+.tag.ok{color:color-mix(in oklab,var(--c-green) 80%,var(--text));border-color:color-mix(in oklab,var(--c-green) 55%,transparent);background:color-mix(in oklab,var(--c-green) 12%,transparent)}
+.tag.off{color:var(--text-faint);border-color:var(--border);background:var(--surface-2)}
+
+/* ===================== DAY STRIP (mobile/tablet) ===================== */
+.day-strip{display:flex;gap:7px;padding:10px 12px;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--border)}
+.strip-day{flex:none;min-width:46px;min-height:52px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;font:inherit;color:var(--text-muted);transition:.15s}
+.strip-day em{font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+.strip-day b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--text)}
+.strip-day i{width:4px;height:4px;border-radius:999px;background:var(--text-faint);margin-top:2px;display:block}
+.strip-day:hover{border-color:var(--border-strong);background:var(--surface-hover)}
+.strip-day.on{background:color-mix(in oklab,var(--accent) 15%,var(--surface));border-color:var(--accent);color:var(--accent)}
+.strip-day.on b{color:var(--accent)}
+.strip-day.on i{background:var(--accent)}
+.strip-day.past{opacity:.45}
+
+/* ===================== STATES ===================== */
+.empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 18px;text-align:center;color:var(--text-muted);font-size:13px}
+.empty .mark{width:42px;height:42px;border-radius:var(--r-lg);border:1.5px dashed var(--border-strong);display:grid;place-items:center;color:var(--text-faint);font-size:17px}
+.skel{border-radius:var(--r-sm);background:linear-gradient(100deg,var(--surface-2) 30%,var(--surface-hover) 50%,var(--surface-2) 70%);background-size:220% 100%;animation:shimmer 1.4s linear infinite}
+@keyframes shimmer{from{background-position:180% 0}to{background-position:-40% 0}}
+.error-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 18px;text-align:center;border:1px solid color-mix(in oklab,var(--danger) 45%,transparent);background:color-mix(in oklab,var(--danger) 8%,var(--surface));border-radius:var(--r-lg);color:var(--text);font-size:13px}
+.error-state .mark{width:34px;height:34px;border-radius:999px;display:grid;place-items:center;background:color-mix(in oklab,var(--danger) 18%,transparent);color:var(--danger);font-size:16px;font-weight:700}
+.spinner{width:22px;height:22px;border-radius:999px;border:2px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fab{position:absolute;right:16px;width:56px;height:56px;border-radius:999px;border:0;background:var(--accent);color:var(--accent-fg);font-size:26px;font-weight:400;box-shadow:var(--shadow-lg);cursor:pointer;display:grid;place-items:center}
+
+/* ===================== RESPONSIVE (real breakpoints) =====================
+   Tablet 768–1100px: 3 days visible, horizontal scroll, wider columns.
+   Mobile <768px: single day + .day-strip.
+   .is-tablet / .is-mobile duplicate these for the spec frames. */
+@media (max-width:1100px){
+  .board{gap:16px;padding:16px;scroll-snap-type:x proximity}
+  .col{flex:0 0 calc((100% - 32px)/3);min-width:248px;padding:12px;scroll-snap-align:start}
+  .card{padding:12px 12px 13px;gap:7px}
+  .modal{max-width:480px}
+}
+@media (max-width:767px){
+  .board{flex-direction:column;padding:12px 12px 88px;gap:12px}
+  .col{flex:1 1 auto;width:100%;min-width:0;border:0;background:transparent;box-shadow:none;padding:0}
+  .col.today{background:transparent;box-shadow:none}
+  .card{padding:12px}
+  .btn,.chip,.strip-day{min-height:44px}
+  .overlay{align-items:flex-end;padding:0}
+  .modal{max-width:none;border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:88vh}
+}
+.is-tablet .board{gap:16px;padding:16px}
+.is-tablet .col{flex:0 0 calc((100% - 32px)/3);min-width:0;padding:12px}
+.is-tablet .card{padding:12px 12px 13px;gap:7px}
+.is-mobile .board{flex-direction:column;padding:12px 12px 84px;gap:14px}
+.is-mobile .col{flex:1 1 auto;width:100%;border:0;background:transparent;box-shadow:none;padding:0}
+.is-mobile .col.today{background:transparent;box-shadow:none}
+.is-mobile .card{padding:12px}
+.is-mobile .btn,.is-mobile .chip{min-height:44px}
+.is-mobile .overlay{align-items:flex-end;padding:0}
+.is-mobile .modal{max-width:none;border-radius:var(--r-xl) var(--r-xl) 0 0}
+
+/* ===================== SPEC PAGE CHROME ===================== */
+.spec-head{max-width:1300px;margin:0 auto 34px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.spec-head h1{font-size:27px}
+.spec-head p{margin:6px 0 0;color:var(--text-muted);max-width:56ch;font-size:13.5px}
+.toggle{display:flex;gap:4px;padding:4px;border:1px solid var(--border);border-radius:999px;background:var(--surface)}
+.toggle button{border:0;background:none;font:inherit;font-size:12.5px;font-weight:600;color:var(--text-muted);padding:7px 15px;border-radius:999px;cursor:pointer;min-height:34px}
+.toggle button.on{background:var(--accent);color:var(--accent-fg)}
+.sec{max-width:1300px;margin:0 auto 56px}
+.sec>header{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--border)}
+.sec>header .n{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.sec>header h2{font-size:18px}
+.sec>header .note{margin-left:auto;font-size:12.5px;color:var(--text-faint)}
+.frame{border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--shadow-md);background:var(--bg);position:relative}
+.frame-row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.caption{font-size:11.5px;color:var(--text-faint);margin:8px 0 0;letter-spacing:.01em}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px}
+.demo-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:10px}
+.demo-tile>h3{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-faint)}
+.tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(214px,1fr));gap:10px}
+.tok{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);font-size:12px}
+.tok .sw{width:26px;height:26px;border-radius:8px;border:1px solid var(--border-strong);flex:none}
+.tok code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--text)}
+.tok em{font-style:normal;color:var(--text-faint);font-size:11px;margin-left:auto;font-variant-numeric:tabular-nums}
+table.spectable{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface)}
+table.spectable th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);padding:9px 14px;border-bottom:1px solid var(--border);font-weight:700}
+table.spectable td{padding:9px 14px;border-bottom:1px solid color-mix(in oklab,var(--border) 55%,transparent);vertical-align:top}
+table.spectable tr:last-child td{border-bottom:0}
+table.spectable code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+table.spectable td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.prose{max-width:74ch;color:var(--text-muted);font-size:13.5px}
+.prose h3{color:var(--text);font-size:14px;margin:18px 0 5px}
+.prose p{margin:0 0 9px}
+.prose strong{color:var(--text);font-weight:600}
+.prose ul{margin:0 0 10px;padding-left:18px}
+.prose li{margin-bottom:4px}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:color-mix(in oklab,var(--accent) 75%,var(--text));text-decoration:underline}
+</style>
+</helmet>
+
+<div class="spec {{ themeClass }}" ref="{{ rootRef }}">
+
+  <div class="spec-head">
+    <div>
+      <h1>Haftalık Planlayıcı — Görsel Tasarım Sistemi</h1>
+      <p>Token bloğu, tüm ekranlar ve her bileşenin her durumu. Sınıf adları ve değişken adları sözleşmeye harfiyen uyar. Fotoğraflar gradyan yer tutucularla temsil edilmiştir.</p>
+    </div>
+    <div class="toggle">
+      <button class="{{ lightOn }}" sc-camel-on-click="{{ setLight }}">Açık tema</button>
+      <button class="{{ darkOn }}" sc-camel-on-click="{{ setDark }}">Koyu tema</button>
+    </div>
+  </div>
+
+  <!-- 00 TOKENS -->
+  <section class="sec">
+    <header><span class="n">00</span><h2>Tokenlar</h2><span class="note">:root + @media (prefers-color-scheme: dark)</span></header>
+    <div class="tok-grid">
+      <div class="tok"><span class="sw" style="background:var(--bg)"></span><code>--bg</code></div>
+      <div class="tok"><span class="sw" style="background:var(--surface)"></span><code>--surface</code></div>
+      <div class="tok"><span class="sw" style="background:var(--surface-2)"></span><code>--surface-2</code></div>
+      <div class="tok"><span class="sw" style="background:var(--surface-hover)"></span><code>--surface-hover</code></div>
+      <div class="tok"><span class="sw" style="background:var(--border)"></span><code>--border</code></div>
+      <div class="tok"><span class="sw" style="background:var(--border-strong)"></span><code>--border-strong</code></div>
+      <div class="tok"><span class="sw" style="background:var(--text)"></span><code>--text</code></div>
+      <div class="tok"><span class="sw" style="background:var(--text-muted)"></span><code>--text-muted</code></div>
+      <div class="tok"><span class="sw" style="background:var(--text-faint)"></span><code>--text-faint</code></div>
+      <div class="tok"><span class="sw" style="background:var(--accent)"></span><code>--accent</code></div>
+      <div class="tok"><span class="sw" style="background:var(--accent-fg)"></span><code>--accent-fg</code></div>
+      <div class="tok"><span class="sw" style="background:var(--danger)"></span><code>--danger</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-red)"></span><code>--c-red</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-orange)"></span><code>--c-orange</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-amber)"></span><code>--c-amber</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-green)"></span><code>--c-green</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-teal)"></span><code>--c-teal</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-blue)"></span><code>--c-blue</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-violet)"></span><code>--c-violet</code></div>
+      <div class="tok"><span class="sw" style="background:var(--c-pink)"></span><code>--c-pink</code></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);border-radius:6px"></span><code>--r-sm</code><em>6px</em></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);border-radius:10px"></span><code>--r-md</code><em>10px</em></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);border-radius:14px"></span><code>--r-lg</code><em>14px</em></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);border-radius:20px"></span><code>--r-xl</code><em>20px</em></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);box-shadow:var(--shadow-sm)"></span><code>--shadow-sm</code></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);box-shadow:var(--shadow-md)"></span><code>--shadow-md</code></div>
+      <div class="tok"><span class="sw" style="background:var(--surface);box-shadow:var(--shadow-lg)"></span><code>--shadow-lg</code></div>
+    </div>
+  </section>
+
+  <!-- 01 DESKTOP -->
+  <section class="sec">
+    <header><span class="n">01</span><h2>Ana takvim — masaüstü, 7 kolon</h2><span class="note">1280px</span></header>
+    <div class="frame" style="width:1280px;max-width:100%">
+      <div class="app">
+        <div class="topbar">
+          <div class="topbar-left">
+            <button class="btn btn-icon">‹</button>
+            <button class="btn btn-icon">›</button>
+            <button class="btn btn-sm">Bugün</button>
+            <span class="topbar-range num">14 Ağu – 20 Ağu 2026</span>
+          </div>
+          <div class="topbar-right menu-wrap">
+            <button class="btn btn-icon">⋯</button>
+            <div class="menu">
+              <button class="menu-item"><span class="dot" style="background:var(--c-violet)"></span>Davranış ekle</button>
+              <button class="menu-item"><span class="dot" style="background:var(--c-teal)"></span>Ayarlar</button>
+              <button class="menu-item"><span class="dot" style="background:var(--c-amber)"></span>Yönetim</button>
+              <button class="menu-item danger"><span class="dot" style="background:var(--c-red)"></span>Çıkış</button>
+            </div>
+          </div>
+        </div>
+        <div class="board">
+          <div class="col today">
+            <div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-blue)">
+                <div class="card-time"><span class="time-badge">09:00 - 09:30</span></div>
+                <div class="card-title">Sabah ekip toplantısı</div>
+                <div class="card-note">Sprint panosunu birlikte gözden geçir.</div>
+                <div class="card-meta"><span>🔔 2</span><span>↻</span></div>
+              </div>
+              <div class="card" style="--c:var(--c-teal)">
+                <div class="card-time"><span class="time-badge">11:00 - 12:30</span></div>
+                <div class="card-title">Tasarım incelemesi</div>
+                <div class="card-images one"><div class="ph"></div></div>
+                <div class="card-meta"><span>🔔 1</span></div>
+              </div>
+              <div class="card" style="--c:var(--c-amber)">
+                <div class="card-title">Fatura kayıtlarını yükle</div>
+                <div class="card-meta"><span>🔔 1</span></div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+
+          <div class="col">
+            <div class="col-head"><span class="col-day">Cumartesi</span><span class="col-date num">15 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-green)">
+                <div class="card-time"><span class="time-badge">08:00 - 09:00</span></div>
+                <div class="card-title">Koşu — 6 km</div>
+                <div class="card-meta"><span>🔔 1</span><span>↻</span></div>
+              </div>
+              <div class="card done" style="--c:var(--c-pink)">
+                <span class="done-flag">✓</span>
+                <div class="card-time"><span class="time-badge">13:00 - 14:00</span></div>
+                <div class="card-title">Pazar alışverişi</div>
+                <div class="card-note">Zeytinyağı, kahve, süt.</div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+
+          <div class="col">
+            <div class="col-head"><span class="col-day">Pazar</span><span class="col-date num">16 Ağu</span></div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+
+          <div class="col">
+            <div class="col-head"><span class="col-day">Pazartesi</span><span class="col-date num">17 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-violet)">
+                <div class="card-time"><span class="time-badge">10:00 - 11:00</span></div>
+                <div class="card-title">Müşteri sunumu hazırlığı</div>
+                <div class="card-note">Q3 rakamları ve yol haritası slaytları.</div>
+                <div class="card-images multi"><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+                <div class="card-meta"><span>🔔 3</span></div>
+              </div>
+              <div class="card" style="--c:var(--c-green)">
+                <div class="card-time"><span class="time-badge">07:30 - 08:00</span></div>
+                <div class="card-title">Koşu — 6 km</div>
+                <div class="card-meta"><span>🔔 1</span><span>↻</span></div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+
+          <div class="col">
+            <div class="col-head"><span class="col-day">Salı</span><span class="col-date num">18 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-red)">
+                <div class="card-time"><span class="time-badge">15:00 - 16:00</span></div>
+                <div class="card-title">Diş hekimi randevusu</div>
+                <div class="card-meta"><span>🔔 2</span></div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+
+          <div class="col">
+            <div class="col-head"><span class="col-day">Çarşamba</span><span class="col-date num">19 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-orange)">
+                <div class="card-title">Aylık raporu gönder</div>
+                <div class="card-note">Muhasebeye kopya geçmeyi unutma.</div>
+              </div>
+              <div class="card" style="--c:var(--c-green)">
+                <div class="card-time"><span class="time-badge">07:30 - 08:00</span></div>
+                <div class="card-title">Koşu — 6 km</div>
+                <div class="card-meta"><span>🔔 1</span><span>↻</span></div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+
+          <div class="col">
+            <div class="col-head"><span class="col-day">Perşembe</span><span class="col-date num">20 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-blue)">
+                <div class="card-time"><span class="time-badge">09:00 - 09:30</span></div>
+                <div class="card-title">Sabah ekip toplantısı</div>
+                <div class="card-meta"><span>🔔 2</span><span>↻</span></div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Bugünün kolonu ince accent çerçeve + 1px halka ile öne çıkar. Kartsız gün kısa kalır ve “+ Ekle” yukarıda durur.</p>
+  </section>
+
+  <!-- 01b COLUMN STATES -->
+  <section class="sec">
+    <header><span class="n">01b</span><h2>Kolon durumları</h2><span class="note">.col / .today / .past / .drop-target</span></header>
+    <div class="frame" style="padding:18px">
+      <div class="board" style="padding:0">
+        <div class="col past">
+          <div class="col-head"><span class="col-day">Perşembe</span><span class="col-date num">13 Ağu</span></div>
+          <div class="col-body">
+            <div class="card done" style="--c:var(--c-teal)"><span class="done-flag">✓</span><div class="card-time"><span class="time-badge">18:00 - 19:00</span></div><div class="card-title">Spor salonu</div></div>
+          </div>
+          <button class="add-btn">+ Ekle</button>
+        </div>
+        <div class="col today">
+          <div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div>
+          <div class="col-body">
+            <div class="card" style="--c:var(--c-blue)"><div class="card-time"><span class="time-badge">09:00 - 09:30</span></div><div class="card-title">Bugünün kolonu</div></div>
+          </div>
+          <button class="add-btn">+ Ekle</button>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="col-day">Cumartesi</span><span class="col-date num">15 Ağu</span></div>
+          <button class="add-btn">+ Ekle</button>
+        </div>
+        <div class="col drop-target">
+          <div class="col-head"><span class="col-day">Pazar</span><span class="col-date num">16 Ağu</span></div>
+          <div class="col-body">
+            <div class="card lifted" style="--c:var(--c-violet)"><div class="card-time"><span class="time-badge">10:00 - 11:00</span></div><div class="card-title">Buraya bırak</div></div>
+          </div>
+          <button class="add-btn">+ Ekle</button>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Sırayla: geçmiş gün (soluk) · bugün · normal · sürükleme hedefi.</p>
+  </section>
+
+  <!-- 02 TABLET -->
+  <section class="sec">
+    <header><span class="n">02</span><h2>Ana takvim — tablet, 3 gün</h2><span class="note">768–1100px · yatay kaydırma</span></header>
+    <div class="frame is-tablet" style="width:900px;max-width:100%">
+      <div class="app">
+        <div class="topbar">
+          <div class="topbar-left">
+            <button class="btn btn-icon">‹</button>
+            <button class="btn btn-icon">›</button>
+            <button class="btn btn-sm">Bugün</button>
+            <span class="topbar-range num">14 – 16 Ağu</span>
+          </div>
+          <div class="topbar-right"><button class="btn btn-icon">⋯</button></div>
+        </div>
+        <div class="day-strip">
+          <button class="strip-day on"><em>Cum</em><b>14</b><i></i></button>
+          <button class="strip-day"><em>Cmt</em><b>15</b><i></i></button>
+          <button class="strip-day"><em>Paz</em><b>16</b></button>
+          <button class="strip-day"><em>Pzt</em><b>17</b><i></i></button>
+          <button class="strip-day"><em>Sal</em><b>18</b><i></i></button>
+          <button class="strip-day"><em>Çar</em><b>19</b><i></i></button>
+          <button class="strip-day"><em>Per</em><b>20</b><i></i></button>
+        </div>
+        <div class="board" style="overflow-x:auto">
+          <div class="col today">
+            <div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-blue)">
+                <div class="card-time"><span class="time-badge">09:00 - 09:30</span></div>
+                <div class="card-title">Sabah ekip toplantısı</div>
+                <div class="card-note">Sprint panosunu birlikte gözden geçir.</div>
+                <div class="card-meta"><span>🔔 2</span><span>↻</span></div>
+              </div>
+              <div class="card" style="--c:var(--c-teal)">
+                <div class="card-time"><span class="time-badge">11:00 - 12:30</span></div>
+                <div class="card-title">Tasarım incelemesi</div>
+                <div class="card-images one"><div class="ph"></div></div>
+              </div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+          <div class="col">
+            <div class="col-head"><span class="col-day">Cumartesi</span><span class="col-date num">15 Ağu</span></div>
+            <div class="col-body">
+              <div class="card" style="--c:var(--c-green)">
+                <div class="card-time"><span class="time-badge">08:00 - 09:00</span></div>
+                <div class="card-title">Koşu — 6 km</div>
+                <div class="card-meta"><span>🔔 1</span><span>↻</span></div>
+              </div>
+              <div class="card done" style="--c:var(--c-pink)"><span class="done-flag">✓</span><div class="card-time"><span class="time-badge">13:00 - 14:00</span></div><div class="card-title">Pazar alışverişi</div></div>
+            </div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+          <div class="col">
+            <div class="col-head"><span class="col-day">Pazar</span><span class="col-date num">16 Ağu</span></div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+          <div class="col" style="opacity:.4">
+            <div class="col-head"><span class="col-day">Pazartesi</span><span class="col-date num">17 Ağu</span></div>
+            <button class="add-btn">+ Ekle</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Kolon genişliği (100% − 2×16px)/3, minimum 248px; kaydırma noktalarıyla (scroll-snap) gün gün kayar. Kart dolgusu 9→12px, kolon dolgusu 10→12px artar. Gün şeridi görünür kalır.</p>
+  </section>
+
+  <!-- 03 MOBILE -->
+  <section class="sec">
+    <header><span class="n">03</span><h2>Ana takvim — mobil</h2><span class="note">375px · tek gün + gün şeridi</span></header>
+    <div class="frame-row">
+      <div>
+        <div class="frame is-mobile" style="width:375px;height:720px">
+          <div class="app" style="height:100%">
+            <div class="topbar" style="padding:10px 12px">
+              <div class="topbar-left"><button class="btn btn-icon">‹</button><button class="btn btn-icon">›</button><span class="topbar-range num">Cuma, 14 Ağu</span></div>
+              <div class="topbar-right"><button class="btn btn-icon">⋯</button></div>
+            </div>
+            <div class="day-strip">
+              <button class="strip-day on"><em>Cum</em><b>14</b><i></i></button>
+              <button class="strip-day"><em>Cmt</em><b>15</b><i></i></button>
+              <button class="strip-day"><em>Paz</em><b>16</b></button>
+              <button class="strip-day"><em>Pzt</em><b>17</b><i></i></button>
+              <button class="strip-day"><em>Sal</em><b>18</b><i></i></button>
+              <button class="strip-day"><em>Çar</em><b>19</b><i></i></button>
+              <button class="strip-day"><em>Per</em><b>20</b><i></i></button>
+            </div>
+            <div class="board" style="overflow-y:auto">
+              <div class="col today">
+                <div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div>
+                <div class="col-body">
+                  <div class="card" style="--c:var(--c-blue)">
+                    <div class="card-time"><span class="time-badge">09:00 - 09:30</span></div>
+                    <div class="card-title">Sabah ekip toplantısı</div>
+                    <div class="card-note">Sprint panosunu birlikte gözden geçir.</div>
+                    <div class="card-meta"><span>🔔 2</span><span>↻</span></div>
+                  </div>
+                  <div class="card active" style="--c:var(--c-teal)">
+                    <div class="card-time"><span class="time-badge">11:00 - 12:30</span></div>
+                    <div class="card-title">Tasarım incelemesi</div>
+                    <div class="card-images one"><div class="ph"></div></div>
+                    <div class="card-meta"><span>🔔 1</span></div>
+                    <div class="card-actions">
+                      <button class="btn btn-sm btn-blue">Düzenle</button>
+                      <button class="btn btn-sm btn-green">Yapıldı</button>
+                      <button class="btn btn-sm btn-red">Sil</button>
+                    </div>
+                  </div>
+                  <div class="card done" style="--c:var(--c-pink)">
+                    <span class="done-flag">✓</span>
+                    <div class="card-title">Pazar alışverişi</div>
+                    <div class="card-note">Zeytinyağı, kahve, süt.</div>
+                  </div>
+                </div>
+                <button class="add-btn">+ Ekle</button>
+              </div>
+            </div>
+            <button class="fab" style="bottom:22px">+</button>
+          </div>
+        </div>
+        <p class="caption">Tek gün tam genişlik; kolon çerçevesi kalkar, kartlar doğrudan zemin üzerinde durur. Sağ altta yüzen “+”.</p>
+      </div>
+      <div>
+        <div class="frame is-mobile" style="width:375px;height:720px">
+          <div class="app" style="height:100%;position:relative">
+            <div class="topbar" style="padding:10px 12px">
+              <div class="topbar-left"><span class="topbar-range num">Cuma, 14 Ağu</span></div>
+              <div class="topbar-right"><button class="btn btn-icon">⋯</button></div>
+            </div>
+            <div class="day-strip">
+              <button class="strip-day on"><em>Cum</em><b>14</b><i></i></button>
+              <button class="strip-day"><em>Cmt</em><b>15</b></button>
+              <button class="strip-day"><em>Paz</em><b>16</b></button>
+              <button class="strip-day"><em>Pzt</em><b>17</b></button>
+              <button class="strip-day"><em>Sal</em><b>18</b></button>
+              <button class="strip-day"><em>Çar</em><b>19</b></button>
+              <button class="strip-day"><em>Per</em><b>20</b></button>
+            </div>
+            <div class="board"></div>
+            <div class="overlay">
+              <div class="modal">
+                <div class="modal-head"><span>Kartı düzenle</span><button class="btn btn-icon btn-ghost">✕</button></div>
+                <div class="modal-body">
+                  <div class="field"><label class="label">Başlık</label><input value="Tasarım incelemesi"></div>
+                  <div class="row">
+                    <div class="field"><label class="label">Başlangıç</label><input value="11:00"></div>
+                    <div class="field"><label class="label">Bitiş</label><input value="12:30"></div>
+                  </div>
+                  <div class="field"><label class="label">Renk</label>
+                    <div class="swatches">
+                      <button class="swatch" style="--c:var(--c-red)"></button>
+                      <button class="swatch" style="--c:var(--c-orange)"></button>
+                      <button class="swatch" style="--c:var(--c-amber)"></button>
+                      <button class="swatch" style="--c:var(--c-green)"></button>
+                      <button class="swatch on" style="--c:var(--c-teal)"></button>
+                      <button class="swatch" style="--c:var(--c-blue)"></button>
+                      <button class="swatch" style="--c:var(--c-violet)"></button>
+                      <button class="swatch" style="--c:var(--c-pink)"></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-foot" style="padding-bottom:26px"><button class="btn btn-ghost">Vazgeç</button><button class="btn btn-primary">Kaydet</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">Telefonda modal alttan açılan sayfa (bottom sheet) olur; alt güvenli alan için ek 26px dolgu.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 CARD VARIATIONS -->
+  <section class="sec">
+    <header><span class="n">04</span><h2>Kart çeşitleri ve durumları</h2><span class="note">.card</span></header>
+    <div class="grid-cards">
+      <div class="demo-tile"><h3>Saatli</h3>
+        <div class="card" style="--c:var(--c-blue)"><div class="card-time"><span class="time-badge">11:00 - 12:30</span></div><div class="card-title">Tasarım incelemesi</div></div></div>
+      <div class="demo-tile"><h3>Saatsiz</h3>
+        <div class="card" style="--c:var(--c-amber)"><div class="card-title">Fatura kayıtlarını yükle</div></div></div>
+      <div class="demo-tile"><h3>Notlu</h3>
+        <div class="card" style="--c:var(--c-teal)"><div class="card-time"><span class="time-badge">09:00 - 09:30</span></div><div class="card-title">Sabah ekip toplantısı</div><div class="card-note">Sprint panosunu birlikte gözden geçir, blokajları not al.</div></div></div>
+      <div class="demo-tile"><h3>Uzun başlık (2 satır kırpma)</h3>
+        <div class="card" style="--c:var(--c-violet)"><div class="card-time"><span class="time-badge">14:00 - 15:45</span></div><div class="card-title">Üçüncü çeyrek bütçe planlaması ve tedarikçi sözleşmelerinin gözden geçirilmesi toplantısı</div><div class="card-note">Finans, satın alma ve hukuk ekipleri katılacak; sözleşme taslakları önceden paylaşılacak, sunum dosyası ekte.</div></div></div>
+      <div class="demo-tile"><h3>Tek görsel</h3>
+        <div class="card" style="--c:var(--c-pink)"><div class="card-time"><span class="time-badge">13:00 - 14:00</span></div><div class="card-title">Pazar alışverişi</div><div class="card-images one"><div class="ph"></div></div></div></div>
+      <div class="demo-tile"><h3>Çoklu görsel</h3>
+        <div class="card" style="--c:var(--c-orange)"><div class="card-title">Mutfak yenileme fikirleri</div><div class="card-images multi"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div><div class="card-meta"><span>🔔 1</span></div></div></div>
+      <div class="demo-tile"><h3>Meta: hatırlatma + davranış</h3>
+        <div class="card" style="--c:var(--c-green)"><div class="card-time"><span class="time-badge">07:30 - 08:00</span></div><div class="card-title">Koşu — 6 km</div><div class="card-meta"><span>🔔 3</span><span>↻ davranış</span></div></div></div>
+      <div class="demo-tile"><h3>Yapıldı</h3>
+        <div class="card done" style="--c:var(--c-green)"><span class="done-flag">✓</span><div class="card-time"><span class="time-badge">07:30 - 08:00</span></div><div class="card-title">Koşu — 6 km</div><div class="card-note">Sahilde, 34 dakika.</div><div class="card-meta"><span>🔔 1</span><span>↻</span></div></div></div>
+      <div class="demo-tile"><h3>Sürüklenirken — orijinal</h3>
+        <div class="card ghost" style="--c:var(--c-blue)"><div class="card-time"><span class="time-badge">09:00 - 09:30</span></div><div class="card-title">Sabah ekip toplantısı</div><div class="card-meta"><span>🔔 2</span></div></div></div>
+      <div class="demo-tile"><h3>Sürüklenirken — taşınan kopya</h3>
+        <div class="card lifted" style="--c:var(--c-blue)"><div class="card-time"><span class="time-badge">09:00 - 09:30</span></div><div class="card-title">Sabah ekip toplantısı</div><div class="card-meta"><span>🔔 2</span></div></div></div>
+      <div class="demo-tile"><h3>Seçili (aksiyon satırı)</h3>
+        <div class="card active" style="--c:var(--c-teal)"><div class="card-time"><span class="time-badge">11:00 - 12:30</span></div><div class="card-title">Tasarım incelemesi</div><div class="card-actions"><button class="btn btn-sm btn-blue">Düzenle</button><button class="btn btn-sm btn-green">Yapıldı</button><button class="btn btn-sm btn-red">Sil</button></div></div></div>
+      <div class="demo-tile"><h3>Devre dışı (kaydediliyor)</h3>
+        <div class="card disabled" style="--c:var(--c-red)"><div class="card-time"><span class="time-badge">15:00 - 16:00</span></div><div class="card-title">Diş hekimi randevusu</div></div></div>
+    </div>
+    <div style="margin-top:18px">
+      <div class="demo-tile"><h3>8 renk — kart üzerinde</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          <div class="card" style="--c:var(--c-red)"><div class="card-time"><span class="time-badge">08:00</span></div><div class="card-title">Kırmızı</div></div>
+          <div class="card" style="--c:var(--c-orange)"><div class="card-time"><span class="time-badge">09:00</span></div><div class="card-title">Turuncu</div></div>
+          <div class="card" style="--c:var(--c-amber)"><div class="card-time"><span class="time-badge">10:00</span></div><div class="card-title">Sarı</div></div>
+          <div class="card" style="--c:var(--c-green)"><div class="card-time"><span class="time-badge">11:00</span></div><div class="card-title">Yeşil</div></div>
+          <div class="card" style="--c:var(--c-teal)"><div class="card-time"><span class="time-badge">12:00</span></div><div class="card-title">Turkuaz</div></div>
+          <div class="card" style="--c:var(--c-blue)"><div class="card-time"><span class="time-badge">13:00</span></div><div class="card-title">Mavi</div></div>
+          <div class="card" style="--c:var(--c-violet)"><div class="card-time"><span class="time-badge">14:00</span></div><div class="card-title">Mor</div></div>
+          <div class="card" style="--c:var(--c-pink)"><div class="card-time"><span class="time-badge">15:00</span></div><div class="card-title">Pembe</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 CONTROLS -->
+  <section class="sec">
+    <header><span class="n">05</span><h2>Düğmeler, menü, çipler, renk seçici</h2><span class="note">tüm durumlar</span></header>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px">
+      <div class="demo-tile"><h3>Kart aksiyon satırı</h3>
+        <div class="card-actions" style="display:flex"><button class="btn btn-sm btn-blue">Düzenle</button><button class="btn btn-sm btn-green">Yapıldı</button><button class="btn btn-sm btn-red">Sil</button></div>
+        <p class="caption">Normal · üzerine gelince kendi renginde dolgu · dokunma alanı mobilde 44px.</p>
+      </div>
+      <div class="demo-tile"><h3>.btn varyantları</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button class="btn">Varsayılan</button>
+          <button class="btn btn-primary">Kaydet</button>
+          <button class="btn btn-ghost">Vazgeç</button>
+          <button class="btn" disabled="">Devre dışı</button>
+          <button class="btn btn-icon">⋯</button>
+          <button class="btn btn-sm">Küçük</button>
+        </div>
+      </div>
+      <div class="demo-tile"><h3>+ Ekle</h3>
+        <button class="add-btn">+ Ekle</button>
+        <button class="add-btn" style="border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 8%,transparent)">+ Ekle (üzerinde)</button>
+      </div>
+      <div class="demo-tile"><h3>⋯ menüsü</h3>
+        <div class="menu" style="position:static;box-shadow:var(--shadow-md)">
+          <button class="menu-item"><span class="dot" style="background:var(--c-violet)"></span>Davranış ekle</button>
+          <button class="menu-item" style="background:var(--surface-hover)"><span class="dot" style="background:var(--c-teal)"></span>Ayarlar</button>
+          <button class="menu-item"><span class="dot" style="background:var(--c-amber)"></span>Yönetim</button>
+          <button class="menu-item danger"><span class="dot" style="background:var(--c-red)"></span>Çıkış</button>
+        </div>
+      </div>
+      <div class="demo-tile"><h3>Hatırlatma çipleri</h3>
+        <div class="chips">
+          <button class="chip on">Hepsi</button>
+          <button class="chip on">1 gün</button>
+          <button class="chip">12 saat</button>
+          <button class="chip">6 saat</button>
+          <button class="chip">3 saat</button>
+          <button class="chip" disabled="">1 saat</button>
+        </div>
+        <p class="caption">Seçili: accent çerçeve + %16 accent zemin + ✓. Devre dışı: %40 opaklık.</p>
+      </div>
+      <div class="demo-tile"><h3>Renk seçici</h3>
+        <div class="swatches">
+          <button class="swatch" style="--c:var(--c-red)"></button>
+          <button class="swatch" style="--c:var(--c-orange)"></button>
+          <button class="swatch" style="--c:var(--c-amber)"></button>
+          <button class="swatch" style="--c:var(--c-green)"></button>
+          <button class="swatch" style="--c:var(--c-teal)"></button>
+          <button class="swatch on" style="--c:var(--c-blue)"></button>
+          <button class="swatch" style="--c:var(--c-violet)"></button>
+          <button class="swatch" style="--c:var(--c-pink)"></button>
+        </div>
+      </div>
+      <div class="demo-tile"><h3>Gün şeridi öğeleri</h3>
+        <div class="day-strip" style="border:0;background:transparent;padding:0">
+          <button class="strip-day on"><em>Cum</em><b>14</b><i></i></button>
+          <button class="strip-day"><em>Cmt</em><b>15</b><i></i></button>
+          <button class="strip-day past"><em>Per</em><b>13</b></button>
+        </div>
+        <p class="caption">Seçili · normal · geçmiş. Nokta o günde kart olduğunu gösterir.</p>
+      </div>
+      <div class="demo-tile"><h3>Alan durumları</h3>
+        <div class="field"><label class="label">Başlık</label><input placeholder="Kart başlığı"></div>
+        <div class="field"><label class="label">Odaklı</label><input value="Tasarım incelemesi" style="border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 20%,transparent)"></div>
+        <div class="field invalid"><label class="label">Hatalı</label><input value="25:00"><span class="err">Geçerli bir saat girin.</span></div>
+        <div class="field"><label class="label">Devre dışı</label><input value="admin@ornek.com" disabled=""></div>
+      </div>
+      <div class="demo-tile"><h3>Etiketler</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="tag admin">Yönetici</span><span class="tag ok">Aktif</span><span class="tag off">Pasif</span><span class="tag">Kullanıcı</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 EDIT MODAL -->
+  <section class="sec">
+    <header><span class="n">06</span><h2>Kart düzenleme penceresi</h2><span class="note">.modal — tüm alanlar</span></header>
+    <div class="frame-row">
+      <div class="frame" style="width:640px;max-width:100%;height:660px">
+        <div class="app" style="height:100%;position:relative">
+          <div class="topbar"><div class="topbar-left"><span class="topbar-range num">14 Ağu – 20 Ağu 2026</span></div><div class="topbar-right"><button class="btn btn-icon">⋯</button></div></div>
+          <div class="board"><div class="col"><div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div><button class="add-btn">+ Ekle</button></div></div>
+          <div class="overlay">
+            <div class="modal">
+              <div class="modal-head"><span>Kartı düzenle</span><button class="btn btn-icon btn-ghost">✕</button></div>
+              <div class="modal-body">
+                <div class="field"><label class="label">Başlık</label><input value="Tasarım incelemesi"></div>
+                <div class="row">
+                  <div class="field"><label class="label">Gün</label><input value="2026-08-14"></div>
+                </div>
+                <div class="row">
+                  <div class="field"><label class="label">Başlangıç</label><input value="11:00"></div>
+                  <div class="field"><label class="label">Bitiş</label><input value="12:30"></div>
+                </div>
+                <div class="field"><label class="label">Renk</label>
+                  <div class="swatches">
+                    <button class="swatch" style="--c:var(--c-red)"></button>
+                    <button class="swatch" style="--c:var(--c-orange)"></button>
+                    <button class="swatch" style="--c:var(--c-amber)"></button>
+                    <button class="swatch" style="--c:var(--c-green)"></button>
+                    <button class="swatch on" style="--c:var(--c-teal)"></button>
+                    <button class="swatch" style="--c:var(--c-blue)"></button>
+                    <button class="swatch" style="--c:var(--c-violet)"></button>
+                    <button class="swatch" style="--c:var(--c-pink)"></button>
+                  </div>
+                </div>
+                <div class="field"><label class="label">Not</label><textarea>Sprint panosunu birlikte gözden geçir, blokajları not al.</textarea></div>
+                <div class="field"><label class="label">Hatırlatma</label>
+                  <div class="chips">
+                    <button class="chip">Hepsi</button>
+                    <button class="chip on">1 gün</button>
+                    <button class="chip">12 saat</button>
+                    <button class="chip on">6 saat</button>
+                    <button class="chip">3 saat</button>
+                    <button class="chip">1 saat</button>
+                  </div>
+                  <span class="hint">Hatırlatmalar e-posta ile gönderilir.</span>
+                </div>
+                <div class="field"><label class="label">Görseller</label>
+                  <div class="dropzone">Görselleri buraya bırak veya <a href="#">dosya seç</a><br><span style="color:var(--text-faint)">PNG, JPG · en fazla 5 MB</span></div>
+                  <div class="thumbs" style="margin-top:10px">
+                    <div class="thumb"><button class="x">✕</button></div>
+                    <div class="thumb"><button class="x">✕</button></div>
+                    <div class="thumb"><button class="x">✕</button></div>
+                    <div class="thumb skel"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-foot"><button class="btn btn-red">Sil</button><span style="flex:1"></span><button class="btn btn-ghost">Vazgeç</button><button class="btn btn-primary">Kaydet</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="demo-tile" style="width:330px"><h3>Bırakma alanı — üzerine sürüklenirken</h3>
+          <div class="dropzone over">Bırak · 3 dosya</div>
+          <h3 style="margin-top:8px">Yükleniyor</h3>
+          <div class="thumbs"><div class="thumb"><button class="x">✕</button></div><div class="thumb skel"></div><div class="thumb skel"></div><div class="thumb" style="border-color:var(--danger)"><div style="position:absolute;inset:0;display:grid;place-items:center;color:var(--danger);font-size:18px">!</div></div></div>
+          <p class="caption">Dördüncü kutu: yükleme hatası.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 HABIT MODAL -->
+  <section class="sec">
+    <header><span class="n">07</span><h2>Davranış ekle</h2><span class="note">.modal — bir yıl boyunca otomatik kart</span></header>
+    <div class="frame" style="width:640px;max-width:100%;height:600px">
+      <div class="app" style="height:100%;position:relative">
+        <div class="topbar"><div class="topbar-left"><span class="topbar-range num">14 Ağu – 20 Ağu 2026</span></div><div class="topbar-right"><button class="btn btn-icon">⋯</button></div></div>
+        <div class="board"><div class="col"><div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div><button class="add-btn">+ Ekle</button></div></div>
+        <div class="overlay">
+          <div class="modal">
+            <div class="modal-head"><span>Davranış ekle</span><button class="btn btn-icon btn-ghost">✕</button></div>
+            <div class="modal-body">
+              <div class="field"><label class="label">Başlık</label><input value="Koşu — 6 km"></div>
+              <div class="field"><label class="label">Günler</label>
+                <div class="chips">
+                  <button class="chip on">Pzt</button>
+                  <button class="chip">Sal</button>
+                  <button class="chip on">Çar</button>
+                  <button class="chip">Per</button>
+                  <button class="chip on">Cum</button>
+                  <button class="chip">Cmt</button>
+                  <button class="chip">Paz</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="field"><label class="label">Başlangıç</label><input value="07:30"></div>
+                <div class="field"><label class="label">Bitiş</label><input value="08:00"></div>
+              </div>
+              <div class="row">
+                <div class="field"><label class="label">İlk gün</label><input value="2026-08-17"></div>
+                <div class="field"><label class="label">Tekrar</label><input value="1 yıl" disabled=""></div>
+              </div>
+              <div class="field"><label class="label">Renk</label>
+                <div class="swatches">
+                  <button class="swatch" style="--c:var(--c-red)"></button>
+                  <button class="swatch" style="--c:var(--c-orange)"></button>
+                  <button class="swatch" style="--c:var(--c-amber)"></button>
+                  <button class="swatch on" style="--c:var(--c-green)"></button>
+                  <button class="swatch" style="--c:var(--c-teal)"></button>
+                  <button class="swatch" style="--c:var(--c-blue)"></button>
+                  <button class="swatch" style="--c:var(--c-violet)"></button>
+                  <button class="swatch" style="--c:var(--c-pink)"></button>
+                </div>
+              </div>
+              <div class="field"><label class="label">Not</label><textarea placeholder="İsteğe bağlı"></textarea></div>
+              <div class="field"><label class="label">Hatırlatma</label>
+                <div class="chips"><button class="chip">Hepsi</button><button class="chip on">1 saat</button><button class="chip">3 saat</button></div>
+              </div>
+              <div class="field"><span class="hint">156 kart oluşturulacak · 17 Ağu 2026 – 16 Ağu 2027</span></div>
+            </div>
+            <div class="modal-foot"><button class="btn btn-ghost">Vazgeç</button><button class="btn btn-primary">Oluştur</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Davranıştan üretilen kartlar panoda ↻ ile işaretlenir.</p>
+  </section>
+
+  <!-- 08 AUTH -->
+  <section class="sec">
+    <header><span class="n">08</span><h2>Giriş ve davet ile hesap kurulumu</h2><span class="note">.auth-card</span></header>
+    <div class="frame-row">
+      <div class="frame" style="width:430px;height:470px">
+        <div class="app" style="height:100%;display:grid;place-items:center;padding:24px">
+          <div class="auth-card">
+            <div>
+              <div class="auth-title">Giriş yap</div>
+              <p style="margin:5px 0 0;color:var(--text-muted);font-size:13px">Haftalık Planlayıcı</p>
+            </div>
+            <div class="field"><label class="label">E-posta</label><input value="ayse@ornek.com"></div>
+            <div class="field"><label class="label">Şifre</label><input type="password" value="········"></div>
+            <button class="btn btn-primary" style="min-height:42px">Giriş yap</button>
+            <a href="#" style="font-size:12.5px;text-align:center">Şifremi unuttum</a>
+          </div>
+        </div>
+      </div>
+      <div class="frame" style="width:430px;height:470px">
+        <div class="app" style="height:100%;display:grid;place-items:center;padding:24px">
+          <div class="auth-card">
+            <div>
+              <div class="auth-title">Hesabını oluştur</div>
+              <p style="margin:5px 0 0;color:var(--text-muted);font-size:13px">Davet: <b style="color:var(--text)">mehmet@ornek.com</b></p>
+            </div>
+            <div class="field"><label class="label">Ad Soyad</label><input placeholder="Mehmet Yılmaz"></div>
+            <div class="field"><label class="label">E-posta</label><input value="mehmet@ornek.com" disabled=""></div>
+            <div class="field"><label class="label">Şifre</label><input type="password" placeholder="En az 8 karakter"><span class="hint">En az 8 karakter, bir sayı içermeli.</span></div>
+            <button class="btn btn-primary" style="min-height:42px">Kurulumu tamamla</button>
+          </div>
+        </div>
+      </div>
+      <div class="frame" style="width:430px;height:470px">
+        <div class="app" style="height:100%;display:grid;place-items:center;padding:24px">
+          <div class="auth-card">
+            <div>
+              <div class="auth-title">Giriş yap</div>
+              <p style="margin:5px 0 0;color:var(--text-muted);font-size:13px">Haftalık Planlayıcı</p>
+            </div>
+            <div class="error-state" style="padding:14px">E-posta veya şifre hatalı.</div>
+            <div class="field invalid"><label class="label">E-posta</label><input value="ayse@ornek.com"></div>
+            <div class="field invalid"><label class="label">Şifre</label><input type="password" value="····"><span class="err">Şifre en az 12 karakter olmalı.</span></div>
+            <button class="btn btn-primary" style="min-height:42px" disabled="">Giriş yap</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Giriş · davet kurulumu · hata durumu.</p>
+  </section>
+
+  <!-- 09 ADMIN -->
+  <section class="sec">
+    <header><span class="n">09</span><h2>Yönetim paneli</h2><span class="note">.stat · .panel · .tag</span></header>
+    <div class="frame" style="width:1280px;max-width:100%">
+      <div class="app">
+        <div class="topbar">
+          <div class="topbar-left"><button class="btn btn-icon">‹</button><span style="font-weight:600;letter-spacing:-.01em">Yönetim</span></div>
+          <div class="topbar-right"><button class="btn btn-sm">Kullanıcı davet et</button><button class="btn btn-icon">⋯</button></div>
+        </div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:18px">
+          <div class="stats">
+            <div class="stat"><span class="stat-label">Kullanıcı</span><span class="stat-value">48</span><span style="font-size:11.5px;color:var(--text-faint)">bu hafta +3</span></div>
+            <div class="stat"><span class="stat-label">Kart</span><span class="stat-value">12 486</span><span style="font-size:11.5px;color:var(--text-faint)">2 104 davranıştan</span></div>
+            <div class="stat"><span class="stat-label">Görsel</span><span class="stat-value">3 271</span><span style="font-size:11.5px;color:var(--text-faint)">ortalama 0,4 MB</span></div>
+            <div class="stat"><span class="stat-label">Disk</span><span class="stat-value">1,4 GB</span><span style="font-size:11.5px;color:var(--text-faint)">10 GB kotanın %14’ü</span></div>
+            <div class="stat"><span class="stat-label">Veritabanı</span><span class="stat-value">212 MB</span><span style="font-size:11.5px;color:var(--text-faint)">son yedek 04:00</span></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>Kullanıcılar</span><span style="font-weight:400;color:var(--text-faint);font-size:12.5px">48 kayıt</span></div>
+            <sc-raw-table>
+              <sc-raw-thead><sc-raw-tr><sc-raw-th>Kullanıcı</sc-raw-th><sc-raw-th>Rol</sc-raw-th><sc-raw-th>Durum</sc-raw-th><sc-raw-th>Son giriş</sc-raw-th><sc-raw-th class="num">Kart</sc-raw-th><sc-raw-th class="num">Görsel</sc-raw-th><sc-raw-th></sc-raw-th></sc-raw-tr></sc-raw-thead>
+              <sc-raw-tbody>
+                <sc-raw-tr>
+                  <sc-raw-td><div class="who"><b>Ayşe Demir</b><span>ayse@ornek.com</span></div></sc-raw-td>
+                  <sc-raw-td><span class="tag admin">Yönetici</span></sc-raw-td><sc-raw-td><span class="tag ok">Aktif</span></sc-raw-td>
+                  <sc-raw-td class="num">14 Ağu 09:12</sc-raw-td><sc-raw-td class="num">412</sc-raw-td><sc-raw-td class="num">96</sc-raw-td>
+                  <sc-raw-td style="text-align:right"><button class="btn btn-sm btn-blue">Düzenle</button></sc-raw-td>
+                </sc-raw-tr>
+                <sc-raw-tr>
+                  <sc-raw-td><div class="who"><b>Mehmet Yılmaz</b><span>mehmet@ornek.com</span></div></sc-raw-td>
+                  <sc-raw-td><span class="tag">Kullanıcı</span></sc-raw-td><sc-raw-td><span class="tag ok">Aktif</span></sc-raw-td>
+                  <sc-raw-td class="num">14 Ağu 08:40</sc-raw-td><sc-raw-td class="num">288</sc-raw-td><sc-raw-td class="num">51</sc-raw-td>
+                  <sc-raw-td style="text-align:right"><button class="btn btn-sm btn-blue">Düzenle</button></sc-raw-td>
+                </sc-raw-tr>
+                <sc-raw-tr>
+                  <sc-raw-td><div class="who"><b>Zeynep Kaya</b><span>zeynep@ornek.com</span></div></sc-raw-td>
+                  <sc-raw-td><span class="tag">Kullanıcı</span></sc-raw-td><sc-raw-td><span class="tag off">Pasif</span></sc-raw-td>
+                  <sc-raw-td class="num">02 Tem 17:03</sc-raw-td><sc-raw-td class="num">76</sc-raw-td><sc-raw-td class="num">4</sc-raw-td>
+                  <sc-raw-td style="text-align:right"><button class="btn btn-sm btn-red">Sil</button></sc-raw-td>
+                </sc-raw-tr>
+                <sc-raw-tr>
+                  <sc-raw-td><div class="who"><b>Can Öztürk</b><span>can@ornek.com</span></div></sc-raw-td>
+                  <sc-raw-td><span class="tag">Kullanıcı</span></sc-raw-td><sc-raw-td><span class="tag off">Davet bekliyor</span></sc-raw-td>
+                  <sc-raw-td class="num">—</sc-raw-td><sc-raw-td class="num">0</sc-raw-td><sc-raw-td class="num">0</sc-raw-td>
+                  <sc-raw-td style="text-align:right"><button class="btn btn-sm">Daveti yenile</button></sc-raw-td>
+                </sc-raw-tr>
+              </sc-raw-tbody>
+            </sc-raw-table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 STATES -->
+  <section class="sec">
+    <header><span class="n">10</span><h2>Boş, yükleniyor ve hata durumları</h2><span class="note">.empty · .skel · .error-state</span></header>
+    <div class="frame-row">
+      <div class="frame" style="width:300px;padding:14px">
+        <div class="col" style="width:100%">
+          <div class="col-head"><span class="col-day">Pazar</span><span class="col-date num">16 Ağu</span></div>
+          <button class="add-btn">+ Ekle</button>
+        </div>
+        <p class="caption">Boş gün: kolon kısa kalır, yalnızca “+ Ekle”.</p>
+      </div>
+      <div class="frame" style="width:300px;padding:14px">
+        <div class="empty">
+          <span class="mark">+</span>
+          <div><b style="display:block;font-weight:600;color:var(--text)">Bu hafta hiç kart yok</b>Bir kart ekle ya da bir davranış tanımla.</div>
+          <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">Kart ekle</button><button class="btn btn-sm">Davranış ekle</button></div>
+        </div>
+        <p class="caption">Tüm hafta boş.</p>
+      </div>
+      <div class="frame" style="width:300px;padding:14px">
+        <div class="col" style="width:100%">
+          <div class="col-head"><span class="col-day">Cuma</span><span class="col-date num">14 Ağu</span></div>
+          <div class="col-body">
+            <div class="card" style="--c:var(--border-strong);cursor:default"><div class="card-time"><span class="skel" style="height:16px;width:88px;border-radius:999px"></span></div><div class="skel" style="height:13px;width:80%"></div><div class="skel" style="height:11px;width:55%"></div></div>
+            <div class="card" style="--c:var(--border-strong);cursor:default"><div class="card-time"><span class="skel" style="height:16px;width:70px;border-radius:999px"></span></div><div class="skel" style="height:13px;width:65%"></div></div>
+          </div>
+        </div>
+        <p class="caption">Yükleniyor: iskelet kartlar.</p>
+      </div>
+      <div class="frame" style="width:300px;padding:14px;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center">
+        <div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:13px"><span class="spinner"></span>Hafta yükleniyor…</div>
+        <p class="caption" style="margin:0">Küçük bekleme göstergesi.</p>
+      </div>
+      <div class="frame" style="width:300px;padding:14px">
+        <div class="error-state">
+          <span class="mark">!</span>
+          <div><b style="display:block;font-weight:600">Hafta yüklenemedi</b><span style="color:var(--text-muted)">Sunucuya ulaşılamıyor.</span></div>
+          <button class="btn btn-sm">Tekrar dene</button>
+        </div>
+        <p class="caption">Hata durumu.</p>
+      </div>
+      <div class="frame" style="width:300px;padding:14px">
+        <div class="error-state" style="padding:12px 14px;flex-direction:row;align-items:center;text-align:left;gap:10px">
+          <span class="mark" style="width:24px;height:24px;font-size:13px">!</span>
+          <span style="flex:1">Kart kaydedilemedi.</span>
+          <button class="btn btn-sm btn-red">Yeniden</button>
+        </div>
+        <p class="caption">Satır içi hata (kaydetme başarısız).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 NATIVE SPEC -->
+  <section class="sec">
+    <header><span class="n">11</span><h2>Platformdan bağımsız spesifikasyon (Flutter)</h2><span class="note">CSS okumadan uygulanabilir</span></header>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.1 Renk tokenları — ham değerler</h3>
+    <div class="panel" style="margin-bottom:22px">
+      <sc-raw-table class="spectable">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Token</sc-raw-th><sc-raw-th>Açık tema</sc-raw-th><sc-raw-th>Koyu tema</sc-raw-th><sc-raw-th>Kullanım</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td><code>bg</code></sc-raw-td><sc-raw-td class="mono">#F5F7F9</sc-raw-td><sc-raw-td class="mono">#0D1117</sc-raw-td><sc-raw-td>Uygulama zemini / scaffold</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>surface</code></sc-raw-td><sc-raw-td class="mono">#FFFFFF</sc-raw-td><sc-raw-td class="mono">#141A21</sc-raw-td><sc-raw-td>Kolon, pencere, kart zemini</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>surface2</code></sc-raw-td><sc-raw-td class="mono">#EEF1F5</sc-raw-td><sc-raw-td class="mono">#1A212A</sc-raw-td><sc-raw-td>Girdi alanı, pencere alt şeridi</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>surfaceHover</code></sc-raw-td><sc-raw-td class="mono">#E7EBF1</sc-raw-td><sc-raw-td class="mono">#212A35</sc-raw-td><sc-raw-td>Basılı/üzerinde durumu (native: ripple/highlight)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>border</code></sc-raw-td><sc-raw-td class="mono">#E2E7EE</sc-raw-td><sc-raw-td class="mono">#242D38</sc-raw-td><sc-raw-td>1px hairline çerçeve</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>borderStrong</code></sc-raw-td><sc-raw-td class="mono">#C8D1DB</sc-raw-td><sc-raw-td class="mono">#374350</sc-raw-td><sc-raw-td>Düğme çerçevesi, kaydırma çubuğu</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>text</code></sc-raw-td><sc-raw-td class="mono">#161D26</sc-raw-td><sc-raw-td class="mono">#E5EBF2</sc-raw-td><sc-raw-td>Birincil metin</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>textMuted</code></sc-raw-td><sc-raw-td class="mono">#5B6673</sc-raw-td><sc-raw-td class="mono">#98A4B2</sc-raw-td><sc-raw-td>Not, ikincil metin</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>textFaint</code></sc-raw-td><sc-raw-td class="mono">#8F9AA6</sc-raw-td><sc-raw-td class="mono">#69757F</sc-raw-td><sc-raw-td>Meta, etiket, tarih</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>accent</code></sc-raw-td><sc-raw-td class="mono">#2F6FED</sc-raw-td><sc-raw-td class="mono">#79B0FF</sc-raw-td><sc-raw-td>Bugün, seçili, birincil düğme</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>accentFg</code></sc-raw-td><sc-raw-td class="mono">#FFFFFF</sc-raw-td><sc-raw-td class="mono">#0B1220</sc-raw-td><sc-raw-td>Accent üzerindeki metin</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>danger</code></sc-raw-td><sc-raw-td class="mono">#D33C58</sc-raw-td><sc-raw-td class="mono">#FF7B8E</sc-raw-td><sc-raw-td>Silme, hata</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cRed</code></sc-raw-td><sc-raw-td class="mono">#D9566A</sc-raw-td><sc-raw-td class="mono">#FF9AA5</sc-raw-td><sc-raw-td>Kart rengi 1</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cOrange</code></sc-raw-td><sc-raw-td class="mono">#CF7C38</sc-raw-td><sc-raw-td class="mono">#FFB489</sc-raw-td><sc-raw-td>Kart rengi 2</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cAmber</code></sc-raw-td><sc-raw-td class="mono">#B08A12</sc-raw-td><sc-raw-td class="mono">#ECC96F</sc-raw-td><sc-raw-td>Kart rengi 3</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cGreen</code></sc-raw-td><sc-raw-td class="mono">#3D9C68</sc-raw-td><sc-raw-td class="mono">#88D8A6</sc-raw-td><sc-raw-td>Kart rengi 4</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cTeal</code></sc-raw-td><sc-raw-td class="mono">#2F9A95</sc-raw-td><sc-raw-td class="mono">#77D2CE</sc-raw-td><sc-raw-td>Kart rengi 5</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cBlue</code></sc-raw-td><sc-raw-td class="mono">#3A78E0</sc-raw-td><sc-raw-td class="mono">#96C0FF</sc-raw-td><sc-raw-td>Kart rengi 6</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cViolet</code></sc-raw-td><sc-raw-td class="mono">#7A5EDE</sc-raw-td><sc-raw-td class="mono">#BBA7FF</sc-raw-td><sc-raw-td>Kart rengi 7</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>cPink</code></sc-raw-td><sc-raw-td class="mono">#CF5595</sc-raw-td><sc-raw-td class="mono">#FF9FC8</sc-raw-td><sc-raw-td>Kart rengi 8</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+    </div>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.2 Kart rengi türetmeleri</h3>
+    <div class="panel" style="margin-bottom:22px">
+      <sc-raw-table class="spectable">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Parça</sc-raw-th><sc-raw-th>Formül</sc-raw-th><sc-raw-th>Flutter karşılığı</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td>Kart çerçevesi</sc-raw-td><sc-raw-td>renk %50 opaklık</sc-raw-td><sc-raw-td class="mono">c.withOpacity(0.50), 1px</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kart zemini</sc-raw-td><sc-raw-td>renk %7 + surface</sc-raw-td><sc-raw-td class="mono">Color.alphaBlend(c.withOpacity(.07), surface)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Üzerinde/basılı çerçeve</sc-raw-td><sc-raw-td>renk %75 opaklık</sc-raw-td><sc-raw-td class="mono">c.withOpacity(0.75)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Saat etiketi zemini</sc-raw-td><sc-raw-td>renk %20 + surface</sc-raw-td><sc-raw-td class="mono">alphaBlend(c.withOpacity(.20), surface)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Saat etiketi metni</sc-raw-td><sc-raw-td>renk %78 + text</sc-raw-td><sc-raw-td class="mono">Color.lerp(text, c, .78)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Saat etiketi çerçevesi</sc-raw-td><sc-raw-td>renk %32 opaklık</sc-raw-td><sc-raw-td class="mono">c.withOpacity(0.32)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Yapıldı tarama deseni</sc-raw-td><sc-raw-td>45°, 6px çizgi / 7px boşluk, renk %16</sc-raw-td><sc-raw-td class="mono">CustomPainter, stroke 6, gap 7</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Yapıldı içerik opaklığı</sc-raw-td><sc-raw-td>0.45</sc-raw-td><sc-raw-td class="mono">Opacity(opacity: .45)</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+    </div>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.3 Yarıçap, boşluk, gölge</h3>
+    <div class="frame-row" style="margin-bottom:22px">
+      <div class="panel" style="flex:1;min-width:280px">
+        <div class="panel-head">Yarıçap</div>
+        <sc-raw-table class="spectable"><sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td><code>rSm</code></sc-raw-td><sc-raw-td class="mono">6</sc-raw-td><sc-raw-td>düğme, saat etiketi köşesi, küçük görsel</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>rMd</code></sc-raw-td><sc-raw-td class="mono">10</sc-raw-td><sc-raw-td>kart, girdi alanı, küçük resim</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>rLg</code></sc-raw-td><sc-raw-td class="mono">14</sc-raw-td><sc-raw-td>kolon, panel, menü, bırakma alanı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>rXl</code></sc-raw-td><sc-raw-td class="mono">20</sc-raw-td><sc-raw-td>pencere, giriş kartı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td><code>pill</code></sc-raw-td><sc-raw-td class="mono">999</sc-raw-td><sc-raw-td>çip, saat etiketi, renk daireleri</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody></sc-raw-table>
+      </div>
+      <div class="panel" style="flex:1;min-width:280px">
+        <div class="panel-head">Boşluk ölçeği (4px tabanlı)</div>
+        <sc-raw-table class="spectable"><sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td class="mono">2</sc-raw-td><sc-raw-td>meta satırı içi</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">4</sc-raw-td><sc-raw-td>görsel ızgarası aralığı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">6</sc-raw-td><sc-raw-td>kart içi dikey aralık, çip aralığı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">8</sc-raw-td><sc-raw-td>düğme aralığı, renk daireleri aralığı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">10</sc-raw-td><sc-raw-td>kolon dolgusu, kart aralığı, kart dolgusu (mobil 12)</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">14</sc-raw-td><sc-raw-td>kolon aralığı, pencere alan aralığı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">18</sc-raw-td><sc-raw-td>pano dolgusu, pencere yatay dolgusu</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">26</sc-raw-td><sc-raw-td>giriş kartı dolgusu</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody></sc-raw-table>
+      </div>
+      <div class="panel" style="flex:1;min-width:280px">
+        <div class="panel-head">Gölge</div>
+        <sc-raw-table class="spectable">
+          <sc-raw-thead><sc-raw-tr><sc-raw-th>Token</sc-raw-th><sc-raw-th>Y</sc-raw-th><sc-raw-th>Blur</sc-raw-th><sc-raw-th>Yayılma</sc-raw-th><sc-raw-th>Opaklık (açık / koyu)</sc-raw-th></sc-raw-tr></sc-raw-thead>
+          <sc-raw-tbody>
+            <sc-raw-tr><sc-raw-td><code>shadowSm</code></sc-raw-td><sc-raw-td class="mono">1</sc-raw-td><sc-raw-td class="mono">2</sc-raw-td><sc-raw-td class="mono">0</sc-raw-td><sc-raw-td class="mono">0.06 / 0.40</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td><code>shadowMd</code></sc-raw-td><sc-raw-td class="mono">6 / 8</sc-raw-td><sc-raw-td class="mono">18 / 22</sc-raw-td><sc-raw-td class="mono">−6 / −8</sc-raw-td><sc-raw-td class="mono">0.14 / 0.55</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td><code>shadowLg</code></sc-raw-td><sc-raw-td class="mono">24 / 28</sc-raw-td><sc-raw-td class="mono">48 / 56</sc-raw-td><sc-raw-td class="mono">−16 / −18</sc-raw-td><sc-raw-td class="mono">0.22 / 0.65</sc-raw-td></sc-raw-tr>
+          </sc-raw-tbody>
+        </sc-raw-table>
+        <div style="padding:10px 14px;color:var(--text-faint);font-size:11.5px">Gölge rengi: açık temada #101820, koyu temada #000000.</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.4 Tipografi</h3>
+    <div class="panel" style="margin-bottom:22px">
+      <sc-raw-table class="spectable">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Rol</sc-raw-th><sc-raw-th>Boyut</sc-raw-th><sc-raw-th>Ağırlık</sc-raw-th><sc-raw-th>Satır y.</sc-raw-th><sc-raw-th>Harf aralığı</sc-raw-th><sc-raw-th>Rakam</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td>Ekran başlığı</sc-raw-td><sc-raw-td class="mono">20</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.25</sc-raw-td><sc-raw-td class="mono">−0.02em</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Panel / pencere başlığı</sc-raw-td><sc-raw-td class="mono">14.5</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.3</sc-raw-td><sc-raw-td class="mono">−0.01em</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Gün adı (.col-day)</sc-raw-td><sc-raw-td class="mono">13.5</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.3</sc-raw-td><sc-raw-td class="mono">−0.01em</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Gün tarihi (.col-date)</sc-raw-td><sc-raw-td class="mono">12.5</sc-raw-td><sc-raw-td class="mono">500</sc-raw-td><sc-raw-td class="mono">1.3</sc-raw-td><sc-raw-td class="mono">0</sc-raw-td><sc-raw-td>tabular</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kart başlığı</sc-raw-td><sc-raw-td class="mono">13.5</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.3</sc-raw-td><sc-raw-td class="mono">−0.01em</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kart notu</sc-raw-td><sc-raw-td class="mono">12</sc-raw-td><sc-raw-td class="mono">400</sc-raw-td><sc-raw-td class="mono">1.35</sc-raw-td><sc-raw-td class="mono">0</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Saat etiketi</sc-raw-td><sc-raw-td class="mono">11.5</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.2</sc-raw-td><sc-raw-td class="mono">+0.01em</sc-raw-td><sc-raw-td>tabular</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kart meta</sc-raw-td><sc-raw-td class="mono">11</sc-raw-td><sc-raw-td class="mono">400</sc-raw-td><sc-raw-td class="mono">1.2</sc-raw-td><sc-raw-td class="mono">0</sc-raw-td><sc-raw-td>tabular</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Düğme</sc-raw-td><sc-raw-td class="mono">13</sc-raw-td><sc-raw-td class="mono">500 (birincil 600)</sc-raw-td><sc-raw-td class="mono">1.2</sc-raw-td><sc-raw-td class="mono">0</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Çip</sc-raw-td><sc-raw-td class="mono">12.5</sc-raw-td><sc-raw-td class="mono">500 (seçili 600)</sc-raw-td><sc-raw-td class="mono">1.2</sc-raw-td><sc-raw-td class="mono">0</sc-raw-td><sc-raw-td>tabular</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Alan etiketi (.label)</sc-raw-td><sc-raw-td class="mono">11.5</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.2</sc-raw-td><sc-raw-td class="mono">+0.02em, BÜYÜK HARF</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>İstatistik değeri</sc-raw-td><sc-raw-td class="mono">24</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.1</sc-raw-td><sc-raw-td class="mono">−0.025em</sc-raw-td><sc-raw-td>tabular</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Etiket (.tag)</sc-raw-td><sc-raw-td class="mono">11</sc-raw-td><sc-raw-td class="mono">600</sc-raw-td><sc-raw-td class="mono">1.2</sc-raw-td><sc-raw-td class="mono">+0.02em</sc-raw-td><sc-raw-td>—</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+      <div style="padding:10px 14px;color:var(--text-faint);font-size:11.5px">Yazı tipi: platformun sistem yazı tipi (iOS SF Pro, Android Roboto, Windows Segoe UI). Kart başlığı ve notu 2 satırda kırpılır (<code>maxLines: 2, overflow: TextOverflow.ellipsis</code>).</div>
+    </div>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.5 Dokunma hedefleri</h3>
+    <div class="panel" style="margin-bottom:22px">
+      <sc-raw-table class="spectable">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Öğe</sc-raw-th><sc-raw-th>Görsel boyut</sc-raw-th><sc-raw-th>Dokunma hedefi</sc-raw-th><sc-raw-th>Not</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td>Kart aksiyon düğmesi (Düzenle/Yapıldı/Sil)</sc-raw-td><sc-raw-td class="mono">28 y. (web sm)</sc-raw-td><sc-raw-td class="mono">44 × 72+</sc-raw-td><sc-raw-td>Mobilde yükseklik 44’e çıkar, üç düğme eşit paylaşır</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>.btn (varsayılan)</sc-raw-td><sc-raw-td class="mono">34 y.</sc-raw-td><sc-raw-td class="mono">44 × 44 min</sc-raw-td><sc-raw-td>Native: dikey dolgu ile 44</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>.btn-icon (‹ › ⋯ ✕)</sc-raw-td><sc-raw-td class="mono">34 × 34</sc-raw-td><sc-raw-td class="mono">48 × 48</sc-raw-td><sc-raw-td>Üst çubukta ikonlar arası 8px</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Çip</sc-raw-td><sc-raw-td class="mono">32 y. (mobil 44)</sc-raw-td><sc-raw-td class="mono">44 × ≥64</sc-raw-td><sc-raw-td>Aralık 7–8px, sarmalı ızgara</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Renk dairesi (.swatch)</sc-raw-td><sc-raw-td class="mono">30 × 30</sc-raw-td><sc-raw-td class="mono">44 × 44</sc-raw-td><sc-raw-td>Şeffaf dolgu ile büyütülür; aralık 10px</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Gün şeridi öğesi</sc-raw-td><sc-raw-td class="mono">46 × 52</sc-raw-td><sc-raw-td class="mono">46 × 52</sc-raw-td><sc-raw-td>Zaten uygun; aralık 7px</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kart (dokun = aksiyon satırı)</sc-raw-td><sc-raw-td class="mono">tam genişlik</sc-raw-td><sc-raw-td class="mono">≥ 56 y.</sc-raw-td><sc-raw-td>Uzun basma = sürükleme başlat</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Küçük resim silme (✕)</sc-raw-td><sc-raw-td class="mono">20 × 20</sc-raw-td><sc-raw-td class="mono">44 × 44</sc-raw-td><sc-raw-td>Native: köşede genişletilmiş isabet alanı</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Yüzen “+” düğmesi</sc-raw-td><sc-raw-td class="mono">56 × 56</sc-raw-td><sc-raw-td class="mono">56 × 56</sc-raw-td><sc-raw-td>Sağ alt, kenardan 16px</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+    </div>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.6 Native ile web arasındaki farklar</h3>
+    <div class="panel" style="margin-bottom:22px">
+      <sc-raw-table class="spectable">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Konu</sc-raw-th><sc-raw-th>Native davranış</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td>Alt güvenli alan</sc-raw-td><sc-raw-td>Pano ve pencere alt kısmına <code>MediaQuery.padding.bottom</code> + 12px eklenir; yüzen “+” düğmesi bu alanın üstünde kalır.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Üst güvenli alan</sc-raw-td><sc-raw-td>Üst çubuk durum çubuğunun altına yerleşir (<code>SafeArea(top: true)</code>); zemin <code>surface</code>, altında 1px <code>border</code>.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Pencere → alt sayfa</sc-raw-td><sc-raw-td>Telefonda ortalanmış pencere yerine <code>showModalBottomSheet</code>: üst köşeler 20px, yükseklik en fazla ekranın %88’i, üstte 36 × 4px tutamaç, gövde kaydırılabilir, alt aksiyon satırı sabit.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Aşağı çekip yenile</sc-raw-td><sc-raw-td>Pano gününde native yenileme (<code>RefreshIndicator</code> / iOS’ta <code>CupertinoSliverRefreshControl</code>). Webde yok.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kart ekleme</sc-raw-td><sc-raw-td>Telefon ve tablette sağ altta yüzen “+” (56px, accent zemin, shadowLg). Kolon içindeki “+ Ekle” korunur ama ikincil kalır.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Sürükle-bırak</sc-raw-td><sc-raw-td>Uzun basma ile başlar (300ms), haptik geri bildirim; taşınan kopya 1.4° döner, ölçek 1.025, shadowLg; orijinal %30 opaklık ve kesikli çerçeve.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Gün değiştirme</sc-raw-td><sc-raw-td>Telefonda yatay kaydırma (<code>PageView</code>) gün şeridi ile senkron çalışır.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Üzerine gelme durumları</sc-raw-td><sc-raw-td>Dokunmatikte <code>hover</code> yerine basılı durumu: <code>surfaceHover</code> zemin veya renk %12 dolgu.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Kaydırma çubukları</sc-raw-td><sc-raw-td>Native platform varsayılanı; masaüstünde <code>borderStrong</code> renginde 10px, tam yuvarlak.</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+    </div>
+
+    <h3 style="font-size:14px;margin:0 0 8px">11.7 Kırılma noktaları ve masaüstü pencere</h3>
+    <div class="panel">
+      <sc-raw-table class="spectable">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Genişlik</sc-raw-th><sc-raw-th>Düzen</sc-raw-th><sc-raw-th>Ayrıntı</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td class="mono">≥ 1101</sc-raw-td><sc-raw-td>7 kolon</sc-raw-td><sc-raw-td>Kolonlar eşit paylaşır (<code>flex 1</code>), aralık 14, pano dolgusu 18. Gün şeridi gizli.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">768 – 1100</sc-raw-td><sc-raw-td>3 gün + yatay kaydırma</sc-raw-td><sc-raw-td>Kolon genişliği (genişlik − 2×16)/3, minimum 248; kart dolgusu 12; gün şeridi görünür; kaydırma noktası her kolonda.</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td class="mono">&lt; 768</sc-raw-td><sc-raw-td>tek gün + gün şeridi</sc-raw-td><sc-raw-td>Kolon çerçevesiz, tam genişlik; pencereler alt sayfa; yüzen “+”; dokunma hedefleri 44.</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+      <div style="padding:12px 14px;color:var(--text-muted);font-size:12.5px;border-top:1px solid var(--border)">
+        <b style="color:var(--text)">Windows masaüstü penceresi:</b> minimum 960 × 640. 960–1100 aralığında tablet düzeni (3 gün) devralır; 1101px’den itibaren 7 kolon. Pencere 768’in altına indirilemez (minimum genişlik bunu engeller), dolayısıyla mobil düzen masaüstünde yalnızca test amaçlıdır. Kolon minimum genişliği 248px olduğundan 7 kolon 1101px’de sıkışmaz; daha geniş pencerede kolonlar büyür, kart içeriği aynı kalır.
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 DECISIONS -->
+  <section class="sec">
+    <header><span class="n">12</span><h2>Tasarım kararları</h2></header>
+    <div class="prose">
+      <h3>Kontrast</h3>
+      <p>Koyu tema birincil kullanım olduğu için zemin sıfır siyah değil, hafif mavi kırıklı <strong>#0D1117</strong>. Yüzeyler zeminden yalnızca 7–14 birim açık; katmanlar çerçeve ile değil, bu küçük parlaklık farkıyla ayrılıyor. Böylece kalın çerçeve gerekmiyor ve pano sakin kalıyor.</p>
+      <p>Metin kademeleri koyu temada surface üzerinde yaklaşık 13:1 (<code>text</code>), 5,4:1 (<code>text-muted</code>) ve 3,3:1 (<code>text-faint</code>) kontrast veriyor: gövde metni rahat okunuyor, meta bilgisi okunabilir ama dikkat çekmiyor. Açık temada aynı sıralama 15:1 / 6,5:1 / 3,4:1.</p>
+      <p>Kart renkleri koyu temada pastele kaydırılmış (aydınlık, düşük doygunluk) çünkü koyu zeminde doygun renkler titriyor; açık temada aynı renkler koyulaştırıldı, aksi halde beyaz üzerinde saat etiketi metni okunmuyordu. İki temada da saat etiketi metni kendi zeminine karşı en az 4,5:1.</p>
+      <p>Renk her yerde <strong>%7 zemin tonu + %50 çerçeve</strong> olarak görünüyor. Bu oran, sekiz rengin yan yana durduğu bir kolonda renkleri ayırt edilebilir tutuyor ama yüzeyi boyamıyor. Sol kenar şeridi yerine tüm kartı saran ince çerçeve, kartın sürükleme sırasında bir bütün olarak algılanmasını da kolaylaştırıyor.</p>
+      <h3>Boşluk</h3>
+      <p>Ölçek 4px tabanlı ve yalnızca yedi değer kullanıyor: 2 · 4 · 6 · 8 · 10 · 14 · 18 (artı giriş kartı için 26). Kart içi ritim 6, kartlar arası 10, kolonlar arası 14, pano kenarı 18 — her sıçrama bir seviye yukarı, bu yüzden hiyerarşi çerçeve olmadan da okunuyor.</p>
+      <p>Kart dolgusu masaüstünde 9–10, tablet ve telefonda 12: dokunmatikte parmak için biraz daha nefes payı, ama kart yüksekliği hâlâ küçük. Başlık ve not iki satırda kırpıldığı, görsellerin yüksekliği (tek 88px, ızgara 48px) sabitlendiği için bir kart hiçbir zaman kolonu ele geçirmiyor; bir gün bir bakışta sayılabilir kalıyor.</p>
+      <p>Kolonlar <code>align-self:flex-start</code> ile kendi içeriği kadar yükseliyor. Boş gün kısa bir başlık + “+ Ekle” olarak duruyor; bu, haftanın nerede dolu nerede boş olduğunu tek bakışta gösteren en ucuz sinyal.</p>
+      <h3>Tipografi ve rakamlar</h3>
+      <p>Tek yazı tipi (sistem), 11–20px arası altı boyut. Başlıklarda −0,01/−0,02em harf aralığı; küçük büyük harf etiketlerde +0,02em. Saatler, tarihler ve tüm sayısal tablo hücreleri tabular rakam kullanıyor, böylece “11:00 - 12:30” satırları ve yönetim tablosundaki sayılar kolon kolon hizalanıyor.</p>
+    </div>
+  </section>
+
+  <p style="max-width:1300px;margin:0 auto;color:var(--text-faint);font-size:12px">Porta ederken: <code>.theme-light</code> ve <code>.theme-dark</code> bloklarını, <code>.is-tablet</code> / <code>.is-mobile</code> kopyalarını ve bu sayfaya ait <code>.spec*</code> sınıflarını silin — geri kalan CSS doğrudan kullanılabilir.</p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Tema&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#79B0FF&quot;,&quot;#8BD3C7&quot;,&quot;#C0A6FF&quot;,&quot;#F0A97A&quot;],&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tema&quot;},&quot;radiusScale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;varsayılan&quot;,&quot;keskin&quot;,&quot;yumuşak&quot;],&quot;default&quot;:&quot;varsayılan&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tema&quot;}}">
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { theme: props.theme || 'dark' }; this.rootRef = React.createRef(); }
+  componentDidMount(){ this.applyAccent(); }
+  componentDidUpdate(){ this.applyAccent(); }
+  applyAccent(){
+    const el = this.rootRef.current; if(!el) return;
+    const a = this.props.accent;
+    if (a) el.style.setProperty('--accent', a); else el.style.removeProperty('--accent');
+    const r = this.props.radiusScale;
+    if (r === 'keskin'){ el.style.setProperty('--r-sm','3px'); el.style.setProperty('--r-md','5px'); el.style.setProperty('--r-lg','7px'); el.style.setProperty('--r-xl','10px'); }
+    else if (r === 'yumuşak'){ el.style.setProperty('--r-sm','8px'); el.style.setProperty('--r-md','14px'); el.style.setProperty('--r-lg','20px'); el.style.setProperty('--r-xl','28px'); }
+    else { ['--r-sm','--r-md','--r-lg','--r-xl'].forEach(k => el.style.removeProperty(k)); }
+  }
+  renderVals(){
+    const t = this.state.theme;
+    return {
+      rootRef: this.rootRef,
+      themeClass: t === 'light' ? 'theme-light' : 'theme-dark',
+      lightOn: t === 'light' ? 'on' : '',
+      darkOn: t === 'light' ? '' : 'on',
+      setLight: () => this.setState({ theme: 'light' }),
+      setDark: () => this.setState({ theme: 'dark' })
+    };
+  }
+}
+</script>
+
+
+<div id="__claude_design_branding"><style>#__claude_design_branding{position:fixed;right:16px;bottom:16px;z-index:2147483646;display:flex;align-items:center;gap:7px;height:30px;padding:0 5px 0 10px;border-radius:999px;font-family:"Anthropic Sans",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12.5px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:#141413;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 0 0 .5px rgba(31,30,29,.14),0 2px 10px rgba(0,0,0,.09)}
+#__claude_design_branding *{box-sizing:border-box;margin:0}
+#__claude_design_branding a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+#__claude_design_branding a:hover span{text-decoration:underline}
+#__claude_design_branding svg{flex:none}
+#__claude_design_branding a svg{color:#D97757}
+#__claude_design_branding button{width:20px;height:20px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:currentColor;opacity:.55;border:0;background:none;cursor:pointer;flex:none;font:inherit;transition:opacity .14s}
+#__claude_design_branding button:hover{opacity:1;background:rgba(127,127,127,.22)}
+@media print{#__claude_design_branding{display:none}}</style><a href="https://claude.com/product/design" target="_blank" rel="noopener noreferrer"><svg width="14" height="14" viewBox="0 0 20 21" fill="none" aria-hidden="true"><path fill="currentColor" d="M9.99902 0C15.5258 0.000170936 19.999 4.50643 19.999 10.0547C19.999 11.7656 19.5863 12.9976 18.7861 13.8203C17.9924 14.6362 16.9465 14.9138 15.9854 15.0078C15.05 15.0993 14.0097 15.0262 13.2549 15.0186C12.8524 15.0145 12.5177 15.0267 12.2441 15.0703C11.9682 15.1144 11.8143 15.1813 11.7305 15.2432C11.4745 15.4322 11.3353 15.7121 11.2656 16.1602C11.2303 16.3875 11.2168 16.6362 11.209 16.9131C11.2017 17.1715 11.1986 17.4893 11.1807 17.7705C11.1469 18.2975 11.0495 19.0865 10.4199 19.5908C9.7846 20.0996 8.88652 20.1057 7.85449 19.877C7.36399 19.7682 6.88652 19.6232 6.42578 19.4453C2.66989 17.9949 0.000187748 14.3414 0 10.0547C0 4.50643 4.47223 0.000171048 9.99902 0ZM9.99902 1.60547C5.36781 1.60564 1.60547 5.38391 1.60547 10.0547C1.60566 13.6582 3.84823 16.7296 7.00391 17.9482C7.39027 18.0974 7.79085 18.2184 8.20215 18.3096C9.1375 18.5169 9.384 18.3633 9.41602 18.3379C9.4524 18.3087 9.54558 18.1915 9.5791 17.668C9.5947 17.4239 9.59473 17.1786 9.60352 16.8672C9.61179 16.5742 9.62831 16.2435 9.67969 15.9131C9.78359 15.2455 10.0474 14.4906 10.7764 13.9521C11.1479 13.6778 11.5842 13.5493 11.9912 13.4844C12.4007 13.4191 12.8434 13.4088 13.2705 13.4131C14.1753 13.4222 15.0071 13.4905 15.8291 13.4102C16.6257 13.3322 17.2249 13.1235 17.6357 12.7012C18.0401 12.2855 18.3935 11.5261 18.3936 10.0547C18.3936 5.38391 14.6302 1.60564 9.99902 1.60547ZM5.11621 9.86719C5.86386 9.91468 6.45486 10.5348 6.45508 11.2939C6.45506 12.0838 5.81519 12.7245 5.02539 12.7246C4.28481 12.7246 3.67573 12.1617 3.60254 11.4404L3.59473 11.2939L3.60156 11.1533C3.66942 10.4596 4.23282 9.91186 4.93359 9.86719H5.11621ZM14.9814 7.19141C15.729 7.23889 16.3199 7.85919 16.3203 8.61816C16.3203 9.40801 15.6804 10.0487 14.8906 10.0488C14.1501 10.0487 13.5409 9.48586 13.4678 8.76465L13.46 8.61816L13.4668 8.47754C13.5348 7.78403 14.0983 7.23618 14.7988 7.19141H14.9814ZM6.4541 4.93457C7.20161 4.9822 7.79275 5.60231 7.79297 6.36133C7.79288 7.151 7.15291 7.7917 6.36328 7.79199C5.62274 7.79199 5.01369 7.22903 4.94043 6.50781L4.93262 6.36133L4.93945 6.2207C5.00731 5.52698 5.5707 4.97922 6.27148 4.93457H6.4541ZM11.3867 3.59668C12.1343 3.64419 12.7253 4.26436 12.7256 5.02344C12.7256 5.81326 12.0857 6.45393 11.2959 6.4541C10.5553 6.4541 9.94622 5.89123 9.87305 5.16992L9.86523 5.02344L9.87207 4.88281C9.93996 4.18912 10.5033 3.64133 11.2041 3.59668H11.3867Z"></path></svg><span>Made with Claude Design</span></a><button type="button" aria-label="Dismiss" onclick="this.parentElement.remove()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></button></div></body></html>

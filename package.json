@@ -1,0 +1,32 @@
+{
+  "name": "planner",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:server dev:web",
+    "dev:server": "npm run dev --workspace server",
+    "dev:web": "npm run dev --workspace web",
+    "build": "npm run build --workspace web",
+    "start": "npm run start --workspace server",
+    "test": "npm-run-all --serial test:server test:web test:mobile",
+    "test:server": "npm run test --workspace server",
+    "test:web": "npm run test --workspace web",
+    "test:mobile": "cd mobile && flutter test",
+    "test:coverage": "npm-run-all --serial test:coverage:server test:coverage:web test:coverage:mobile",
+    "test:coverage:server": "npm run test:coverage --workspace server",
+    "test:coverage:web": "npm run test:coverage --workspace web",
+    "test:coverage:mobile": "cd mobile && flutter test --coverage",
+    "typecheck": "npm-run-all --serial typecheck:node analyze:mobile",
+    "typecheck:node": "npm run typecheck --workspace server && npm run typecheck --workspace web",
+    "analyze:mobile": "cd mobile && flutter analyze",
+    "quality": "npm-run-all --serial typecheck test build",
+    "sifre": "npm run sifre --workspace server"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}

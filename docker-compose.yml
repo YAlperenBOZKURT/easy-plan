@@ -1,0 +1,14 @@
+services:
+  planner:
+    build: .
+    container_name: planner
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Konteyner içinde sabit port; dışarıya nasıl açılacağını ports belirler.
+      API_PORT: 3000
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      # planner.db ve uploads/ burada yaşar — yedeklemen gereken tek klasör.
+      - ./data:/app/data

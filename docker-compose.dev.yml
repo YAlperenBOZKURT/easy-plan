@@ -1,0 +1,18 @@
+# Test/deneme ortamı: üretimle aynı imaj, ayrı port ve ayrı veri klasörü.
+# Çalıştır:  docker compose -f docker-compose.dev.yml up -d --build
+# Böylece gerçek verine dokunmadan yeni sürümü deneyebilirsin.
+services:
+  planner-test:
+    build: .
+    container_name: planner-test
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      API_PORT: 3000
+      APP_URL: http://localhost:3001
+      # Local HTTP is intentionally allowed in this isolated test stack.
+      NODE_ENV: development
+    ports:
+      - '127.0.0.1:3001:3000'
+    volumes:
+      - ./data-test:/app/data

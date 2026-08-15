@@ -1,0 +1,245 @@
+import 'package:flutter/material.dart';
+
+import '../api/models.dart';
+import '../theme.dart';
+
+/// Takvim kartı — web'deki .card ile aynı görsel dil:
+/// çepeçevre renkli kenarlık, ortalanmış saat rozeti, yapıldıda çapraz tarama.
+class CardTile extends StatelessWidget {
+  const CardTile({
+    super.key,
+    required this.card,
+    required this.imageHeaders,
+    required this.imageUrl,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  final PlannerCard card;
+  final Map<String, String> imageHeaders;
+  final String Function(String path) imageUrl;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final c = t.cardColor(card.color);
+    final faded = card.done ? .45 : 1.0;
+
+    final semanticLabel = [
+      card.title.isEmpty ? 'Başlıksız kart' : card.title,
+      if (card.hasTime) card.timeLabel,
+      if (card.done) 'Yapıldı',
+    ].join(', ');
+
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      hint: 'Kart işlemlerini aç',
+      excludeSemantics: true,
+      child: Material(
+        color: Color.alphaBlend(
+          c.withValues(alpha: card.done ? .06 : .07),
+          t.surface,
+        ),
+        borderRadius: BorderRadius.circular(R.md),
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          borderRadius: BorderRadius.circular(R.md),
+          child: CustomPaint(
+            painter: card.done ? _HatchPainter(c.withValues(alpha: .16)) : null,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: c.withValues(alpha: card.done ? .35 : .5),
+                ),
+                borderRadius: BorderRadius.circular(R.md),
+              ),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (card.hasTime)
+                    Center(
+                      child: Opacity(
+                        opacity: faded,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Color.alphaBlend(
+                              c.withValues(alpha: .2),
+                              t.surface,
+                            ),
+                            border: Border.all(color: c.withValues(alpha: .32)),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            card.timeLabel,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color.alphaBlend(
+                                c.withValues(alpha: .78),
+                                t.text,
+                              ),
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (card.hasTime) const SizedBox(height: 7),
+                  if (card.title.isNotEmpty)
+                    Opacity(
+                      opacity: faded,
+                      child: Text(
+                        card.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                          letterSpacing: -.13,
+                          color: t.text,
+                          decoration: card.done
+                              ? TextDecoration.lineThrough
+                              : null,
+                          decorationColor: c,
+                        ),
+                      ),
+                    ),
+                  if (card.note.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Opacity(
+                      opacity: faded,
+                      child: Text(
+                        card.note,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: t.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (card.images.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    Opacity(
+                      opacity: faded,
+                      child: _Images(
+                        card: card,
+                        url: imageUrl,
+                        headers: imageHeaders,
+                      ),
+                    ),
+                  ],
+                  if (card.reminders.isNotEmpty || card.habitId != null) ...[
+                    const SizedBox(height: 7),
+                    Row(
+                      children: [
+                        if (card.reminders.isNotEmpty) ...[
+                          Icon(
+                            Icons.notifications_none,
+                            size: 13,
+                            color: t.textFaint,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${card.reminders.length}',
+                            style: TextStyle(fontSize: 11, color: t.textFaint),
+                          ),
+                        ],
+                        if (card.habitId != null) ...[
+                          const SizedBox(width: 10),
+                          Icon(Icons.repeat, size: 13, color: t.textFaint),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Images extends StatelessWidget {
+  const _Images({required this.card, required this.url, required this.headers});
+  final PlannerCard card;
+  final String Function(String) url;
+  final Map<String, String> headers;
+
+  @override
+  Widget build(BuildContext context) {
+    final single = card.images.length == 1;
+    final shown = card.images.take(3).toList();
+    return SizedBox(
+      height: single ? 88 : 48,
+      child: Row(
+        children: [
+          for (var i = 0; i < shown.length; i++) ...[
+            if (i > 0) const SizedBox(width: 4),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(R.sm),
+                child: Image.network(
+                  url(shown[i].thumbUrl),
+                  headers: headers,
+                  fit: BoxFit.cover,
+                  height: single ? 88 : 48,
+                  errorBuilder: (_, _, _) => ColoredBox(
+                    color: context.tokens.surface2,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Yapıldı" kartındaki çapraz tarama deseni.
+class _HatchPainter extends CustomPainter {
+  _HatchPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 6;
+    const step = 13.0;
+    canvas.save();
+    canvas.clipRRect(
+      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(R.md)),
+    );
+    for (double x = -size.height; x < size.width + size.height; x += step) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_HatchPainter old) => old.color != color;
+}
