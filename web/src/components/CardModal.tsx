@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.ts';
-import { CARD_COLORS, type Card, type ChecklistItem } from '../lib/types.ts';
+import {
+  CARD_COLORS,
+  CARD_PRIORITY_OPTIONS,
+  type Card,
+  type CardPriority,
+  type ChecklistItem,
+} from '../lib/types.ts';
 import { dayName, shortDate } from '../lib/dates.ts';
 import ReminderPicker from './ReminderPicker.tsx';
 import { normalizeChecklist } from '../lib/checklist.ts';
@@ -32,6 +38,7 @@ export default function CardModal({
   const [startTime, setStartTime] = useState(existing?.startTime ?? '');
   const [endTime, setEndTime] = useState(existing?.endTime ?? '');
   const [color, setColor] = useState(existing?.color ?? 'blue');
+  const [priority, setPriority] = useState<CardPriority>(existing?.priority ?? 'none');
   const [reminders, setReminders] = useState<number[]>(existing?.reminders ?? []);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(existing?.checklist ?? []);
   const [images, setImages] = useState(existing?.images ?? []);
@@ -90,6 +97,7 @@ export default function CardModal({
         startTime: startTime || null,
         endTime: endTime || null,
         color,
+        priority,
         reminders,
         checklist: normalizeChecklist(checklist),
         ...(resetOrder ? { manualSort: false } : {}),
@@ -182,6 +190,23 @@ export default function CardModal({
                   style={{ ['--c' as string]: `var(--c-${option})` }}
                   onClick={() => setColor(option)}
                 />
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <span className="label">Öncelik</span>
+            <div className="priority-picker">
+              {CARD_PRIORITY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`priority-option priority-${option.value}${priority === option.value ? ' on' : ''}`}
+                  aria-pressed={priority === option.value}
+                  onClick={() => setPriority(option.value)}
+                >
+                  {option.label}
+                </button>
               ))}
             </div>
           </div>

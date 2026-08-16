@@ -25,6 +25,7 @@ void main() {
       checklist: const [
         ChecklistItem(id: 'item-1', text: 'İlk iş', done: false),
       ],
+      priority: 'urgent',
       reminders: const [],
       images: const [],
       updatedAt: '',
@@ -50,5 +51,6 @@ void main() {
 
     expect(toggledId, 'item-1');
     expect(cardTaps, 0);
+    expect(find.text('Acil'), findsOneWidget);
   });
 }

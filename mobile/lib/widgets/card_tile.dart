@@ -64,41 +64,32 @@ class CardTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (card.hasTime)
+                  if (card.hasTime || card.priority != 'none')
                     Center(
                       child: Opacity(
                         opacity: faded,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Color.alphaBlend(
-                              c.withValues(alpha: .2),
-                              t.surface,
-                            ),
-                            border: Border.all(color: c.withValues(alpha: .32)),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            card.timeLabel,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: Color.alphaBlend(
-                                c.withValues(alpha: .78),
-                                t.text,
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 5,
+                          runSpacing: 4,
+                          children: [
+                            if (card.hasTime)
+                              _Badge(
+                                label: card.timeLabel,
+                                color: c,
+                                tabular: true,
                               ),
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
-                          ),
+                            if (card.priority != 'none')
+                              _Badge(
+                                label: cardPriorityLabel(card.priority),
+                                color: _priorityColor(t, card.priority),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                  if (card.hasTime) const SizedBox(height: 7),
+                  if (card.hasTime || card.priority != 'none')
+                    const SizedBox(height: 7),
                   if (card.title.isNotEmpty)
                     Opacity(
                       opacity: faded,
@@ -181,6 +172,44 @@ class CardTile extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+Color _priorityColor(PlannerTokens tokens, String priority) => switch (priority) {
+  'low' => tokens.cardColor('blue'),
+  'medium' => tokens.cardColor('amber'),
+  'high' => tokens.cardColor('orange'),
+  'urgent' => tokens.cardColor('red'),
+  _ => tokens.textFaint,
+};
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.label, required this.color, this.tabular = false});
+
+  final String label;
+  final Color color;
+  final bool tabular;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(color.withValues(alpha: .16), t.surface),
+        border: Border.all(color: color.withValues(alpha: .4)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Color.alphaBlend(color.withValues(alpha: .8), t.text),
+          fontFeatures: tabular ? const [FontFeature.tabularFigures()] : null,
         ),
       ),
     );

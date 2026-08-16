@@ -8,7 +8,7 @@ import { applyReminders, sanitizeOffsets } from '../reminders.ts';
 import { indexBetween } from '../sorting.ts';
 import { removeImageFiles } from '../storage.ts';
 import { addYears, isValidDay, isValidTime, today } from '../time.ts';
-import { CARD_COLORS } from '../types.ts';
+import { CARD_COLORS, CARD_PRIORITIES } from '../types.ts';
 import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
 
 export const storeFor = (req: FastifyRequest): Repo => repo(db(), req.user!.id);
@@ -42,6 +42,10 @@ function readCardBody(body: Record<string, unknown> | undefined) {
     else errors.push('color');
   }
   if (typeof body.done === 'boolean') out.done = body.done;
+  if (typeof body.priority === 'string') {
+    if ((CARD_PRIORITIES as readonly string[]).includes(body.priority)) out.priority = body.priority;
+    else errors.push('priority');
+  }
   if ('checklist' in body) {
     const checklist = sanitizeChecklist(body.checklist);
     if (checklist.valid) {

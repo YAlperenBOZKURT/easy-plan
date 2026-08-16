@@ -285,6 +285,10 @@ class CardView extends StatelessWidget {
                       value: card.done ? 'Yapıldı' : 'Bekliyor',
                     ),
                     _Meta(
+                      label: 'Öncelik',
+                      value: cardPriorityLabel(card.priority),
+                    ),
+                    _Meta(
                       label: 'Hatırlatma',
                       value: card.reminders.isEmpty
                           ? 'Yok'

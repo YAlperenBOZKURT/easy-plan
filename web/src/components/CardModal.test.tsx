@@ -22,6 +22,7 @@ describe('CardModal checklist', () => {
         manualSort: false,
         habitId: null,
         checklist: [],
+        priority: 'none',
         reminders: [],
         images: [],
         createdAt: '',
@@ -41,12 +42,14 @@ describe('CardModal checklist', () => {
     await user.type(screen.getByLabelText('Başlık'), 'Plan');
     await user.click(screen.getByRole('button', { name: /Madde ekle/ }));
     await user.type(screen.getByLabelText('Checklist maddesi'), '  İlk iş  ');
+    await user.click(screen.getByRole('button', { name: 'Acil' }));
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     expect(create).toHaveBeenCalledOnce();
     expect(create.mock.calls[0]?.[0]).toMatchObject({
       title: 'Plan',
       checklist: [{ text: 'İlk iş', done: false }],
+      priority: 'urgent',
     });
     expect(onSaved).toHaveBeenCalledOnce();
   });

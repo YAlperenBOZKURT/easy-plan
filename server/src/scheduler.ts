@@ -38,6 +38,20 @@ const COLOR_HEX: Record<string, string> = {
   pink: '#d6409f',
 };
 
+const PRIORITY_LABELS: Record<string, string> = {
+  low: 'Düşük öncelik',
+  medium: 'Orta öncelik',
+  high: 'Yüksek öncelik',
+  urgent: 'Acil',
+};
+
+function priorityBadge(card: Pick<CardRow, 'priority'>): string {
+  const label = PRIORITY_LABELS[card.priority];
+  if (!label) return '';
+  const color = card.priority === 'urgent' ? '#e5484d' : card.priority === 'high' ? '#f76b15' : '#8e4ec6';
+  return `<span style="display:inline-block;margin-left:6px;background:${color}1a;color:${color};border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600">${label}</span>`;
+}
+
 function timeBadge(card: Pick<CardRow, 'start_time' | 'end_time' | 'color'>): string {
   if (!card.start_time) return '';
   const hex = COLOR_HEX[card.color] ?? COLOR_HEX.red;
@@ -58,7 +72,7 @@ function cardHtml(card: CardRow, images: CardImageRow[]): string {
         `<img src="cid:img${i}" alt="" style="max-width:100%;border-radius:10px;margin-top:12px;display:block" />`,
     )
     .join('');
-  return `${timeBadge(card)}
+  return `${timeBadge(card)}${priorityBadge(card)}
     <h2 style="margin:12px 0 0;font-size:17px;font-weight:600">${escapeHtml(card.title || '(başlıksız)')}</h2>
     ${card.note ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap">${escapeHtml(card.note)}</p>` : ''}
     ${checklistHtml}
@@ -167,6 +181,7 @@ export async function sendDailySummaries(database: Db = db(), now = new Date()) 
       .map(
         (card) => `<tr><td style="padding:10px 0;border-bottom:1px solid #f0f0f3">
           ${timeBadge(card)}
+          ${priorityBadge(card)}
           <div style="margin-top:6px;font-size:15px;${card.done ? 'color:#8a8a8e;text-decoration:line-through' : 'font-weight:500'}">${escapeHtml(card.title || '(başlıksız)')}</div>
           ${card.note ? `<div style="margin-top:2px;font-size:13px;color:#6b6b70;white-space:pre-wrap">${escapeHtml(card.note)}</div>` : ''}
         </td></tr>`,

@@ -83,6 +83,7 @@ class _CardEditorState extends State<CardEditor> {
   late TimeOfDay? _start = _parse(widget.card?.startTime);
   late TimeOfDay? _end = _parse(widget.card?.endTime);
   late String _color = widget.card?.color ?? 'blue';
+  late String _priority = widget.card?.priority ?? 'none';
   late final List<int> _reminders = [...?widget.card?.reminders];
   late final List<ChecklistItem> _checklist = [...?widget.card?.checklist];
   late List<CardImage> _images = [...?widget.card?.images];
@@ -144,6 +145,7 @@ class _CardEditorState extends State<CardEditor> {
       startTime: _format(_start),
       endTime: _format(_end),
       color: _color,
+      priority: _priority,
       reminders: _reminders,
       checklist: _checklist
           .map((item) => item.copyWith(text: item.text.trim()))
@@ -332,6 +334,21 @@ class _CardEditorState extends State<CardEditor> {
                             ? Icon(Icons.check, size: 16, color: t.surface)
                             : null,
                       ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              const _Label('Öncelik'),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  for (final priority in cardPriorityKeys)
+                    _PriorityChip(
+                      priority: priority,
+                      selected: _priority == priority,
+                      onTap: () => setState(() => _priority = priority),
                     ),
                 ],
               ),
@@ -714,6 +731,62 @@ class _Chip extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: on ? FontWeight.w600 : FontWeight.w500,
                 color: on ? t.accent : t.textMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PriorityChip extends StatelessWidget {
+  const _PriorityChip({
+    required this.priority,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String priority;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final color = switch (priority) {
+      'low' => t.cardColor('blue'),
+      'medium' => t.cardColor('amber'),
+      'high' => t.cardColor('orange'),
+      'urgent' => t.cardColor('red'),
+      _ => t.textFaint,
+    };
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 36),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? Color.alphaBlend(color.withValues(alpha: .16), t.surface)
+              : Colors.transparent,
+          border: Border.all(color: selected ? color : t.borderStrong),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected) ...[
+              Icon(Icons.check, size: 13, color: color),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              cardPriorityLabel(priority),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? color : t.textMuted,
               ),
             ),
           ],

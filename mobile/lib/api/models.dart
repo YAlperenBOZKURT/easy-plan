@@ -62,6 +62,16 @@ class ChecklistItem {
 bool isChecklistComplete(List<ChecklistItem> items) =>
     items.isNotEmpty && items.every((item) => item.done);
 
+const cardPriorityKeys = ['none', 'low', 'medium', 'high', 'urgent'];
+
+String cardPriorityLabel(String priority) => switch (priority) {
+  'low' => 'Düşük',
+  'medium' => 'Orta',
+  'high' => 'Yüksek',
+  'urgent' => 'Acil',
+  _ => 'Yok',
+};
+
 class PlannerCard {
   PlannerCard({
     required this.id,
@@ -76,6 +86,7 @@ class PlannerCard {
     required this.manualSort,
     required this.habitId,
     this.checklist = const [],
+    this.priority = 'none',
     required this.reminders,
     required this.images,
     required this.updatedAt,
@@ -93,6 +104,7 @@ class PlannerCard {
   final bool manualSort;
   final String? habitId;
   final List<ChecklistItem> checklist;
+  final String priority;
   final List<int> reminders;
   final List<CardImage> images;
   final String updatedAt;
@@ -120,6 +132,7 @@ class PlannerCard {
     'manualSort': manualSort,
     'habitId': habitId,
     'checklist': checklist.map((item) => item.toJson()).toList(),
+    'priority': priority,
     'reminders': reminders,
     'images': images.map((i) => i.toJson()).toList(),
     'updatedAt': updatedAt,
@@ -137,6 +150,7 @@ class PlannerCard {
     double? sortIndex,
     List<int>? reminders,
     List<ChecklistItem>? checklist,
+    String? priority,
     String? updatedAt,
   }) => PlannerCard(
     id: id,
@@ -151,6 +165,7 @@ class PlannerCard {
     manualSort: manualSort,
     habitId: habitId,
     checklist: checklist ?? this.checklist,
+    priority: priority ?? this.priority,
     reminders: reminders ?? this.reminders,
     images: images,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -171,6 +186,9 @@ class PlannerCard {
     checklist: ((json['checklist'] as List?) ?? [])
         .map((item) => ChecklistItem.fromJson(item as Map<String, dynamic>))
         .toList(),
+    priority: cardPriorityKeys.contains(json['priority'])
+        ? json['priority'] as String
+        : 'none',
     reminders: ((json['reminders'] as List?) ?? [])
         .map((e) => (e as num).toInt())
         .toList(),

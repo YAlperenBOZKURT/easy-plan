@@ -1,7 +1,14 @@
 import type { Db } from './db.ts';
 import { newId, nowIso } from './ids.ts';
 import { defaultSortIndex } from './sorting.ts';
-import type { CardImageRow, CardRow, ChecklistItem, HabitRow, ReminderRow } from './types.ts';
+import type {
+  CardImageRow,
+  CardPriority,
+  CardRow,
+  ChecklistItem,
+  HabitRow,
+  ReminderRow,
+} from './types.ts';
 
 /**
  * Kullanıcıya bağlı veri erişimi.
@@ -58,6 +65,7 @@ export function repo(db: Db, userId: string) {
       done?: boolean;
       habitId?: string | null;
       checklist?: ChecklistItem[];
+      priority?: CardPriority;
       sortIndex?: number;
       createdAt?: string;
     }): CardRow {
@@ -67,8 +75,8 @@ export function repo(db: Db, userId: string) {
         input.sortIndex ?? defaultSortIndex(input.startTime ?? null, cards.dayIndexes(input.day));
       db.prepare(
         `INSERT INTO cards (id, user_id, day, title, note, start_time, end_time, color, done,
-                            sort_index, manual_sort, habit_id, checklist_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+                            sort_index, manual_sort, habit_id, checklist_json, priority, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         userId,
@@ -82,6 +90,7 @@ export function repo(db: Db, userId: string) {
         sortIndex,
         input.habitId ?? null,
         JSON.stringify(input.checklist ?? []),
+        input.priority ?? 'none',
         at,
         at,
       );
@@ -101,6 +110,7 @@ export function repo(db: Db, userId: string) {
         sortIndex: number;
         manualSort: boolean;
         checklist: ChecklistItem[];
+        priority: CardPriority;
       }>,
     ): CardRow | undefined {
       const current = cards.get(id);
@@ -117,6 +127,7 @@ export function repo(db: Db, userId: string) {
         sortIndex: 'sort_index',
         manualSort: 'manual_sort',
         checklist: 'checklist_json',
+        priority: 'priority',
       };
       const sets: string[] = [];
       const values: (string | number | null)[] = [];
