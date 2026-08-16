@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../api/models.dart';
+import '../cache.dart';
 import '../dates.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -83,6 +84,7 @@ class _CardEditorState extends State<CardEditor> {
   late TimeOfDay? _end = _parse(widget.card?.endTime);
   late String _color = widget.card?.color ?? 'blue';
   late final List<int> _reminders = [...?widget.card?.reminders];
+  late final List<ChecklistItem> _checklist = [...?widget.card?.checklist];
   late List<CardImage> _images = [...?widget.card?.images];
 
   /// Yeni kartta görsel, kart kaydedildikten sonra yüklenir.
@@ -143,6 +145,10 @@ class _CardEditorState extends State<CardEditor> {
       endTime: _format(_end),
       color: _color,
       reminders: _reminders,
+      checklist: _checklist
+          .map((item) => item.copyWith(text: item.text.trim()))
+          .where((item) => item.text.isNotEmpty)
+          .toList(),
       resetOrder: _resetOrder,
     );
     // Kart oluştuktan sonra bekleyen görseller yüklenir.
@@ -338,6 +344,90 @@ class _CardEditorState extends State<CardEditor> {
                 maxLines: 6,
                 decoration: const InputDecoration(
                   hintText: 'Detaylar, sayılar…',
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  const Expanded(child: _Label('Checklist')),
+                  Text(
+                    '${_checklist.length}/50',
+                    style: TextStyle(fontSize: 11.5, color: t.textFaint),
+                  ),
+                ],
+              ),
+              for (final item in _checklist)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: item.done,
+                        onChanged: (value) => setState(() {
+                          final index = _checklist.indexWhere(
+                            (entry) => entry.id == item.id,
+                          );
+                          if (index >= 0) {
+                            _checklist[index] = item.copyWith(
+                              done: value ?? false,
+                            );
+                          }
+                        }),
+                      ),
+                      Expanded(
+                        child: TextFormField(
+                          key: ValueKey(item.id),
+                          initialValue: item.text,
+                          maxLength: 500,
+                          buildCounter:
+                              (_, {
+                                required currentLength,
+                                required isFocused,
+                                maxLength,
+                              }) => null,
+                          decoration: const InputDecoration(
+                            hintText: 'Yeni madde',
+                            isDense: true,
+                          ),
+                          onChanged: (value) {
+                            final index = _checklist.indexWhere(
+                              (entry) => entry.id == item.id,
+                            );
+                            if (index >= 0) {
+                              _checklist[index] = item.copyWith(text: value);
+                            }
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Maddeyi kaldır',
+                        icon: Icon(Icons.close, size: 18, color: t.textFaint),
+                        onPressed: () => setState(
+                          () => _checklist.removeWhere(
+                            (entry) => entry.id == item.id,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _checklist.length >= 50
+                      ? null
+                      : () => setState(
+                          () => _checklist.add(
+                            ChecklistItem(
+                              id: newUuid(),
+                              text: '',
+                              done: false,
+                            ),
+                          ),
+                        ),
+                  icon: const Icon(Icons.add, size: 17),
+                  label: const Text('Madde ekle'),
                 ),
               ),
               const SizedBox(height: 16),

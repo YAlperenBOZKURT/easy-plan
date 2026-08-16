@@ -7,6 +7,8 @@ import { addDays, addYears, today, weekdayOf, zonedToUtc } from '../src/time.ts'
 import { fireAtFor, sanitizeOffsets } from '../src/reminders.ts';
 import { materializeHabit, purgeOldHabitCards } from '../src/maintenance.ts';
 import type { UserRow } from '../src/types.ts';
+import { isChecklistComplete, parseChecklist, sanitizeChecklist } from '../src/checklist.ts';
+import { cardDto } from '../src/dto.ts';
 
 /* --------------------------------------------------------------- yardımcılar */
 
@@ -59,6 +61,35 @@ test('elle taşınan kartın sırası saat değişse de korunur, sıfırlanınca
 
   const reset = store.cards.update(card.id, { manualSort: false })!;
   assert.equal(reset.sort_index, 420, 'sıfırlanınca yeniden saate göre hesaplanmalı');
+});
+
+test('checklist temizlenir, doğrulanır ve kartla birlikte kalıcı olur', () => {
+  const valid = sanitizeChecklist([
+    { id: 'first', text: '  İlk iş  ', done: true },
+    { text: 'İkinci iş' },
+  ]);
+  assert.equal(valid.valid, true);
+  assert.equal(valid.items[0]?.text, 'İlk iş');
+  assert.equal(valid.items[1]?.done, false);
+  assert.ok(valid.items[1]?.id);
+  assert.equal(isChecklistComplete(valid.items), false);
+  assert.equal(isChecklistComplete(valid.items.map((item) => ({ ...item, done: true }))), true);
+  assert.equal(isChecklistComplete([]), false);
+
+  assert.equal(sanitizeChecklist([{ id: 'same', text: 'A' }, { id: 'same', text: 'B' }]).valid, false);
+  assert.equal(sanitizeChecklist([{ text: '   ' }]).valid, false);
+  assert.deepEqual(parseChecklist('bozuk-json'), []);
+
+  const db = makeDb();
+  const user = makeUser(db, 'u-checklist', 'checklist@x.com');
+  const store = repo(db, user.id);
+  const card = store.cards.create({ day: '2026-08-13', checklist: valid.items });
+  assert.deepEqual(cardDto(card).checklist, valid.items);
+
+  const updated = store.cards.update(card.id, {
+    checklist: valid.items.map((item) => ({ ...item, done: true })),
+  })!;
+  assert.ok(cardDto(updated).checklist.every((item) => item.done));
 });
 
 /* -------------------------------------------------------- kullanıcı ayrımı */

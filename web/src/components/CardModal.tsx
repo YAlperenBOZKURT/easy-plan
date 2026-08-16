@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.ts';
-import { CARD_COLORS, type Card } from '../lib/types.ts';
+import { CARD_COLORS, type Card, type ChecklistItem } from '../lib/types.ts';
 import { dayName, shortDate } from '../lib/dates.ts';
 import ReminderPicker from './ReminderPicker.tsx';
+import { normalizeChecklist } from '../lib/checklist.ts';
 
 export interface CardDraft {
   card?: Card;
@@ -32,6 +33,7 @@ export default function CardModal({
   const [endTime, setEndTime] = useState(existing?.endTime ?? '');
   const [color, setColor] = useState(existing?.color ?? 'blue');
   const [reminders, setReminders] = useState<number[]>(existing?.reminders ?? []);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(existing?.checklist ?? []);
   const [images, setImages] = useState(existing?.images ?? []);
   const [pending, setPending] = useState<File[]>([]);
   const [resetOrder, setResetOrder] = useState(false);
@@ -40,6 +42,12 @@ export default function CardModal({
   const [error, setError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const titleInput = useRef<HTMLInputElement>(null);
+
+  const newChecklistItem = (): ChecklistItem => ({
+    id: globalThis.crypto?.randomUUID?.() ?? `item-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text: '',
+    done: false,
+  });
 
   // preventScroll: odaklanırken modal gövdesi kayıp "Başlık" etiketini gizlemesin.
   useEffect(() => titleInput.current?.focus({ preventScroll: true }), []);
@@ -83,6 +91,7 @@ export default function CardModal({
         endTime: endTime || null,
         color,
         reminders,
+        checklist: normalizeChecklist(checklist),
         ...(resetOrder ? { manualSort: false } : {}),
       };
       const saved = existing
@@ -187,6 +196,52 @@ export default function CardModal({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Detaylar, sayılar, aklında kalsın istediklerin…"
             />
+          </div>
+
+          <div className="field">
+            <div className="checklist-heading">
+              <span className="label">Checklist</span>
+              <span className="hint">{checklist.length}/50</span>
+            </div>
+            <div className="checklist-editor">
+              {checklist.map((item) => (
+                <div className="checklist-editor-row" key={item.id}>
+                  <input
+                    type="checkbox"
+                    checked={item.done}
+                    aria-label={`${item.text || 'Checklist maddesi'} tamamlandı`}
+                    onChange={(event) => setChecklist((current) => current.map((entry) =>
+                      entry.id === item.id ? { ...entry, done: event.target.checked } : entry,
+                    ))}
+                  />
+                  <input
+                    value={item.text}
+                    maxLength={500}
+                    aria-label="Checklist maddesi"
+                    placeholder="Yeni madde"
+                    onChange={(event) => setChecklist((current) => current.map((entry) =>
+                      entry.id === item.id ? { ...entry, text: event.target.value } : entry,
+                    ))}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-icon checklist-remove"
+                    aria-label="Checklist maddesini kaldır"
+                    onClick={() => setChecklist((current) => current.filter((entry) => entry.id !== item.id))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn checklist-add"
+              disabled={checklist.length >= 50}
+              onClick={() => setChecklist((current) => [...current, newChecklistItem()])}
+            >
+              + Madde ekle
+            </button>
           </div>
 
           <ReminderPicker value={reminders} onChange={setReminders} />

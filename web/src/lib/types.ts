@@ -7,6 +7,12 @@ export interface CardImage {
   bytes: number;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Card {
   id: string;
   day: string;
@@ -19,6 +25,7 @@ export interface Card {
   sortIndex: number;
   manualSort: boolean;
   habitId: string | null;
+  checklist: ChecklistItem[];
   reminders: number[];
   images: CardImage[];
   createdAt: string;

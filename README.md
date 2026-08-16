@@ -7,7 +7,7 @@ The project is designed for individuals, families, and small teams that want to 
 ## Highlights
 
 - **Rolling calendar** — navigate a continuous date window instead of being constrained to calendar weeks.
-- **Flexible cards** — add titles, notes, colors, start/end times, completion state, reminders, and images.
+- **Flexible cards** — add titles, notes, checklists with progress, colors, start/end times, completion state, reminders, and images.
 - **Drag and drop** — reorder cards within a day or move them across days on web, mobile, and desktop.
 - **Mobile day navigation** — edge controls move one day at a time, keep the visible column synchronized with the day strip, and clearly highlight today.
 - **Recurring habits** — generate independent cards for selected weekdays across a one-year planning window.
@@ -187,6 +187,8 @@ The API origin is fixed at build/run time and cannot be changed from the login s
 ### Offline synchronization
 
 The Flutter client stores cards in a local SQLite database and synchronizes through `GET /api/v1/changes?since=<timestamp>`. Offline mutations are queued and replayed in order after connectivity returns. Deletions are propagated as tombstones, and stale writes receive the current server record with HTTP `409`.
+
+Checklist items are part of the card aggregate, so edits are saved atomically and follow the same offline queue and delta-sync flow as the rest of the card.
 
 The native client stores short-lived access and rotating refresh JWTs through `flutter_secure_storage`. After an access token expires, the client rotates the refresh token, persists the replacement pair, and retries the original request once. The web client follows the same rotation flow while keeping both JWTs in JavaScript-inaccessible HTTP-only cookies.
 

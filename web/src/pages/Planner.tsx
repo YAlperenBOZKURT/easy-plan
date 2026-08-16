@@ -26,6 +26,7 @@ import EdgeScroller from '../components/EdgeScroller.tsx';
 import HabitModal from '../components/HabitModal.tsx';
 import SettingsModal from '../components/SettingsModal.tsx';
 import TopMenu from '../components/TopMenu.tsx';
+import { isChecklistComplete, toggleChecklistItem } from '../lib/checklist.ts';
 
 const VISIBLE_DAYS = 7;
 
@@ -123,6 +124,17 @@ export default function Planner({ user }: { user: User }) {
 
   const toggleDone = useMutation({
     mutationFn: (card: Card) => api.updateCard(card.id, { done: !card.done }),
+    onSuccess: refresh,
+  });
+
+  const toggleChecklist = useMutation({
+    mutationFn: ({ card, itemId }: { card: Card; itemId: string }) => {
+      const checklist = toggleChecklistItem(card.checklist, itemId);
+      return api.updateCard(card.id, {
+        checklist,
+        done: isChecklistComplete(checklist),
+      });
+    },
     onSuccess: refresh,
   });
 
@@ -604,6 +616,7 @@ export default function Planner({ user }: { user: User }) {
               onEdit={(card) => setDraft({ card, day: card.day })}
               onInspect={(card) => setInspect(card)}
               onToggleDone={(card) => toggleDone.mutate(card)}
+              onToggleChecklist={(card, itemId) => toggleChecklist.mutate({ card, itemId })}
               onDelete={(card) => removeCard.mutate(card)}
             />
           ))}

@@ -162,6 +162,80 @@ class CardView extends StatelessWidget {
                 ),
               ],
 
+              if (card.checklist.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: t.surface2,
+                    border: Border.all(color: t.border),
+                    borderRadius: BorderRadius.circular(R.md),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'CHECKLIST',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: .35,
+                              color: t.textFaint,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${card.checklist.where((item) => item.done).length}/${card.checklist.length}',
+                            style: TextStyle(fontSize: 12, color: t.textFaint),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+                      for (final item in card.checklist)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 17,
+                                height: 17,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: item.done ? c : Colors.transparent,
+                                  border: Border.all(
+                                    color: item.done ? c : t.borderStrong,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: item.done
+                                    ? Icon(Icons.check, size: 11, color: t.surface)
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.text,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.4,
+                                    color: item.done ? t.textFaint : t.text,
+                                    decoration: item.done
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+
               if (card.images.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 for (final image in card.images)

@@ -1,5 +1,11 @@
 export type Role = 'admin' | 'user';
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface UserRow {
   id: string;
   email: string;
@@ -28,6 +34,7 @@ export interface CardRow {
   sort_index: number;
   manual_sort: number;
   habit_id: string | null;
+  checklist_json: string;
   created_at: string;
   updated_at: string;
 }
