@@ -7,7 +7,7 @@ import { repo, type Repo } from '../repo.ts';
 import { applyReminders, sanitizeOffsets } from '../reminders.ts';
 import { indexBetween } from '../sorting.ts';
 import { removeImageFiles } from '../storage.ts';
-import { addYears, isValidDay, isValidTime, today } from '../time.ts';
+import { addYears, isValidDay, isValidInstant, isValidTime, today } from '../time.ts';
 import { CARD_COLORS, CARD_PRIORITIES } from '../types.ts';
 import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
 
@@ -45,6 +45,12 @@ function readCardBody(body: Record<string, unknown> | undefined) {
   if (typeof body.priority === 'string') {
     if ((CARD_PRIORITIES as readonly string[]).includes(body.priority)) out.priority = body.priority;
     else errors.push('priority');
+  }
+  if ('deadlineAt' in body) {
+    if (body.deadlineAt === null || body.deadlineAt === '') out.deadlineAt = null;
+    else if (typeof body.deadlineAt === 'string' && isValidInstant(body.deadlineAt)) {
+      out.deadlineAt = new Date(body.deadlineAt).toISOString();
+    } else errors.push('deadlineAt');
   }
   if ('checklist' in body) {
     const checklist = sanitizeChecklist(body.checklist);

@@ -52,6 +52,7 @@ const cardBody = object({
   color: string(),
   done: boolean(),
   priority: string({ enum: ['none', 'low', 'medium', 'high', 'urgent'] }),
+  deadlineAt: { anyOf: [string({ format: 'date-time' }), { type: 'null' }] },
   manualSort: boolean(),
   reminders: numberArray(),
   checklist: checklist(),

@@ -10,6 +10,7 @@ import {
 import { dayName, shortDate } from '../lib/dates.ts';
 import ReminderPicker from './ReminderPicker.tsx';
 import { normalizeChecklist } from '../lib/checklist.ts';
+import { deadlineFromInput, deadlineToInput } from '../lib/deadline.ts';
 
 export interface CardDraft {
   card?: Card;
@@ -39,6 +40,7 @@ export default function CardModal({
   const [endTime, setEndTime] = useState(existing?.endTime ?? '');
   const [color, setColor] = useState(existing?.color ?? 'blue');
   const [priority, setPriority] = useState<CardPriority>(existing?.priority ?? 'none');
+  const [deadline, setDeadline] = useState(deadlineToInput(existing?.deadlineAt ?? null));
   const [reminders, setReminders] = useState<number[]>(existing?.reminders ?? []);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(existing?.checklist ?? []);
   const [images, setImages] = useState(existing?.images ?? []);
@@ -98,6 +100,7 @@ export default function CardModal({
         endTime: endTime || null,
         color,
         priority,
+        deadlineAt: deadlineFromInput(deadline),
         reminders,
         checklist: normalizeChecklist(checklist),
         ...(resetOrder ? { manualSort: false } : {}),
@@ -209,6 +212,24 @@ export default function CardModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="field">
+            <div className="deadline-heading">
+              <label className="label" htmlFor="deadline">Son tarih</label>
+              {deadline && (
+                <button type="button" className="text-action" onClick={() => setDeadline('')}>
+                  Temizle
+                </button>
+              )}
+            </div>
+            <input
+              id="deadline"
+              type="datetime-local"
+              value={deadline}
+              onChange={(event) => setDeadline(event.target.value)}
+            />
+            <span className="hint">Bu tarih geçtiğinde tamamlanmamış kart gecikmiş olarak işaretlenir.</span>
           </div>
 
           <div className="field">

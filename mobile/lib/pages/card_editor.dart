@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../api/models.dart';
 import '../cache.dart';
 import '../dates.dart';
+import '../deadline.dart';
 import '../store.dart';
 import '../theme.dart';
 
@@ -84,6 +85,9 @@ class _CardEditorState extends State<CardEditor> {
   late TimeOfDay? _end = _parse(widget.card?.endTime);
   late String _color = widget.card?.color ?? 'blue';
   late String _priority = widget.card?.priority ?? 'none';
+  late DateTime? _deadline = widget.card?.deadlineAt == null
+      ? null
+      : DateTime.tryParse(widget.card!.deadlineAt!)?.toLocal();
   late final List<int> _reminders = [...?widget.card?.reminders];
   late final List<ChecklistItem> _checklist = [...?widget.card?.checklist];
   late List<CardImage> _images = [...?widget.card?.images];
@@ -135,6 +139,37 @@ class _CardEditorState extends State<CardEditor> {
     if (picked != null) setState(() => _day = dayKey(picked));
   }
 
+  Future<void> _pickDeadline() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _deadline ?? parseDay(_day),
+      firstDate: parseDay(widget.store.minDay),
+      lastDate: parseDay(widget.store.maxDay),
+      locale: const Locale('tr'),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _deadline == null
+          ? const TimeOfDay(hour: 18, minute: 0)
+          : TimeOfDay.fromDateTime(_deadline!),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _deadline = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     final saved = await widget.store.saveCard(
@@ -146,6 +181,7 @@ class _CardEditorState extends State<CardEditor> {
       endTime: _format(_end),
       color: _color,
       priority: _priority,
+      deadlineAt: _deadline?.toUtc().toIso8601String(),
       reminders: _reminders,
       checklist: _checklist
           .map((item) => item.copyWith(text: item.text.trim()))
@@ -351,6 +387,48 @@ class _CardEditorState extends State<CardEditor> {
                       onTap: () => setState(() => _priority = priority),
                     ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              const _Label('Son tarih'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickDeadline,
+                      icon: const Icon(Icons.flag_outlined, size: 17),
+                      label: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _deadline == null
+                              ? 'Son tarih seç'
+                              : deadlineLabel(
+                                  _deadline!.toUtc().toIso8601String(),
+                                ),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(46),
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ),
+                  ),
+                  if (_deadline != null) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Son tarihi temizle',
+                      onPressed: () => setState(() => _deadline = null),
+                      icon: Icon(Icons.close, size: 18, color: t.textFaint),
+                    ),
+                  ],
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Tarih geçtiğinde tamamlanmamış kart gecikmiş olarak işaretlenir.',
+                  style: TextStyle(fontSize: 11.5, color: t.textFaint),
+                ),
               ),
               const SizedBox(height: 16),
 

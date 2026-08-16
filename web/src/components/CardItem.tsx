@@ -3,6 +3,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { priorityLabel, type Card } from '../lib/types.ts';
 import { checklistProgress } from '../lib/checklist.ts';
+import { deadlineLabel, deadlineState } from '../lib/deadline.ts';
 
 /** Bu mesafeden az hareket eden işaretçi sürükleme değil, tıklama sayılır. */
 const CLICK_SLOP = 6;
@@ -44,6 +45,7 @@ export default function CardItem({
       : card.startTime
     : null;
   const progress = checklistProgress(card.checklist);
+  const dueState = deadlineState(card.deadlineAt, card.done);
 
   return (
     <div
@@ -79,12 +81,17 @@ export default function CardItem({
         }
       }}
     >
-      {(time || card.priority !== 'none') && (
+      {(time || card.priority !== 'none' || (card.deadlineAt && dueState !== 'completed')) && (
         <div className="card-badges">
           {time && <span className="time-badge">{time}</span>}
           {card.priority !== 'none' && (
             <span className={`priority-badge priority-${card.priority}`}>
               {priorityLabel(card.priority)}
+            </span>
+          )}
+          {card.deadlineAt && dueState !== 'completed' && (
+            <span className={`deadline-badge deadline-${dueState}`}>
+              {dueState === 'overdue' ? 'Gecikti' : dueState === 'soon' ? 'Yaklaşıyor' : 'Son'} · {deadlineLabel(card.deadlineAt)}
             </span>
           )}
         </div>

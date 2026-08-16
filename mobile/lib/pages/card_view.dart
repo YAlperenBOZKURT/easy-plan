@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../dates.dart';
+import '../deadline.dart';
 import '../store.dart';
 import '../theme.dart';
 
@@ -287,6 +288,12 @@ class CardView extends StatelessWidget {
                     _Meta(
                       label: 'Öncelik',
                       value: cardPriorityLabel(card.priority),
+                    ),
+                    _Meta(
+                      label: 'Son tarih',
+                      value: card.deadlineAt == null
+                          ? 'Yok'
+                          : '${deadlineState(card.deadlineAt, card.done) == DeadlineState.overdue ? 'Gecikti · ' : ''}${deadlineLabel(card.deadlineAt!)}',
                     ),
                     _Meta(
                       label: 'Hatırlatma',

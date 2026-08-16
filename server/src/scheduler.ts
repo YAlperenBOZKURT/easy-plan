@@ -52,6 +52,23 @@ function priorityBadge(card: Pick<CardRow, 'priority'>): string {
   return `<span style="display:inline-block;margin-left:6px;background:${color}1a;color:${color};border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600">${label}</span>`;
 }
 
+function deadlineBadge(
+  card: Pick<CardRow, 'deadline_at' | 'done'>,
+  timezone: string,
+  now = new Date(),
+): string {
+  if (!card.deadline_at) return '';
+  const deadline = new Date(card.deadline_at);
+  const overdue = card.done !== 1 && deadline.getTime() < now.getTime();
+  const color = overdue ? '#e5484d' : '#8e4ec6';
+  const label = new Intl.DateTimeFormat('tr-TR', {
+    timeZone: timezone,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(deadline);
+  return `<span style="display:inline-block;margin-left:6px;background:${color}1a;color:${color};border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600">${overdue ? 'Gecikti' : 'Son'} · ${escapeHtml(label)}</span>`;
+}
+
 function timeBadge(card: Pick<CardRow, 'start_time' | 'end_time' | 'color'>): string {
   if (!card.start_time) return '';
   const hex = COLOR_HEX[card.color] ?? COLOR_HEX.red;
@@ -59,7 +76,7 @@ function timeBadge(card: Pick<CardRow, 'start_time' | 'end_time' | 'color'>): st
   return `<span style="display:inline-block;background:${hex}1a;color:${hex};border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600;letter-spacing:.2px">${range}</span>`;
 }
 
-function cardHtml(card: CardRow, images: CardImageRow[]): string {
+function cardHtml(card: CardRow, images: CardImageRow[], timezone: string): string {
   const checklist = parseChecklist(card.checklist_json);
   const checklistHtml = checklist.length > 0
     ? `<ul style="margin:12px 0 0;padding-left:20px;font-size:14px;line-height:1.7">${checklist
@@ -72,7 +89,7 @@ function cardHtml(card: CardRow, images: CardImageRow[]): string {
         `<img src="cid:img${i}" alt="" style="max-width:100%;border-radius:10px;margin-top:12px;display:block" />`,
     )
     .join('');
-  return `${timeBadge(card)}${priorityBadge(card)}
+  return `${timeBadge(card)}${priorityBadge(card)}${deadlineBadge(card, timezone)}
     <h2 style="margin:12px 0 0;font-size:17px;font-weight:600">${escapeHtml(card.title || '(başlıksız)')}</h2>
     ${card.note ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap">${escapeHtml(card.note)}</p>` : ''}
     ${checklistHtml}
@@ -142,7 +159,7 @@ export async function processReminders(database: Db = db(), now = new Date()) {
       kind: 'reminder',
       userId: user.id,
       cardId: card.id,
-      html: layout(`${label} kaldı`, cardHtml(card, images)),
+      html: layout(`${label} kaldı`, cardHtml(card, images, user.timezone)),
       attachments: attachmentsFor(images),
     });
     mark(row.id, result.sent ? 'sent' : 'error');
@@ -182,6 +199,7 @@ export async function sendDailySummaries(database: Db = db(), now = new Date()) 
         (card) => `<tr><td style="padding:10px 0;border-bottom:1px solid #f0f0f3">
           ${timeBadge(card)}
           ${priorityBadge(card)}
+          ${deadlineBadge(card, tz, now)}
           <div style="margin-top:6px;font-size:15px;${card.done ? 'color:#8a8a8e;text-decoration:line-through' : 'font-weight:500'}">${escapeHtml(card.title || '(başlıksız)')}</div>
           ${card.note ? `<div style="margin-top:2px;font-size:13px;color:#6b6b70;white-space:pre-wrap">${escapeHtml(card.note)}</div>` : ''}
         </td></tr>`,

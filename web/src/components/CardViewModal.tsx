@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { dayName, shortDate } from '../lib/dates.ts';
 import { priorityLabel, REMINDER_OPTIONS, type Card } from '../lib/types.ts';
+import { deadlineLabel, deadlineState } from '../lib/deadline.ts';
 
 /**
  * Kartı rahatça incelemek için okuma penceresi: metnin tamamı kırpılmadan,
@@ -36,6 +37,7 @@ export default function CardViewModal({
   const reminderLabels = card.reminders
     .map((minutes) => REMINDER_OPTIONS.find((o) => o.minutes === minutes)?.label ?? `${minutes} dk`)
     .join(' · ');
+  const dueState = deadlineState(card.deadlineAt, card.done);
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -104,6 +106,14 @@ export default function CardViewModal({
             <div>
               <dt>Öncelik</dt>
               <dd>{priorityLabel(card.priority)}</dd>
+            </div>
+            <div>
+              <dt>Son tarih</dt>
+              <dd className={dueState === 'overdue' ? 'deadline-overdue-text' : undefined}>
+                {card.deadlineAt
+                  ? `${dueState === 'overdue' ? 'Gecikti · ' : ''}${deadlineLabel(card.deadlineAt)}`
+                  : 'Yok'}
+              </dd>
             </div>
             <div>
               <dt>Hatırlatma</dt>

@@ -29,6 +29,7 @@ export interface Card {
   habitId: string | null;
   checklist: ChecklistItem[];
   priority: CardPriority;
+  deadlineAt: string | null;
   reminders: number[];
   images: CardImage[];
   createdAt: string;

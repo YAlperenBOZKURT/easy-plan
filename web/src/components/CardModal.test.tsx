@@ -23,6 +23,7 @@ describe('CardModal checklist', () => {
         habitId: null,
         checklist: [],
         priority: 'none',
+        deadlineAt: null,
         reminders: [],
         images: [],
         createdAt: '',
@@ -43,6 +44,7 @@ describe('CardModal checklist', () => {
     await user.click(screen.getByRole('button', { name: /Madde ekle/ }));
     await user.type(screen.getByLabelText('Checklist maddesi'), '  İlk iş  ');
     await user.click(screen.getByRole('button', { name: 'Acil' }));
+    await user.type(screen.getByLabelText('Son tarih'), '2026-08-20T18:30');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     expect(create).toHaveBeenCalledOnce();
@@ -50,6 +52,7 @@ describe('CardModal checklist', () => {
       title: 'Plan',
       checklist: [{ text: 'İlk iş', done: false }],
       priority: 'urgent',
+      deadlineAt: new Date(2026, 7, 20, 18, 30).toISOString(),
     });
     expect(onSaved).toHaveBeenCalledOnce();
   });

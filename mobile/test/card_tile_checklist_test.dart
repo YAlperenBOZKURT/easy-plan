@@ -26,6 +26,10 @@ void main() {
         ChecklistItem(id: 'item-1', text: 'İlk iş', done: false),
       ],
       priority: 'urgent',
+      deadlineAt: DateTime.now()
+          .add(const Duration(days: 2))
+          .toUtc()
+          .toIso8601String(),
       reminders: const [],
       images: const [],
       updatedAt: '',
@@ -52,5 +56,6 @@ void main() {
     expect(toggledId, 'item-1');
     expect(cardTaps, 0);
     expect(find.text('Acil'), findsOneWidget);
+    expect(find.textContaining('Son ·'), findsOneWidget);
   });
 }

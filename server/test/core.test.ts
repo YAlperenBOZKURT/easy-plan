@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { openDb } from '../src/db.ts';
 import { repo } from '../src/repo.ts';
 import { defaultSortIndex, indexBetween, minutesOf, UNTIMED_BASE } from '../src/sorting.ts';
-import { addDays, addYears, today, weekdayOf, zonedToUtc } from '../src/time.ts';
+import { addDays, addYears, isValidInstant, today, weekdayOf, zonedToUtc } from '../src/time.ts';
 import { fireAtFor, sanitizeOffsets } from '../src/reminders.ts';
 import { materializeHabit, purgeOldHabitCards } from '../src/maintenance.ts';
 import type { UserRow } from '../src/types.ts';
@@ -87,16 +87,20 @@ test('checklist temizlenir, doğrulanır ve kartla birlikte kalıcı olur', () =
     day: '2026-08-13',
     checklist: valid.items,
     priority: 'high',
+    deadlineAt: '2026-08-20T15:00:00.000Z',
   });
   assert.deepEqual(cardDto(card).checklist, valid.items);
   assert.equal(cardDto(card).priority, 'high');
+  assert.equal(cardDto(card).deadlineAt, '2026-08-20T15:00:00.000Z');
 
   const updated = store.cards.update(card.id, {
     checklist: valid.items.map((item) => ({ ...item, done: true })),
     priority: 'urgent',
+    deadlineAt: null,
   })!;
   assert.ok(cardDto(updated).checklist.every((item) => item.done));
   assert.equal(cardDto(updated).priority, 'urgent');
+  assert.equal(cardDto(updated).deadlineAt, null);
 });
 
 /* -------------------------------------------------------- kullanıcı ayrımı */
@@ -243,4 +247,14 @@ test('tarih yardımcıları yaz saati ve ay sonlarında doğru çalışır', () 
   // Yaz saati uygulayan bir bölgede fark değişir
   assert.equal(zonedToUtc('2026-07-15', '12:00', 'Europe/Berlin').toISOString(), '2026-07-15T10:00:00.000Z');
   assert.equal(zonedToUtc('2026-01-15', '12:00', 'Europe/Berlin').toISOString(), '2026-01-15T11:00:00.000Z');
+});
+
+test('deadline yalnızca saat dilimi içeren ISO anlarını kabul eder', () => {
+  assert.equal(isValidInstant('2026-08-20T15:00:00.000Z'), true);
+  assert.equal(isValidInstant('2026-08-20T18:00:00+03:00'), true);
+  assert.equal(isValidInstant('2026-08-20T18:00'), false);
+  assert.equal(isValidInstant('2026-08-20'), false);
+  assert.equal(isValidInstant('2026-02-30T18:00:00Z'), false);
+  assert.equal(isValidInstant('2026-08-20T25:00:00Z'), false);
+  assert.equal(isValidInstant('geçersiz'), false);
 });
