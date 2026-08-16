@@ -313,6 +313,33 @@ class PlannerStore extends ChangeNotifier {
     );
   }
 
+  Future<void> toggleChecklistItem(PlannerCard card, String itemId) async {
+    final checklist = card.checklist
+        .map(
+          (item) => item.id == itemId
+              ? item.copyWith(done: !item.done)
+              : item,
+        )
+        .toList();
+    final done = isChecklistComplete(checklist);
+    final updated = card.copyWith(
+      checklist: checklist,
+      done: done,
+      updatedAt: DateTime.now().toUtc().toIso8601String(),
+    );
+    final body = <String, dynamic>{
+      'checklist': checklist.map((item) => item.toJson()).toList(),
+      'done': done,
+    };
+    await _write(
+      optimistic: () => _replaceLocal(updated),
+      send: () => api.updateCard(card.id, body),
+      method: 'PATCH',
+      path: '/cards/${card.id}',
+      body: body,
+    );
+  }
+
   Future<void> deleteCard(PlannerCard card) async {
     await _write(
       optimistic: () => _removeLocal(card.id),
@@ -334,6 +361,7 @@ class PlannerStore extends ChangeNotifier {
     String? endTime,
     required String color,
     required List<int> reminders,
+    required List<ChecklistItem> checklist,
     bool resetOrder = false,
   }) async {
     final body = <String, dynamic>{
@@ -344,6 +372,8 @@ class PlannerStore extends ChangeNotifier {
       'endTime': endTime,
       'color': color,
       'reminders': reminders,
+      'checklist': checklist.map((item) => item.toJson()).toList(),
+      if (checklist.isNotEmpty) 'done': isChecklistComplete(checklist),
       if (resetOrder) 'manualSort': false,
     };
     // Çevrimdışı oluşturulan kart için kimliği istemci üretir; sunucu kabul ediyor.
@@ -376,6 +406,10 @@ class PlannerStore extends ChangeNotifier {
               endTime: endTime,
               color: color,
               reminders: reminders,
+              checklist: checklist,
+              done: checklist.isNotEmpty
+                  ? isChecklistComplete(checklist)
+                  : null,
               updatedAt: DateTime.now().toIso8601String(),
             );
 

@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
 import { config } from './config.ts';
+import { parseChecklist } from './checklist.ts';
 import { db, type Db } from './db.ts';
 import { nowIso } from './ids.ts';
 import { runMaintenance } from './maintenance.ts';
@@ -45,6 +46,12 @@ function timeBadge(card: Pick<CardRow, 'start_time' | 'end_time' | 'color'>): st
 }
 
 function cardHtml(card: CardRow, images: CardImageRow[]): string {
+  const checklist = parseChecklist(card.checklist_json);
+  const checklistHtml = checklist.length > 0
+    ? `<ul style="margin:12px 0 0;padding-left:20px;font-size:14px;line-height:1.7">${checklist
+        .map((item) => `<li style="${item.done ? 'color:#8a8a8e;text-decoration:line-through' : ''}">${escapeHtml(item.text)}</li>`)
+        .join('')}</ul>`
+    : '';
   const pictures = images
     .map(
       (img, i) =>
@@ -54,6 +61,7 @@ function cardHtml(card: CardRow, images: CardImageRow[]): string {
   return `${timeBadge(card)}
     <h2 style="margin:12px 0 0;font-size:17px;font-weight:600">${escapeHtml(card.title || '(başlıksız)')}</h2>
     ${card.note ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap">${escapeHtml(card.note)}</p>` : ''}
+    ${checklistHtml}
     ${pictures}`;
 }
 

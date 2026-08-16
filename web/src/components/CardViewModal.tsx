@@ -69,6 +69,23 @@ export default function CardViewModal({
 
           {card.note && <p className="view-note">{card.note}</p>}
 
+          {card.checklist.length > 0 && (
+            <section className="view-checklist" aria-label="Checklist">
+              <div className="checklist-heading">
+                <h4>Checklist</h4>
+                <span>{card.checklist.filter((item) => item.done).length}/{card.checklist.length}</span>
+              </div>
+              <ul>
+                {card.checklist.map((item) => (
+                  <li className={item.done ? 'done' : ''} key={item.id}>
+                    <span aria-hidden="true">{item.done ? '✓' : ''}</span>
+                    <p>{item.text}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {card.images.length > 0 && (
             <div className="view-images">
               {card.images.map((image) => (

@@ -1,4 +1,5 @@
 import type { CardImageRow, CardRow, HabitRow, ReminderRow, UserRow } from './types.ts';
+import { parseChecklist } from './checklist.ts';
 
 /** DB satırlarını istemcinin gördüğü şekle çevirir (camelCase, hash'siz, yol yerine URL). */
 
@@ -24,6 +25,7 @@ export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: R
     sortIndex: card.sort_index,
     manualSort: card.manual_sort === 1,
     habitId: card.habit_id,
+    checklist: parseChecklist(card.checklist_json),
     reminders: reminders
       .filter((r) => r.card_id === card.id)
       .map((r) => r.offset_minutes)

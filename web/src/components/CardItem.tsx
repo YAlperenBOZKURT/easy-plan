@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Card } from '../lib/types.ts';
+import { checklistProgress } from '../lib/checklist.ts';
 
 /** Bu mesafeden az hareket eden işaretçi sürükleme değil, tıklama sayılır. */
 const CLICK_SLOP = 6;
@@ -17,6 +18,7 @@ export default function CardItem({
   onEdit,
   onInspect,
   onToggleDone,
+  onToggleChecklist,
   onDelete,
 }: {
   card: Card;
@@ -25,6 +27,7 @@ export default function CardItem({
   onEdit: () => void;
   onInspect: () => void;
   onToggleDone: () => void;
+  onToggleChecklist: (itemId: string) => void;
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -40,6 +43,7 @@ export default function CardItem({
       ? `${card.startTime} - ${card.endTime}`
       : card.startTime
     : null;
+  const progress = checklistProgress(card.checklist);
 
   return (
     <div
@@ -82,6 +86,35 @@ export default function CardItem({
       )}
       {card.title && <p className="card-title">{card.title}</p>}
       {card.note && <p className="card-note">{card.note}</p>}
+
+      {card.checklist.length > 0 && (
+        <div className="card-checklist">
+          <div className="card-checklist-progress">
+            <span>{progress.completed}/{progress.total}</span>
+            <span className="card-checklist-track" aria-hidden="true">
+              <span style={{ width: `${progress.ratio * 100}%` }} />
+            </span>
+          </div>
+          {card.checklist.slice(0, 3).map((item) => (
+            <button
+              type="button"
+              className={`card-checklist-item${item.done ? ' done' : ''}`}
+              key={item.id}
+              aria-label={`${item.text}: ${item.done ? 'geri al' : 'tamamla'}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerUp={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleChecklist(item.id);
+              }}
+            >
+              <span aria-hidden="true">{item.done ? '✓' : ''}</span>
+              <em>{item.text}</em>
+            </button>
+          ))}
+          {card.checklist.length > 3 && <span className="card-checklist-more">+{card.checklist.length - 3} madde</span>}
+        </div>
+      )}
 
       {card.images.length > 0 && (
         <div className={`card-images ${card.images.length === 1 ? 'one' : 'multi'}`}>

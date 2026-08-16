@@ -1,7 +1,7 @@
 import type { Db } from './db.ts';
 import { newId, nowIso } from './ids.ts';
 import { defaultSortIndex } from './sorting.ts';
-import type { CardImageRow, CardRow, HabitRow, ReminderRow } from './types.ts';
+import type { CardImageRow, CardRow, ChecklistItem, HabitRow, ReminderRow } from './types.ts';
 
 /**
  * Kullanıcıya bağlı veri erişimi.
@@ -57,6 +57,7 @@ export function repo(db: Db, userId: string) {
       color?: string;
       done?: boolean;
       habitId?: string | null;
+      checklist?: ChecklistItem[];
       sortIndex?: number;
       createdAt?: string;
     }): CardRow {
@@ -66,8 +67,8 @@ export function repo(db: Db, userId: string) {
         input.sortIndex ?? defaultSortIndex(input.startTime ?? null, cards.dayIndexes(input.day));
       db.prepare(
         `INSERT INTO cards (id, user_id, day, title, note, start_time, end_time, color, done,
-                            sort_index, manual_sort, habit_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+                            sort_index, manual_sort, habit_id, checklist_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
       ).run(
         id,
         userId,
@@ -80,6 +81,7 @@ export function repo(db: Db, userId: string) {
         input.done ? 1 : 0,
         sortIndex,
         input.habitId ?? null,
+        JSON.stringify(input.checklist ?? []),
         at,
         at,
       );
@@ -98,6 +100,7 @@ export function repo(db: Db, userId: string) {
         done: boolean;
         sortIndex: number;
         manualSort: boolean;
+        checklist: ChecklistItem[];
       }>,
     ): CardRow | undefined {
       const current = cards.get(id);
@@ -113,6 +116,7 @@ export function repo(db: Db, userId: string) {
         done: 'done',
         sortIndex: 'sort_index',
         manualSort: 'manual_sort',
+        checklist: 'checklist_json',
       };
       const sets: string[] = [];
       const values: (string | number | null)[] = [];
@@ -120,7 +124,8 @@ export function repo(db: Db, userId: string) {
         if (!(key in patch)) continue;
         const raw = (patch as Record<string, unknown>)[key];
         sets.push(`${column} = ?`);
-        values.push(typeof raw === 'boolean' ? (raw ? 1 : 0) : (raw as string | number | null));
+        if (key === 'checklist') values.push(JSON.stringify(raw));
+        else values.push(typeof raw === 'boolean' ? (raw ? 1 : 0) : (raw as string | number | null));
       }
 
       // Saati ya da günü değişen, elle taşınmamış kartın sırası saate göre yeniden kurulur.

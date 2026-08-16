@@ -29,6 +29,18 @@ const password = (minimum = 0): JsonSchema => string({
 const boolean = (): JsonSchema => ({ type: 'boolean' });
 const stringArray = (): JsonSchema => ({ type: 'array', items: { type: 'string' } });
 const numberArray = (): JsonSchema => ({ type: 'array', items: { type: 'integer' } });
+const checklist = (): JsonSchema => ({
+  type: 'array',
+  maxItems: 50,
+  items: object(
+    {
+      id: string({ maxLength: 100 }),
+      text: string({ minLength: 1, maxLength: 500 }),
+      done: boolean(),
+    },
+    ['text'],
+  ),
+});
 
 const cardBody = object({
   id: string({ format: 'uuid' }),
@@ -41,6 +53,7 @@ const cardBody = object({
   done: boolean(),
   manualSort: boolean(),
   reminders: numberArray(),
+  checklist: checklist(),
   updatedAt: string({ format: 'date-time' }),
 });
 

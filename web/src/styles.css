@@ -120,6 +120,17 @@ button:focus-visible, [role='button']:focus-visible {
 /* Menüsü açık kartta metnin tamamı görünür */
 .card.active .card-title, .card.active .card-note { -webkit-line-clamp: unset; line-clamp: unset; display: block; overflow: visible; }
 
+.card-checklist { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.card-checklist-progress { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.card-checklist-track { height: 3px; flex: 1; overflow: hidden; border-radius: 999px; background: var(--border); }
+.card-checklist-track > span { display: block; height: 100%; border-radius: inherit; background: var(--c); transition: width .18s ease; }
+.card-checklist-item { width: 100%; display: flex; align-items: center; gap: 6px; padding: 1px 0; border: 0; background: transparent; color: var(--text-muted); text-align: left; font-size: 11.5px; cursor: pointer; }
+.card-checklist-item > span { width: 14px; height: 14px; flex: none; display: grid; place-items: center; border: 1px solid color-mix(in oklab, var(--c) 55%, var(--border)); border-radius: 4px; color: var(--surface); font-size: 9px; font-weight: 700; }
+.card-checklist-item > em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; }
+.card-checklist-item.done > span { border-color: var(--c); background: var(--c); }
+.card-checklist-item.done > em { color: var(--text-faint); text-decoration: line-through; }
+.card-checklist-more { padding-left: 20px; font-size: 10.5px; color: var(--text-faint); }
+
 .card-images { display: grid; gap: 4px; margin-top: 1px; }
 .card-images.one { grid-template-columns: 1fr; }
 .card-images.multi { grid-template-columns: repeat(3, 1fr); }
@@ -246,6 +257,14 @@ input:disabled { opacity: .5; cursor: not-allowed; }
 input[type='checkbox'] { width: 18px; height: 18px; min-height: 0; flex: none; accent-color: var(--accent); }
 .hint { font-size: 11.5px; color: var(--text-faint); }
 .error-text { font-size: 11.5px; color: var(--danger); margin: 0; }
+
+.checklist-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.checklist-editor { display: flex; flex-direction: column; gap: 7px; }
+.checklist-editor-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 34px; align-items: center; gap: 8px; }
+.checklist-editor-row > input[type='text'], .checklist-editor-row > input:not([type]) { min-height: 36px; }
+.checklist-editor-row:has(input[type='checkbox']:checked) input:not([type='checkbox']) { color: var(--text-faint); text-decoration: line-through; }
+.checklist-remove { min-width: 34px; padding: 4px; color: var(--text-faint); }
+.checklist-add { align-self: flex-start; min-height: 32px; padding: 4px 10px; font-size: 12px; }
 
 /* çipler */
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -555,6 +574,17 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .fatal-error {
   padding: 24px;
 }
+
+.view-checklist { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.view-checklist h4 { margin: 0; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); }
+.view-checklist .checklist-heading > span { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.view-checklist ul { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.view-checklist li { display: flex; align-items: flex-start; gap: 8px; color: var(--text); }
+.view-checklist li > span { width: 17px; height: 17px; flex: none; display: grid; place-items: center; border: 1px solid var(--border-strong); border-radius: 5px; font-size: 10px; }
+.view-checklist li > p { margin: 0; min-width: 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.view-checklist li.done { color: var(--text-faint); }
+.view-checklist li.done > span { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.view-checklist li.done > p { text-decoration: line-through; }
 
 .fatal-error-card {
   width: min(460px, 100%);

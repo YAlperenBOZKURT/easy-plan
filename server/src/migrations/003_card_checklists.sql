@@ -1,0 +1,1 @@
+ALTER TABLE cards ADD COLUMN checklist_json TEXT NOT NULL DEFAULT '[]';

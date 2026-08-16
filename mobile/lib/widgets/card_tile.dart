@@ -13,6 +13,7 @@ class CardTile extends StatelessWidget {
     required this.imageUrl,
     this.onTap,
     this.onLongPress,
+    this.onToggleChecklist,
   });
 
   final PlannerCard card;
@@ -20,6 +21,7 @@ class CardTile extends StatelessWidget {
   final String Function(String path) imageUrl;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final void Function(String itemId)? onToggleChecklist;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +135,14 @@ class CardTile extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (card.checklist.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    _Checklist(
+                      card: card,
+                      color: c,
+                      onToggle: onToggleChecklist,
+                    ),
+                  ],
                   if (card.images.isNotEmpty) ...[
                     const SizedBox(height: 7),
                     Opacity(
@@ -173,6 +183,107 @@ class CardTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Checklist extends StatelessWidget {
+  const _Checklist({
+    required this.card,
+    required this.color,
+    this.onToggle,
+  });
+
+  final PlannerCard card;
+  final Color color;
+  final void Function(String itemId)? onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final completed = card.checklist.where((item) => item.done).length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '$completed/${card.checklist.length}',
+              style: TextStyle(fontSize: 10.5, color: t.textFaint),
+            ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  value: completed / card.checklist.length,
+                  backgroundColor: t.border,
+                  valueColor: AlwaysStoppedAnimation(color),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        for (final item in card.checklist.take(3))
+          Semantics(
+            button: onToggle != null,
+            checked: item.done,
+            label: item.text,
+            child: InkWell(
+              onTap: onToggle == null ? null : () => onToggle!(item.id),
+              borderRadius: BorderRadius.circular(R.sm),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: item.done ? color : Colors.transparent,
+                        border: Border.all(
+                          color: item.done
+                              ? color
+                              : color.withValues(alpha: .55),
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: item.done
+                          ? Icon(Icons.check, size: 11, color: t.surface)
+                          : null,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        item.text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: item.done ? t.textFaint : t.textMuted,
+                          decoration: item.done
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        if (card.checklist.length > 3)
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Text(
+              '+${card.checklist.length - 3} madde',
+              style: TextStyle(fontSize: 10.5, color: t.textFaint),
+            ),
+          ),
+      ],
     );
   }
 }

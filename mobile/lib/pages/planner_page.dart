@@ -660,6 +660,8 @@ class _DayColumn extends StatelessWidget {
                     onDragState: onDragState,
                     onTap: () => onCard(cards[i]),
                     onEdit: () => onAdd(card: cards[i], day: cards[i].day),
+                    onToggleChecklist: (itemId) =>
+                        store.toggleChecklistItem(cards[i], itemId),
                   ),
                 ],
                 // Listenin sonu: buraya bırakılan kart en alta gider

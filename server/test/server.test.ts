@@ -43,6 +43,10 @@ test('HTTP yüzeyi sağlık, hata ve OpenAPI sözleşmesini korur', async (t) =>
     assert.ok(document.paths['/api/v1/auth/token']?.post?.requestBody);
     assert.equal(document.paths['/api/v1/cards']?.get?.operationId, 'get_cards');
     assert.ok(document.paths['/api/v1/auth/refresh']?.post);
+    assert.equal(
+      document.paths['/api/v1/cards'].post.requestBody.content['application/json'].schema.properties.checklist.maxItems,
+      50,
+    );
     assert.deepEqual(
       document.paths['/api/v1/auth/token'].post.requestBody.content['application/json'].schema.required,
       ['email', 'password'],

@@ -33,6 +33,35 @@ class CardImage {
   );
 }
 
+class ChecklistItem {
+  const ChecklistItem({
+    required this.id,
+    required this.text,
+    required this.done,
+  });
+
+  final String id;
+  final String text;
+  final bool done;
+
+  ChecklistItem copyWith({String? text, bool? done}) => ChecklistItem(
+    id: id,
+    text: text ?? this.text,
+    done: done ?? this.done,
+  );
+
+  Map<String, dynamic> toJson() => {'id': id, 'text': text, 'done': done};
+
+  factory ChecklistItem.fromJson(Map<String, dynamic> json) => ChecklistItem(
+    id: json['id'] as String,
+    text: (json['text'] as String?) ?? '',
+    done: json['done'] == true,
+  );
+}
+
+bool isChecklistComplete(List<ChecklistItem> items) =>
+    items.isNotEmpty && items.every((item) => item.done);
+
 class PlannerCard {
   PlannerCard({
     required this.id,
@@ -46,6 +75,7 @@ class PlannerCard {
     required this.sortIndex,
     required this.manualSort,
     required this.habitId,
+    this.checklist = const [],
     required this.reminders,
     required this.images,
     required this.updatedAt,
@@ -62,6 +92,7 @@ class PlannerCard {
   final double sortIndex;
   final bool manualSort;
   final String? habitId;
+  final List<ChecklistItem> checklist;
   final List<int> reminders;
   final List<CardImage> images;
   final String updatedAt;
@@ -88,6 +119,7 @@ class PlannerCard {
     'sortIndex': sortIndex,
     'manualSort': manualSort,
     'habitId': habitId,
+    'checklist': checklist.map((item) => item.toJson()).toList(),
     'reminders': reminders,
     'images': images.map((i) => i.toJson()).toList(),
     'updatedAt': updatedAt,
@@ -104,6 +136,7 @@ class PlannerCard {
     bool? done,
     double? sortIndex,
     List<int>? reminders,
+    List<ChecklistItem>? checklist,
     String? updatedAt,
   }) => PlannerCard(
     id: id,
@@ -117,6 +150,7 @@ class PlannerCard {
     sortIndex: sortIndex ?? this.sortIndex,
     manualSort: manualSort,
     habitId: habitId,
+    checklist: checklist ?? this.checklist,
     reminders: reminders ?? this.reminders,
     images: images,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -134,6 +168,9 @@ class PlannerCard {
     sortIndex: (json['sortIndex'] as num?)?.toDouble() ?? 0,
     manualSort: json['manualSort'] == true,
     habitId: json['habitId'] as String?,
+    checklist: ((json['checklist'] as List?) ?? [])
+        .map((item) => ChecklistItem.fromJson(item as Map<String, dynamic>))
+        .toList(),
     reminders: ((json['reminders'] as List?) ?? [])
         .map((e) => (e as num).toInt())
         .toList(),

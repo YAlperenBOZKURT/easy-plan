@@ -15,6 +15,7 @@ export default function DayColumn({
   onEdit,
   onInspect,
   onToggleDone,
+  onToggleChecklist,
   onDelete,
 }: {
   day: string;
@@ -27,6 +28,7 @@ export default function DayColumn({
   onEdit: (card: Card) => void;
   onInspect: (card: Card) => void;
   onToggleDone: (card: Card) => void;
+  onToggleChecklist: (card: Card, itemId: string) => void;
   onDelete: (card: Card) => void;
 }) {
   // Kolonun kendisi de bırakma hedefi: boş güne ya da kartların altına bırakılabilsin.
@@ -65,6 +67,7 @@ export default function DayColumn({
               onEdit={() => onEdit(card)}
               onInspect={() => onInspect(card)}
               onToggleDone={() => onToggleDone(card)}
+              onToggleChecklist={(itemId) => onToggleChecklist(card, itemId)}
               onDelete={() => onDelete(card)}
             />
           ))}

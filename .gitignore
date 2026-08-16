@@ -71,6 +71,9 @@ mobile/windows/flutter/ephemeral/
 .ai/
 .mcp.json
 
+# Local project planning
+checklist.md
+
 # IDEs and editors
 .idea/
 .vscode/

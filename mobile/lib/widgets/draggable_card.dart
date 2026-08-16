@@ -26,6 +26,7 @@ class DraggableCard extends StatelessWidget {
     required this.imageUrl,
     required this.onTap,
     required this.onEdit,
+    required this.onToggleChecklist,
     this.enabled = true,
     this.onDragState,
   });
@@ -35,6 +36,7 @@ class DraggableCard extends StatelessWidget {
   final String Function(String) imageUrl;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final void Function(String itemId) onToggleChecklist;
 
   /// Hızlı gezme modunda sürükleme kapatılır; pano tek parça kayar.
   final bool enabled;
@@ -51,6 +53,7 @@ class DraggableCard extends StatelessWidget {
       imageUrl: imageUrl,
       onTap: onTap,
       onLongPress: _isDesktop ? onEdit : null,
+      onToggleChecklist: onToggleChecklist,
     );
 
     // Taşınan kopya yarı saydam: altındaki kolonlar ve kenar şeritleri görünsün.
