@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Card } from '../lib/types.ts';
+import { priorityLabel, type Card } from '../lib/types.ts';
 import { checklistProgress } from '../lib/checklist.ts';
 
 /** Bu mesafeden az hareket eden işaretçi sürükleme değil, tıklama sayılır. */
@@ -79,9 +79,14 @@ export default function CardItem({
         }
       }}
     >
-      {time && (
-        <div className="card-time">
-          <span className="time-badge">{time}</span>
+      {(time || card.priority !== 'none') && (
+        <div className="card-badges">
+          {time && <span className="time-badge">{time}</span>}
+          {card.priority !== 'none' && (
+            <span className={`priority-badge priority-${card.priority}`}>
+              {priorityLabel(card.priority)}
+            </span>
+          )}
         </div>
       )}
       {card.title && <p className="card-title">{card.title}</p>}

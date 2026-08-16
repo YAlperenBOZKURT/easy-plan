@@ -10,15 +10,18 @@ void main() {
         {'id': 'item-1', 'text': 'İlk iş', 'done': true},
         {'id': 'item-2', 'text': 'İkinci iş', 'done': false},
       ],
+      'priority': 'high',
     });
 
     expect(card.checklist, hasLength(2));
     expect(card.checklist.first.done, isTrue);
+    expect(card.priority, 'high');
     expect(isChecklistComplete(card.checklist), isFalse);
     expect(card.toJson()['checklist'], [
       {'id': 'item-1', 'text': 'İlk iş', 'done': true},
       {'id': 'item-2', 'text': 'İkinci iş', 'done': false},
     ]);
+    expect(card.toJson()['priority'], 'high');
 
     final changed = card.copyWith(
       checklist: [card.checklist.first.copyWith(done: false)],

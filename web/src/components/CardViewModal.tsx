@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { dayName, shortDate } from '../lib/dates.ts';
-import { REMINDER_OPTIONS, type Card } from '../lib/types.ts';
+import { priorityLabel, REMINDER_OPTIONS, type Card } from '../lib/types.ts';
 
 /**
  * Kartı rahatça incelemek için okuma penceresi: metnin tamamı kırpılmadan,
@@ -100,6 +100,10 @@ export default function CardViewModal({
             <div>
               <dt>Durum</dt>
               <dd>{card.done ? 'Yapıldı' : 'Bekliyor'}</dd>
+            </div>
+            <div>
+              <dt>Öncelik</dt>
+              <dd>{priorityLabel(card.priority)}</dd>
             </div>
             <div>
               <dt>Hatırlatma</dt>

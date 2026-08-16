@@ -13,6 +13,8 @@ export interface ChecklistItem {
   done: boolean;
 }
 
+export type CardPriority = 'none' | 'low' | 'medium' | 'high' | 'urgent';
+
 export interface Card {
   id: string;
   day: string;
@@ -26,6 +28,7 @@ export interface Card {
   manualSort: boolean;
   habitId: string | null;
   checklist: ChecklistItem[];
+  priority: CardPriority;
   reminders: number[];
   images: CardImage[];
   createdAt: string;
@@ -80,6 +83,20 @@ export interface AdminStats {
 }
 
 export const CARD_COLORS = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'violet', 'pink'] as const;
+
+export const CARD_PRIORITY_OPTIONS: ReadonlyArray<{
+  value: CardPriority;
+  label: string;
+}> = [
+  { value: 'none', label: 'Yok' },
+  { value: 'low', label: 'Düşük' },
+  { value: 'medium', label: 'Orta' },
+  { value: 'high', label: 'Yüksek' },
+  { value: 'urgent', label: 'Acil' },
+];
+
+export const priorityLabel = (priority: CardPriority): string =>
+  CARD_PRIORITY_OPTIONS.find((option) => option.value === priority)?.label ?? 'Yok';
 
 /** Hatırlatma seçenekleri: kartın başlangıcına ne kadar kala mail gelsin. */
 export const REMINDER_OPTIONS = [

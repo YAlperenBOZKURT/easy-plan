@@ -26,6 +26,7 @@ export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: R
     manualSort: card.manual_sort === 1,
     habitId: card.habit_id,
     checklist: parseChecklist(card.checklist_json),
+    priority: card.priority,
     reminders: reminders
       .filter((r) => r.card_id === card.id)
       .map((r) => r.offset_minutes)

@@ -35,6 +35,7 @@ export interface CardRow {
   manual_sort: number;
   habit_id: string | null;
   checklist_json: string;
+  priority: CardPriority;
   created_at: string;
   updated_at: string;
 }
@@ -84,3 +85,6 @@ export type ReminderOffset = (typeof REMINDER_OFFSETS)[number];
 
 export const CARD_COLORS = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'violet', 'pink'] as const;
 export type CardColor = (typeof CARD_COLORS)[number];
+
+export const CARD_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'] as const;
+export type CardPriority = (typeof CARD_PRIORITIES)[number];

@@ -83,13 +83,20 @@ test('checklist temizlenir, doğrulanır ve kartla birlikte kalıcı olur', () =
   const db = makeDb();
   const user = makeUser(db, 'u-checklist', 'checklist@x.com');
   const store = repo(db, user.id);
-  const card = store.cards.create({ day: '2026-08-13', checklist: valid.items });
+  const card = store.cards.create({
+    day: '2026-08-13',
+    checklist: valid.items,
+    priority: 'high',
+  });
   assert.deepEqual(cardDto(card).checklist, valid.items);
+  assert.equal(cardDto(card).priority, 'high');
 
   const updated = store.cards.update(card.id, {
     checklist: valid.items.map((item) => ({ ...item, done: true })),
+    priority: 'urgent',
   })!;
   assert.ok(cardDto(updated).checklist.every((item) => item.done));
+  assert.equal(cardDto(updated).priority, 'urgent');
 });
 
 /* -------------------------------------------------------- kullanıcı ayrımı */

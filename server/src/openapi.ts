@@ -51,6 +51,7 @@ const cardBody = object({
   endTime: { anyOf: [string({ pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }), { type: 'null' }] },
   color: string(),
   done: boolean(),
+  priority: string({ enum: ['none', 'low', 'medium', 'high', 'urgent'] }),
   manualSort: boolean(),
   reminders: numberArray(),
   checklist: checklist(),
