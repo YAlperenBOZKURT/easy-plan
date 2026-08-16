@@ -36,6 +36,7 @@ export interface CardRow {
   habit_id: string | null;
   checklist_json: string;
   priority: CardPriority;
+  deadline_at: string | null;
   created_at: string;
   updated_at: string;
 }

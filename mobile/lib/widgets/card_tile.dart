@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
+import '../deadline.dart';
 import '../theme.dart';
 
 /// Takvim kartı — web'deki .card ile aynı görsel dil:
@@ -28,6 +29,7 @@ class CardTile extends StatelessWidget {
     final t = context.tokens;
     final c = t.cardColor(card.color);
     final faded = card.done ? .45 : 1.0;
+    final dueState = deadlineState(card.deadlineAt, card.done);
 
     final semanticLabel = [
       card.title.isEmpty ? 'Başlıksız kart' : card.title,
@@ -64,7 +66,10 @@ class CardTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (card.hasTime || card.priority != 'none')
+                  if (card.hasTime ||
+                      card.priority != 'none' ||
+                      (card.deadlineAt != null &&
+                          dueState != DeadlineState.completed))
                     Center(
                       child: Opacity(
                         opacity: faded,
@@ -84,11 +89,23 @@ class CardTile extends StatelessWidget {
                                 label: cardPriorityLabel(card.priority),
                                 color: _priorityColor(t, card.priority),
                               ),
+                            if (card.deadlineAt != null &&
+                                dueState != DeadlineState.completed)
+                              _Badge(
+                                label: deadlineBadgeLabel(
+                                  card.deadlineAt!,
+                                  dueState,
+                                ),
+                                color: _deadlineColor(t, dueState),
+                              ),
                           ],
                         ),
                       ),
                     ),
-                  if (card.hasTime || card.priority != 'none')
+                  if (card.hasTime ||
+                      card.priority != 'none' ||
+                      (card.deadlineAt != null &&
+                          dueState != DeadlineState.completed))
                     const SizedBox(height: 7),
                   if (card.title.isNotEmpty)
                     Opacity(
@@ -184,6 +201,12 @@ Color _priorityColor(PlannerTokens tokens, String priority) => switch (priority)
   'high' => tokens.cardColor('orange'),
   'urgent' => tokens.cardColor('red'),
   _ => tokens.textFaint,
+};
+
+Color _deadlineColor(PlannerTokens tokens, DeadlineState state) => switch (state) {
+  DeadlineState.overdue => tokens.cardColor('red'),
+  DeadlineState.soon => tokens.cardColor('amber'),
+  _ => tokens.cardColor('violet'),
 };
 
 class _Badge extends StatelessWidget {

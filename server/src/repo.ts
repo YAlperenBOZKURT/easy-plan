@@ -66,6 +66,7 @@ export function repo(db: Db, userId: string) {
       habitId?: string | null;
       checklist?: ChecklistItem[];
       priority?: CardPriority;
+      deadlineAt?: string | null;
       sortIndex?: number;
       createdAt?: string;
     }): CardRow {
@@ -75,8 +76,9 @@ export function repo(db: Db, userId: string) {
         input.sortIndex ?? defaultSortIndex(input.startTime ?? null, cards.dayIndexes(input.day));
       db.prepare(
         `INSERT INTO cards (id, user_id, day, title, note, start_time, end_time, color, done,
-                            sort_index, manual_sort, habit_id, checklist_json, priority, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+                            sort_index, manual_sort, habit_id, checklist_json, priority, deadline_at,
+                            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         userId,
@@ -91,6 +93,7 @@ export function repo(db: Db, userId: string) {
         input.habitId ?? null,
         JSON.stringify(input.checklist ?? []),
         input.priority ?? 'none',
+        input.deadlineAt ?? null,
         at,
         at,
       );
@@ -111,6 +114,7 @@ export function repo(db: Db, userId: string) {
         manualSort: boolean;
         checklist: ChecklistItem[];
         priority: CardPriority;
+        deadlineAt: string | null;
       }>,
     ): CardRow | undefined {
       const current = cards.get(id);
@@ -128,6 +132,7 @@ export function repo(db: Db, userId: string) {
         manualSort: 'manual_sort',
         checklist: 'checklist_json',
         priority: 'priority',
+        deadlineAt: 'deadline_at',
       };
       const sets: string[] = [];
       const values: (string | number | null)[] = [];

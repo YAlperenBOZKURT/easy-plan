@@ -83,4 +83,36 @@ export const isValidDay = (day: string): boolean =>
 
 export const isValidTime = (time: string): boolean => /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 
+/** Saat dilimi içeren ISO-8601 anı. Tarih-only ve sunucu yerel saatine bağlı değerler kabul edilmez. */
+export function isValidInstant(value: string): boolean {
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|([+-])(\d{2}):(\d{2}))$/,
+  );
+  if (!match) return false;
+  const [, yearRaw, monthRaw, dayRaw, hourRaw, minuteRaw, secondRaw, zone, , offsetHourRaw, offsetMinuteRaw] = match;
+  const [year, month, day, hour, minute, second] = [
+    yearRaw,
+    monthRaw,
+    dayRaw,
+    hourRaw,
+    minuteRaw,
+    secondRaw ?? '0',
+  ].map(Number);
+  const calendar = new Date(Date.UTC(year!, month! - 1, day));
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== month! - 1 ||
+    calendar.getUTCDate() !== day ||
+    hour! > 23 ||
+    minute! > 59 ||
+    second! > 59
+  ) return false;
+  if (zone !== 'Z') {
+    const offsetHour = Number(offsetHourRaw);
+    const offsetMinute = Number(offsetMinuteRaw);
+    if (offsetHour > 14 || offsetMinute > 59 || (offsetHour === 14 && offsetMinute !== 0)) return false;
+  }
+  return !Number.isNaN(Date.parse(value));
+}
+
 const pad = (n: number) => String(n).padStart(2, '0');

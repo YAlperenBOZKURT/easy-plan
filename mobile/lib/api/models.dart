@@ -1,6 +1,8 @@
 /// Sunucudaki DTO'ların (server/src/dto.ts) Dart karşılıkları.
 library;
 
+const _notProvided = Object();
+
 class CardImage {
   CardImage({
     required this.id,
@@ -87,6 +89,7 @@ class PlannerCard {
     required this.habitId,
     this.checklist = const [],
     this.priority = 'none',
+    this.deadlineAt,
     required this.reminders,
     required this.images,
     required this.updatedAt,
@@ -105,6 +108,7 @@ class PlannerCard {
   final String? habitId;
   final List<ChecklistItem> checklist;
   final String priority;
+  final String? deadlineAt;
   final List<int> reminders;
   final List<CardImage> images;
   final String updatedAt;
@@ -133,6 +137,7 @@ class PlannerCard {
     'habitId': habitId,
     'checklist': checklist.map((item) => item.toJson()).toList(),
     'priority': priority,
+    'deadlineAt': deadlineAt,
     'reminders': reminders,
     'images': images.map((i) => i.toJson()).toList(),
     'updatedAt': updatedAt,
@@ -151,6 +156,7 @@ class PlannerCard {
     List<int>? reminders,
     List<ChecklistItem>? checklist,
     String? priority,
+    Object? deadlineAt = _notProvided,
     String? updatedAt,
   }) => PlannerCard(
     id: id,
@@ -166,6 +172,9 @@ class PlannerCard {
     habitId: habitId,
     checklist: checklist ?? this.checklist,
     priority: priority ?? this.priority,
+    deadlineAt: identical(deadlineAt, _notProvided)
+        ? this.deadlineAt
+        : deadlineAt as String?,
     reminders: reminders ?? this.reminders,
     images: images,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -189,6 +198,7 @@ class PlannerCard {
     priority: cardPriorityKeys.contains(json['priority'])
         ? json['priority'] as String
         : 'none',
+    deadlineAt: json['deadlineAt'] as String?,
     reminders: ((json['reminders'] as List?) ?? [])
         .map((e) => (e as num).toInt())
         .toList(),
