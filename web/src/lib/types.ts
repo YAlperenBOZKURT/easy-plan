@@ -30,6 +30,7 @@ export interface Card {
   checklist: ChecklistItem[];
   priority: CardPriority;
   deadlineAt: string | null;
+  tags: string[];
   reminders: number[];
   images: CardImage[];
   createdAt: string;

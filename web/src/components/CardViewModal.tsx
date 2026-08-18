@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { dayName, shortDate } from '../lib/dates.ts';
 import { priorityLabel, REMINDER_OPTIONS, type Card } from '../lib/types.ts';
 import { deadlineLabel, deadlineState } from '../lib/deadline.ts';
+import { tagColorIndex } from '../lib/tags.ts';
 
 /**
  * Kartı rahatça incelemek için okuma penceresi: metnin tamamı kırpılmadan,
@@ -70,6 +71,14 @@ export default function CardViewModal({
           <h3 className={`view-title${card.done ? ' done' : ''}`}>{card.title || '(başlıksız)'}</h3>
 
           {card.note && <p className="view-note">{card.note}</p>}
+
+          {card.tags.length > 0 && (
+            <div className="view-tags" aria-label="Etiketler">
+              {card.tags.map((tag) => (
+                <span className={`tag-chip tag-color-${tagColorIndex(tag)}`} key={tag}>{tag}</span>
+              ))}
+            </div>
+          )}
 
           {card.checklist.length > 0 && (
             <section className="view-checklist" aria-label="Checklist">

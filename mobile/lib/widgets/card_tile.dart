@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
+import '../dates.dart';
 import '../deadline.dart';
+import '../tags.dart';
 import '../theme.dart';
 
 /// Takvim kartı — web'deki .card ile aynı görsel dil:
@@ -185,6 +187,10 @@ class CardTile extends StatelessWidget {
                       ],
                     ),
                   ],
+                  if (card.tags.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    Opacity(opacity: faded, child: _CardTags(tags: card.tags)),
+                  ],
                 ],
               ),
             ),
@@ -208,6 +214,59 @@ Color _deadlineColor(PlannerTokens tokens, DeadlineState state) => switch (state
   DeadlineState.soon => tokens.cardColor('amber'),
   _ => tokens.cardColor('violet'),
 };
+
+class _CardTags extends StatelessWidget {
+  const _CardTags({required this.tags});
+
+  final List<String> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Wrap(
+      spacing: 5,
+      runSpacing: 5,
+      children: [
+        for (final tag in tags.take(4))
+          Builder(
+            builder: (_) {
+              final color = t.cardColor(cardColorKeys[tagColorIndex(tag)]);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Color.alphaBlend(
+                    color.withValues(alpha: .13),
+                    t.surface,
+                  ),
+                  border: Border.all(color: color.withValues(alpha: .35)),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  tag,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color.alphaBlend(
+                      color.withValues(alpha: .78),
+                      t.text,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        if (tags.length > 4)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+            child: Text(
+              '+${tags.length - 4}',
+              style: TextStyle(fontSize: 10.5, color: t.textFaint),
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 class _Badge extends StatelessWidget {
   const _Badge({required this.label, required this.color, this.tabular = false});

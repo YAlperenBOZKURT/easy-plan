@@ -11,6 +11,7 @@ import { dayName, shortDate } from '../lib/dates.ts';
 import ReminderPicker from './ReminderPicker.tsx';
 import { normalizeChecklist } from '../lib/checklist.ts';
 import { deadlineFromInput, deadlineToInput } from '../lib/deadline.ts';
+import TagPicker from './TagPicker.tsx';
 
 export interface CardDraft {
   card?: Card;
@@ -41,6 +42,8 @@ export default function CardModal({
   const [color, setColor] = useState(existing?.color ?? 'blue');
   const [priority, setPriority] = useState<CardPriority>(existing?.priority ?? 'none');
   const [deadline, setDeadline] = useState(deadlineToInput(existing?.deadlineAt ?? null));
+  const [tags, setTags] = useState(existing?.tags ?? []);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [reminders, setReminders] = useState<number[]>(existing?.reminders ?? []);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(existing?.checklist ?? []);
   const [images, setImages] = useState(existing?.images ?? []);
@@ -60,6 +63,14 @@ export default function CardModal({
 
   // preventScroll: odaklanırken modal gövdesi kayıp "Başlık" etiketini gizlemesin.
   useEffect(() => titleInput.current?.focus({ preventScroll: true }), []);
+
+  useEffect(() => {
+    let active = true;
+    api.tags()
+      .then((response) => active && setTagSuggestions(response.tags))
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
@@ -101,6 +112,7 @@ export default function CardModal({
         color,
         priority,
         deadlineAt: deadlineFromInput(deadline),
+        tags,
         reminders,
         checklist: normalizeChecklist(checklist),
         ...(resetOrder ? { manualSort: false } : {}),
@@ -231,6 +243,8 @@ export default function CardModal({
             />
             <span className="hint">Bu tarih geçtiğinde tamamlanmamış kart gecikmiş olarak işaretlenir.</span>
           </div>
+
+          <TagPicker value={tags} suggestions={tagSuggestions} onChange={setTags} />
 
           <div className="field">
             <label className="label" htmlFor="note">

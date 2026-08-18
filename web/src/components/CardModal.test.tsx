@@ -8,6 +8,7 @@ describe('CardModal checklist', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('eklenen maddeyi temizleyerek kart isteğine dahil eder', async () => {
+    vi.spyOn(api, 'tags').mockResolvedValue({ tags: ['Mevcut'] });
     const create = vi.spyOn(api, 'createCard').mockResolvedValue({
       card: {
         id: 'card-1',
@@ -24,6 +25,7 @@ describe('CardModal checklist', () => {
         checklist: [],
         priority: 'none',
         deadlineAt: null,
+        tags: [],
         reminders: [],
         images: [],
         createdAt: '',
@@ -45,6 +47,7 @@ describe('CardModal checklist', () => {
     await user.type(screen.getByLabelText('Checklist maddesi'), '  İlk iş  ');
     await user.click(screen.getByRole('button', { name: 'Acil' }));
     await user.type(screen.getByLabelText('Son tarih'), '2026-08-20T18:30');
+    await user.type(screen.getByLabelText('Etiketler'), '  Backend  {Enter}');
     await user.click(screen.getByRole('button', { name: 'Kaydet' }));
 
     expect(create).toHaveBeenCalledOnce();
@@ -53,6 +56,7 @@ describe('CardModal checklist', () => {
       checklist: [{ text: 'İlk iş', done: false }],
       priority: 'urgent',
       deadlineAt: new Date(2026, 7, 20, 18, 30).toISOString(),
+      tags: ['Backend'],
     });
     expect(onSaved).toHaveBeenCalledOnce();
   });

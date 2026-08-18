@@ -110,6 +110,7 @@ export const api = {
 
   /* kartlar */
   cards: (from: string, to: string) => request<{ cards: Card[] }>(`/cards?from=${from}&to=${to}`),
+  tags: () => request<{ tags: string[] }>('/tags'),
   createCard: (input: Record<string, unknown>) =>
     request<{ card: Card }>('/cards', { method: 'POST', body: JSON.stringify(input) }),
   updateCard: (id: string, patch: Record<string, unknown>) =>

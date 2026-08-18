@@ -139,6 +139,18 @@ button:focus-visible, [role='button']:focus-visible {
 .card-checklist-item.done > span { border-color: var(--c); background: var(--c); }
 .card-checklist-item.done > em { color: var(--text-faint); text-decoration: line-through; }
 .card-checklist-more { padding-left: 20px; font-size: 10.5px; color: var(--text-faint); }
+.card-tags, .view-tags, .tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-chip { --tag: var(--c-blue); display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 21px; padding: 2px 7px; border-radius: 999px; border: 1px solid color-mix(in oklab, var(--tag) 38%, transparent); background: color-mix(in oklab, var(--tag) 11%, var(--surface)); color: color-mix(in oklab, var(--tag) 82%, var(--text)); font-size: 10.5px; font-weight: 580; line-height: 1.2; overflow-wrap: anywhere; }
+.tag-chip button { width: 15px; height: 15px; padding: 0; border: 0; background: transparent; color: inherit; font-size: 9px; opacity: .72; }
+.tag-more { display: inline-flex; align-items: center; min-height: 21px; font-size: 10.5px; color: var(--text-faint); }
+.tag-color-0 { --tag: var(--c-red); }
+.tag-color-1 { --tag: var(--c-orange); }
+.tag-color-2 { --tag: var(--c-amber); }
+.tag-color-3 { --tag: var(--c-green); }
+.tag-color-4 { --tag: var(--c-teal); }
+.tag-color-5 { --tag: var(--c-blue); }
+.tag-color-6 { --tag: var(--c-violet); }
+.tag-color-7 { --tag: var(--c-pink); }
 
 .card-images { display: grid; gap: 4px; margin-top: 1px; }
 .card-images.one { grid-template-columns: 1fr; }
@@ -170,7 +182,7 @@ button:focus-visible, [role='button']:focus-visible {
     transparent 6px 13px);
   border-color: color-mix(in oklab, var(--c) 35%, transparent);
 }
-.card.done .card-title, .card.done .card-note, .card.done .time-badge, .card.done .priority-badge, .card.done .deadline-badge, .card.done .card-images { opacity: .45; }
+.card.done .card-title, .card.done .card-note, .card.done .card-tags, .card.done .time-badge, .card.done .priority-badge, .card.done .deadline-badge, .card.done .card-images { opacity: .45; }
 .card.done .card-title { text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: color-mix(in oklab, var(--c) 70%, transparent); }
 .card.dragging { opacity: .3; border-style: dashed; box-shadow: none; background: transparent; }
 .card:active { cursor: grabbing; }
@@ -269,6 +281,13 @@ input[type='checkbox'] { width: 18px; height: 18px; min-height: 0; flex: none; a
 .deadline-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .text-action { padding: 0; border: 0; background: transparent; color: var(--accent); font-size: 11.5px; font-weight: 550; }
 .text-action:hover { text-decoration: underline; }
+.tag-picker { gap: 7px; }
+.tag-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tag-input-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.tag-input-row .btn { min-height: 38px; }
+.tag-suggestions { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-suggestions button { min-height: 26px; padding: 3px 8px; border: 1px dashed var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-muted); font-size: 11px; }
+.tag-suggestions button:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in oklab, var(--accent) 7%, transparent); }
 
 .checklist-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .checklist-editor { display: flex; flex-direction: column; gap: 7px; }

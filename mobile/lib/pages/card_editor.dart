@@ -10,6 +10,7 @@ import '../cache.dart';
 import '../dates.dart';
 import '../deadline.dart';
 import '../store.dart';
+import '../tags.dart';
 import '../theme.dart';
 
 /// Kart düzenleyiciyi açar.
@@ -90,6 +91,10 @@ class _CardEditorState extends State<CardEditor> {
       : DateTime.tryParse(widget.card!.deadlineAt!)?.toLocal();
   late final List<int> _reminders = [...?widget.card?.reminders];
   late final List<ChecklistItem> _checklist = [...?widget.card?.checklist];
+  late List<String> _tags = [...?widget.card?.tags];
+  final _tagInput = TextEditingController();
+  List<String> _tagSuggestions = [];
+  String? _tagError;
   late List<CardImage> _images = [...?widget.card?.images];
 
   /// Yeni kartta görsel, kart kaydedildikten sonra yüklenir.
@@ -107,9 +112,37 @@ class _CardEditorState extends State<CardEditor> {
       time == null ? null : '${two(time.hour)}:${two(time.minute)}';
 
   @override
+  void initState() {
+    super.initState();
+    _tagSuggestions = [..._tags];
+    _loadTagSuggestions();
+  }
+
+  Future<void> _loadTagSuggestions() async {
+    try {
+      final suggestions = await widget.store.api.tags();
+      if (mounted) setState(() => _tagSuggestions = suggestions);
+    } catch (_) {
+      // Etiket düzenleme offline çalışmaya devam eder; öneriler zorunlu değildir.
+    }
+  }
+
+  void _addTag([String? value]) {
+    final result = addCardTag(_tags, value ?? _tagInput.text);
+    setState(() {
+      _tagError = result.error;
+      if (result.error == null) {
+        _tags = result.tags;
+        _tagInput.clear();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _title.dispose();
     _note.dispose();
+    _tagInput.dispose();
     super.dispose();
   }
 
@@ -182,6 +215,7 @@ class _CardEditorState extends State<CardEditor> {
       color: _color,
       priority: _priority,
       deadlineAt: _deadline?.toUtc().toIso8601String(),
+      tags: _tags,
       reminders: _reminders,
       checklist: _checklist
           .map((item) => item.copyWith(text: item.text.trim()))
@@ -432,6 +466,88 @@ class _CardEditorState extends State<CardEditor> {
               ),
               const SizedBox(height: 16),
 
+              Row(
+                children: [
+                  const Expanded(child: _Label('Etiketler')),
+                  Text(
+                    '${_tags.length}/$maxCardTags',
+                    style: TextStyle(fontSize: 11.5, color: t.textFaint),
+                  ),
+                ],
+              ),
+              if (_tags.isNotEmpty) ...[
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final tag in _tags)
+                      _TagChip(
+                        tag: tag,
+                        onDeleted: () => setState(() {
+                          _tags.remove(tag);
+                          _tagError = null;
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+              ],
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _tagInput,
+                      maxLength: maxTagLength,
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        hintText: 'Örn. Backend',
+                        errorText: _tagError,
+                        counterText: '',
+                      ),
+                      onSubmitted: _addTag,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: _tags.length >= maxCardTags ? null : _addTag,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(64, 48),
+                    ),
+                    child: const Text('Ekle'),
+                  ),
+                ],
+              ),
+              if (_tagSuggestions.any(
+                (suggestion) => !_tags.any(
+                  (tag) => tag.toLowerCase() == suggestion.toLowerCase(),
+                ),
+              )) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final suggestion in _tagSuggestions
+                        .where(
+                          (suggestion) => !_tags.any(
+                            (tag) =>
+                                tag.toLowerCase() == suggestion.toLowerCase(),
+                          ),
+                        )
+                        .take(6))
+                      ActionChip(
+                        label: Text(suggestion),
+                        avatar: const Icon(Icons.add, size: 15),
+                        onPressed: _tags.length >= maxCardTags
+                            ? null
+                            : () => _addTag(suggestion),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
+
               const _Label('Not'),
               TextField(
                 controller: _note,
@@ -670,6 +786,38 @@ class _CardEditorState extends State<CardEditor> {
           ),
         ),
       ],
+    );
+  }
+}
+
+Color _tagColor(PlannerTokens tokens, String tag) =>
+    tokens.cardColor(cardColorKeys[tagColorIndex(tag)]);
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.tag, this.onDeleted});
+
+  final String tag;
+  final VoidCallback? onDeleted;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final color = _tagColor(t, tag);
+    return InputChip(
+      label: Text(tag),
+      deleteIcon: onDeleted == null ? null : const Icon(Icons.close, size: 15),
+      onDeleted: onDeleted,
+      backgroundColor: Color.alphaBlend(
+        color.withValues(alpha: .13),
+        t.surface,
+      ),
+      side: BorderSide(color: color.withValues(alpha: .38)),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Color.alphaBlend(color.withValues(alpha: .78), t.text),
+      ),
+      visualDensity: VisualDensity.compact,
     );
   }
 }
