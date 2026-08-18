@@ -7,6 +7,7 @@ import { nowIso } from './ids.ts';
 import { runMaintenance } from './maintenance.ts';
 import { escapeHtml, layout, sendMail } from './mailer.ts';
 import { repo } from './repo.ts';
+import { parseTags } from './tags.ts';
 import { today } from './time.ts';
 import type { CardImageRow, CardRow, UserRow } from './types.ts';
 
@@ -76,6 +77,17 @@ function timeBadge(card: Pick<CardRow, 'start_time' | 'end_time' | 'color'>): st
   return `<span style="display:inline-block;background:${hex}1a;color:${hex};border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600;letter-spacing:.2px">${range}</span>`;
 }
 
+function tagsHtml(card: Pick<CardRow, 'tags_json'>): string {
+  const tags = parseTags(card.tags_json);
+  if (tags.length === 0) return '';
+  return `<div style="margin-top:8px">${tags
+    .map(
+      (tag) =>
+        `<span style="display:inline-block;margin:0 5px 5px 0;background:#8e4ec61a;color:#6f4fc4;border:1px solid #8e4ec64d;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:600">${escapeHtml(tag)}</span>`,
+    )
+    .join('')}</div>`;
+}
+
 function cardHtml(card: CardRow, images: CardImageRow[], timezone: string): string {
   const checklist = parseChecklist(card.checklist_json);
   const checklistHtml = checklist.length > 0
@@ -92,6 +104,7 @@ function cardHtml(card: CardRow, images: CardImageRow[], timezone: string): stri
   return `${timeBadge(card)}${priorityBadge(card)}${deadlineBadge(card, timezone)}
     <h2 style="margin:12px 0 0;font-size:17px;font-weight:600">${escapeHtml(card.title || '(başlıksız)')}</h2>
     ${card.note ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap">${escapeHtml(card.note)}</p>` : ''}
+    ${tagsHtml(card)}
     ${checklistHtml}
     ${pictures}`;
 }
@@ -202,6 +215,7 @@ export async function sendDailySummaries(database: Db = db(), now = new Date()) 
           ${deadlineBadge(card, tz, now)}
           <div style="margin-top:6px;font-size:15px;${card.done ? 'color:#8a8a8e;text-decoration:line-through' : 'font-weight:500'}">${escapeHtml(card.title || '(başlıksız)')}</div>
           ${card.note ? `<div style="margin-top:2px;font-size:13px;color:#6b6b70;white-space:pre-wrap">${escapeHtml(card.note)}</div>` : ''}
+          ${tagsHtml(card)}
         </td></tr>`,
       )
       .join('');

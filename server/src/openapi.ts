@@ -41,6 +41,12 @@ const checklist = (): JsonSchema => ({
     ['text'],
   ),
 });
+const tags = (): JsonSchema => ({
+  type: 'array',
+  maxItems: 10,
+  uniqueItems: true,
+  items: string({ minLength: 1, maxLength: 30 }),
+});
 
 const cardBody = object({
   id: string({ format: 'uuid' }),
@@ -53,6 +59,7 @@ const cardBody = object({
   done: boolean(),
   priority: string({ enum: ['none', 'low', 'medium', 'high', 'urgent'] }),
   deadlineAt: { anyOf: [string({ format: 'date-time' }), { type: 'null' }] },
+  tags: tags(),
   manualSort: boolean(),
   reminders: numberArray(),
   checklist: checklist(),
@@ -117,6 +124,7 @@ const operations: Record<string, OperationDoc> = {
     summary: 'Tarih aralığındaki kartları listeler', tag: 'Cards',
     querystring: object({ from: string({ format: 'date' }), to: string({ format: 'date' }) }, ['from', 'to']),
   },
+  'GET /api/v1/tags': { summary: 'Kullanıcının mevcut kart etiketlerini listeler', tag: 'Cards' },
   'POST /api/v1/cards': { summary: 'Kart oluşturur', tag: 'Cards', body: { ...cardBody, required: ['day'] } },
   'PATCH /api/v1/cards/:id': { summary: 'Kartı günceller', tag: 'Cards', body: cardBody },
   'DELETE /api/v1/cards/:id': { summary: 'Kartı siler', tag: 'Cards' },

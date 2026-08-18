@@ -90,6 +90,7 @@ class PlannerCard {
     this.checklist = const [],
     this.priority = 'none',
     this.deadlineAt,
+    this.tags = const [],
     required this.reminders,
     required this.images,
     required this.updatedAt,
@@ -109,6 +110,7 @@ class PlannerCard {
   final List<ChecklistItem> checklist;
   final String priority;
   final String? deadlineAt;
+  final List<String> tags;
   final List<int> reminders;
   final List<CardImage> images;
   final String updatedAt;
@@ -138,6 +140,7 @@ class PlannerCard {
     'checklist': checklist.map((item) => item.toJson()).toList(),
     'priority': priority,
     'deadlineAt': deadlineAt,
+    'tags': tags,
     'reminders': reminders,
     'images': images.map((i) => i.toJson()).toList(),
     'updatedAt': updatedAt,
@@ -157,6 +160,7 @@ class PlannerCard {
     List<ChecklistItem>? checklist,
     String? priority,
     Object? deadlineAt = _notProvided,
+    List<String>? tags,
     String? updatedAt,
   }) => PlannerCard(
     id: id,
@@ -175,6 +179,7 @@ class PlannerCard {
     deadlineAt: identical(deadlineAt, _notProvided)
         ? this.deadlineAt
         : deadlineAt as String?,
+    tags: tags ?? this.tags,
     reminders: reminders ?? this.reminders,
     images: images,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -199,6 +204,7 @@ class PlannerCard {
         ? json['priority'] as String
         : 'none',
     deadlineAt: json['deadlineAt'] as String?,
+    tags: ((json['tags'] as List?) ?? []).cast<String>(),
     reminders: ((json['reminders'] as List?) ?? [])
         .map((e) => (e as num).toInt())
         .toList(),

@@ -10,6 +10,7 @@ import { removeImageFiles } from '../storage.ts';
 import { addYears, isValidDay, isValidInstant, isValidTime, today } from '../time.ts';
 import { CARD_COLORS, CARD_PRIORITIES } from '../types.ts';
 import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
+import { sanitizeTags } from '../tags.ts';
 
 export const storeFor = (req: FastifyRequest): Repo => repo(db(), req.user!.id);
 
@@ -52,6 +53,11 @@ function readCardBody(body: Record<string, unknown> | undefined) {
       out.deadlineAt = new Date(body.deadlineAt).toISOString();
     } else errors.push('deadlineAt');
   }
+  if ('tags' in body) {
+    const result = sanitizeTags(body.tags);
+    if (result.valid) out.tags = result.tags;
+    else errors.push('tags');
+  }
   if ('checklist' in body) {
     const checklist = sanitizeChecklist(body.checklist);
     if (checklist.valid) {
@@ -69,6 +75,8 @@ function readCardBody(body: Record<string, unknown> | undefined) {
 
 export async function cardRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireUser);
+
+  app.get('/tags', async (req) => ({ tags: storeFor(req).cards.allTags() }));
 
   /** Belirli bir tarih aralığındaki kartlar, resim ve hatırlatmalarıyla. */
   app.get<{ Querystring: { from?: string; to?: string } }>('/cards', async (req, reply) => {

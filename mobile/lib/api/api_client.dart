@@ -210,6 +210,11 @@ class ApiClient {
         .toList();
   }
 
+  Future<List<String>> tags() async {
+    final json = await _send('GET', '/tags') as Map<String, dynamic>;
+    return (json['tags'] as List).cast<String>();
+  }
+
   Future<PlannerCard> createCard(Map<String, dynamic> input) async {
     final json =
         await _send('POST', '/cards', body: input) as Map<String, dynamic>;

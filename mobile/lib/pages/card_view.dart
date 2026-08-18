@@ -4,6 +4,7 @@ import '../api/models.dart';
 import '../dates.dart';
 import '../deadline.dart';
 import '../store.dart';
+import '../tags.dart';
 import '../theme.dart';
 
 /// Kartı rahatça incelemek için okuma penceresi (web'deki "İncele" ile aynı).
@@ -160,6 +161,51 @@ class CardView extends StatelessWidget {
                 Text(
                   card.note,
                   style: TextStyle(fontSize: 14, height: 1.6, color: t.text),
+                ),
+              ],
+
+              if (card.tags.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    for (final tag in card.tags)
+                      Builder(
+                        builder: (_) {
+                          final tagColor = t.cardColor(
+                            cardColorKeys[tagColorIndex(tag)],
+                          );
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Color.alphaBlend(
+                                tagColor.withValues(alpha: .13),
+                                t.surface,
+                              ),
+                              border: Border.all(
+                                color: tagColor.withValues(alpha: .38),
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              tag,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color.alphaBlend(
+                                  tagColor.withValues(alpha: .78),
+                                  t.text,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
                 ),
               ],
 

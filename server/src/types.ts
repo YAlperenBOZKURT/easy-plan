@@ -37,6 +37,7 @@ export interface CardRow {
   checklist_json: string;
   priority: CardPriority;
   deadline_at: string | null;
+  tags_json: string;
   created_at: string;
   updated_at: string;
 }

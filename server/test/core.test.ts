@@ -9,6 +9,7 @@ import { materializeHabit, purgeOldHabitCards } from '../src/maintenance.ts';
 import type { UserRow } from '../src/types.ts';
 import { isChecklistComplete, parseChecklist, sanitizeChecklist } from '../src/checklist.ts';
 import { cardDto } from '../src/dto.ts';
+import { parseTags, sanitizeTags } from '../src/tags.ts';
 
 /* --------------------------------------------------------------- yardımcılar */
 
@@ -88,19 +89,40 @@ test('checklist temizlenir, doğrulanır ve kartla birlikte kalıcı olur', () =
     checklist: valid.items,
     priority: 'high',
     deadlineAt: '2026-08-20T15:00:00.000Z',
+    tags: ['Backend', 'Kolay İş'],
   });
   assert.deepEqual(cardDto(card).checklist, valid.items);
   assert.equal(cardDto(card).priority, 'high');
   assert.equal(cardDto(card).deadlineAt, '2026-08-20T15:00:00.000Z');
+  assert.deepEqual(cardDto(card).tags, ['Backend', 'Kolay İş']);
 
   const updated = store.cards.update(card.id, {
     checklist: valid.items.map((item) => ({ ...item, done: true })),
     priority: 'urgent',
     deadlineAt: null,
+    tags: ['API'],
   })!;
   assert.ok(cardDto(updated).checklist.every((item) => item.done));
   assert.equal(cardDto(updated).priority, 'urgent');
   assert.equal(cardDto(updated).deadlineAt, null);
+  assert.deepEqual(cardDto(updated).tags, ['API']);
+});
+
+test('kart etiketleri normalize edilir, sınırlandırılır ve öneriler tekilleştirilir', () => {
+  assert.deepEqual(sanitizeTags(['  Backend  ', 'Kolay   İş ']), {
+    valid: true,
+    tags: ['Backend', 'Kolay İş'],
+  });
+  assert.equal(sanitizeTags(['İş', 'iş']).valid, false);
+  assert.equal(sanitizeTags(['x'.repeat(31)]).valid, false);
+  assert.deepEqual(parseTags('bozuk-json'), []);
+
+  const db = makeDb();
+  const user = makeUser(db, 'u-tags', 'tags@x.com');
+  const store = repo(db, user.id);
+  store.cards.create({ day: '2026-08-13', tags: ['Backend', 'İş'] });
+  store.cards.create({ day: '2026-08-14', tags: ['backend', 'Kişisel'] });
+  assert.deepEqual(store.cards.allTags(), ['Backend', 'İş', 'Kişisel']);
 });
 
 /* -------------------------------------------------------- kullanıcı ayrımı */
@@ -113,6 +135,7 @@ test('bir kullanıcı diğerinin kartına hiçbir şekilde erişemez', () => {
   const bobStore = repo(db, bob.id);
 
   const card = aliceStore.cards.create({ day: '2026-08-13', title: 'Gizli' });
+  aliceStore.cards.update(card.id, { tags: ['Gizli'] });
   aliceStore.habits.create({ title: 'Koşu', weekdays: [1], reminders: [] });
 
   assert.equal(bobStore.cards.get(card.id), undefined, 'başkasının kartı okunamaz');
@@ -121,6 +144,7 @@ test('bir kullanıcı diğerinin kartına hiçbir şekilde erişemez', () => {
   assert.equal(bobStore.cards.range('2026-01-01', '2026-12-31').length, 0);
   assert.equal(bobStore.habits.list().length, 0);
   assert.equal(bobStore.images.forCard(card.id).length, 0, 'başkasının görselleri listelenemez');
+  assert.deepEqual(bobStore.cards.allTags(), [], 'başkasının etiket önerileri okunamaz');
 
   // Alice'in kartı hâlâ yerinde ve değişmemiş
   const still = aliceStore.cards.get(card.id)!;

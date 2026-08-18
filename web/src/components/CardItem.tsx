@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { priorityLabel, type Card } from '../lib/types.ts';
 import { checklistProgress } from '../lib/checklist.ts';
 import { deadlineLabel, deadlineState } from '../lib/deadline.ts';
+import { tagColorIndex } from '../lib/tags.ts';
 
 /** Bu mesafeden az hareket eden işaretçi sürükleme değil, tıklama sayılır. */
 const CLICK_SLOP = 6;
@@ -140,6 +141,15 @@ export default function CardItem({
         <div className="card-meta">
           {card.reminders.length > 0 && <span>🔔 {card.reminders.length}</span>}
           {card.habitId && <span title="Davranıştan üretildi">↻</span>}
+        </div>
+      )}
+
+      {card.tags.length > 0 && (
+        <div className="card-tags" aria-label="Etiketler">
+          {card.tags.slice(0, 4).map((tag) => (
+            <span className={`tag-chip tag-color-${tagColorIndex(tag)}`} key={tag}>{tag}</span>
+          ))}
+          {card.tags.length > 4 && <span className="tag-more">+{card.tags.length - 4}</span>}
         </div>
       )}
 

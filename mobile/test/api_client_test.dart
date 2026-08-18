@@ -79,6 +79,22 @@ void main() {
     api.close();
   });
 
+  test('kullanıcının etiket önerilerini tags endpointinden alır', () async {
+    late http.Request captured;
+    final api = ApiClient(
+      baseUrl: 'https://planner.example',
+      client: MockClient((request) async {
+        captured = request;
+        return http.Response(jsonEncode({'tags': ['Backend', 'Mobil']}), 200);
+      }),
+    );
+
+    expect(await api.tags(), ['Backend', 'Mobil']);
+    expect(captured.method, 'GET');
+    expect(captured.url.path, '/api/v1/tags');
+    api.close();
+  });
+
   test('zaman aşımı ağ hatası olarak loglanır', () async {
     final api = ApiClient(
       baseUrl: 'https://planner.example',

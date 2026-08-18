@@ -30,6 +30,7 @@ void main() {
           .add(const Duration(days: 2))
           .toUtc()
           .toIso8601String(),
+      tags: const ['Backend'],
       reminders: const [],
       images: const [],
       updatedAt: '',
@@ -57,5 +58,6 @@ void main() {
     expect(cardTaps, 0);
     expect(find.text('Acil'), findsOneWidget);
     expect(find.textContaining('Son ·'), findsOneWidget);
+    expect(find.text('Backend'), findsOneWidget);
   });
 }

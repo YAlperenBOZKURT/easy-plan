@@ -12,12 +12,14 @@ void main() {
       ],
       'priority': 'high',
       'deadlineAt': '2026-08-20T15:00:00.000Z',
+      'tags': ['Backend', 'v1'],
     });
 
     expect(card.checklist, hasLength(2));
     expect(card.checklist.first.done, isTrue);
     expect(card.priority, 'high');
     expect(card.deadlineAt, '2026-08-20T15:00:00.000Z');
+    expect(card.tags, ['Backend', 'v1']);
     expect(isChecklistComplete(card.checklist), isFalse);
     expect(card.toJson()['checklist'], [
       {'id': 'item-1', 'text': 'İlk iş', 'done': true},
@@ -25,12 +27,16 @@ void main() {
     ]);
     expect(card.toJson()['priority'], 'high');
     expect(card.toJson()['deadlineAt'], '2026-08-20T15:00:00.000Z');
+    expect(card.toJson()['tags'], ['Backend', 'v1']);
 
     final changed = card.copyWith(
       checklist: [card.checklist.first.copyWith(done: false)],
+      tags: ['Mobil'],
     );
     expect(changed.checklist.single.done, isFalse);
     expect(card.checklist.first.done, isTrue);
+    expect(changed.tags, ['Mobil']);
+    expect(card.tags, ['Backend', 'v1']);
     expect(
       isChecklistComplete([
         card.checklist.first,

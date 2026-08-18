@@ -1,6 +1,7 @@
 import type { Db } from './db.ts';
 import { newId, nowIso } from './ids.ts';
 import { defaultSortIndex } from './sorting.ts';
+import { parseTags, uniqueTags } from './tags.ts';
 import type {
   CardImageRow,
   CardPriority,
@@ -67,6 +68,7 @@ export function repo(db: Db, userId: string) {
       checklist?: ChecklistItem[];
       priority?: CardPriority;
       deadlineAt?: string | null;
+      tags?: string[];
       sortIndex?: number;
       createdAt?: string;
     }): CardRow {
@@ -77,8 +79,8 @@ export function repo(db: Db, userId: string) {
       db.prepare(
         `INSERT INTO cards (id, user_id, day, title, note, start_time, end_time, color, done,
                             sort_index, manual_sort, habit_id, checklist_json, priority, deadline_at,
-                            created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+                            tags_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         userId,
@@ -94,6 +96,7 @@ export function repo(db: Db, userId: string) {
         JSON.stringify(input.checklist ?? []),
         input.priority ?? 'none',
         input.deadlineAt ?? null,
+        JSON.stringify(input.tags ?? []),
         at,
         at,
       );
@@ -115,6 +118,7 @@ export function repo(db: Db, userId: string) {
         checklist: ChecklistItem[];
         priority: CardPriority;
         deadlineAt: string | null;
+        tags: string[];
       }>,
     ): CardRow | undefined {
       const current = cards.get(id);
@@ -133,6 +137,7 @@ export function repo(db: Db, userId: string) {
         checklist: 'checklist_json',
         priority: 'priority',
         deadlineAt: 'deadline_at',
+        tags: 'tags_json',
       };
       const sets: string[] = [];
       const values: (string | number | null)[] = [];
@@ -140,7 +145,7 @@ export function repo(db: Db, userId: string) {
         if (!(key in patch)) continue;
         const raw = (patch as Record<string, unknown>)[key];
         sets.push(`${column} = ?`);
-        if (key === 'checklist') values.push(JSON.stringify(raw));
+        if (key === 'checklist' || key === 'tags') values.push(JSON.stringify(raw));
         else values.push(typeof raw === 'boolean' ? (raw ? 1 : 0) : (raw as string | number | null));
       }
 
@@ -185,6 +190,13 @@ export function repo(db: Db, userId: string) {
         n: number;
       };
       return row.n;
+    },
+
+    allTags(): string[] {
+      const rows = db
+        .prepare('SELECT tags_json FROM cards WHERE user_id = ?')
+        .all(userId) as { tags_json: string }[];
+      return uniqueTags(rows.map((row) => parseTags(row.tags_json)));
     },
 
     touch,
