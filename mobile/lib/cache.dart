@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'api/models.dart';
 import 'app_logger.dart';
+import 'search.dart';
 
 /// Yerel kopya ve çevrimdışı yazma kuyruğu.
 ///
@@ -112,6 +113,25 @@ class Cache {
           ),
         )
         .toList();
+  }
+
+  Future<List<PlannerCard>> searchCards(String query) async {
+    final db = await _open();
+    if (db == null) return const [];
+    final rows = await db.query('cards');
+    final cards = rows
+        .map(
+          (row) => PlannerCard.fromJson(
+            jsonDecode(row['json']! as String) as Map<String, dynamic>,
+          ),
+        )
+        .where((card) => cardTextMatches(card.title, card.note, query))
+        .toList()
+      ..sort((a, b) {
+        final day = b.day.compareTo(a.day);
+        return day != 0 ? day : a.sortIndex.compareTo(b.sortIndex);
+      });
+    return cards.take(maxSearchResults).toList();
   }
 
   /* -------------------------------------------------------------- senkron */

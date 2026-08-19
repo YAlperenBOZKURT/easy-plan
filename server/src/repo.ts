@@ -41,6 +41,18 @@ export function repo(db: Db, userId: string) {
         .all(userId, from, to) as unknown as CardRow[];
     },
 
+    search(match: string, limit: number): CardRow[] {
+      return db
+        .prepare(
+          `SELECT c.* FROM card_search
+           JOIN cards c ON c.id = card_search.card_id
+           WHERE card_search.user_id = ? AND card_search MATCH ?
+           ORDER BY bm25(card_search), c.day DESC, c.sort_index, c.created_at
+           LIMIT ?`,
+        )
+        .all(userId, match, limit) as unknown as CardRow[];
+    },
+
     get(id: string): CardRow | undefined {
       return db.prepare('SELECT * FROM cards WHERE id = ? AND user_id = ?').get(id, userId) as
         | CardRow

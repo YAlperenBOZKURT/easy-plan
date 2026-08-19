@@ -77,6 +77,46 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
     assert.equal(me.json().user.email, 'jwt-user@example.com');
   });
 
+  await t.test('Bearer JWT ile kart arama endpointi sonuç ve doğrulama hatası döndürür', async () => {
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/token',
+      payload: { email: 'jwt-user@example.com', password: 'correct horse battery staple' },
+    });
+    const accessToken = login.json().accessToken as string;
+    const authorization = `Bearer ${accessToken}`;
+    const cardDay = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const card = await app.inject({
+      method: 'POST',
+      url: '/api/v1/cards',
+      headers: { authorization },
+      payload: { day: cardDay, title: 'Roadmap toplantısı', note: 'Arama endpointi' },
+    });
+    assert.equal(card.statusCode, 201);
+
+    const search = await app.inject({
+      method: 'GET',
+      url: '/api/v1/cards/search?q=road',
+      headers: { authorization },
+    });
+    assert.equal(search.statusCode, 200);
+    assert.equal(search.json().cards.length, 1);
+    assert.equal(search.json().cards[0].title, 'Roadmap toplantısı');
+
+    const invalid = await app.inject({
+      method: 'GET',
+      url: '/api/v1/cards/search?q=a',
+      headers: { authorization },
+    });
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(invalid.json().error, 'validation_error');
+  });
+
   await t.test('web refresh Origin kontrolü uygular, token döndürür ve reuse oturumu iptal eder', async () => {
     const login = await app.inject({
       method: 'POST',

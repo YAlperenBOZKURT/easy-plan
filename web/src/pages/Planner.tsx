@@ -27,6 +27,7 @@ import HabitModal from '../components/HabitModal.tsx';
 import SettingsModal from '../components/SettingsModal.tsx';
 import TopMenu from '../components/TopMenu.tsx';
 import { isChecklistComplete, toggleChecklistItem } from '../lib/checklist.ts';
+import CardSearchModal from '../components/CardSearchModal.tsx';
 
 const VISIBLE_DAYS = 7;
 
@@ -40,6 +41,7 @@ export default function Planner({ user }: { user: User }) {
   const [draft, setDraft] = useState<CardDraft | null>(null);
   const [showHabits, setShowHabits] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [inspect, setInspect] = useState<Card | null>(null);
   const [dragging, setDragging] = useState<Card | null>(null);
   const [fastNav, setFastNav] = useState(false);
@@ -154,16 +156,21 @@ export default function Planner({ user }: { user: User }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (draft || showHabits || showSettings) return;
+      if (draft || showHabits || showSettings || showSearch) return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
+      if (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
+        event.preventDefault();
+        setShowSearch(true);
+        return;
+      }
       if (event.key === 'ArrowLeft') shift(-1);
       if (event.key === 'ArrowRight') shift(1);
       if (event.key === 'Escape') setOpenCardId(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [anchor, draft, showHabits, showSettings]);
+  }, [anchor, draft, showHabits, showSearch, showSettings]);
 
   /* ------------------------------------------- mobil: kaydırma ↔ gün şeridi */
 
@@ -513,6 +520,11 @@ export default function Planner({ user }: { user: User }) {
 
         <div className="spacer" />
 
+        <button className="btn search-open" onClick={() => setShowSearch(true)} aria-label="Kartlarda ara">
+          <span aria-hidden="true">⌕</span>
+          <span className="desktop-only">Ara</span>
+        </button>
+
         {/* Yalnızca masaüstünde: sürükleyerek hızlı gün gezme */}
         <button
           className={`btn desktop-only${fastNav ? ' fast-on' : ''}`}
@@ -648,6 +660,15 @@ export default function Planner({ user }: { user: User }) {
       {draft && <CardModal draft={draft} onClose={() => setDraft(null)} onSaved={refresh} />}
       {showHabits && <HabitModal onClose={() => setShowHabits(false)} />}
       {showSettings && <SettingsModal user={user} onClose={() => setShowSettings(false)} />}
+      {showSearch && (
+        <CardSearchModal
+          onClose={() => setShowSearch(false)}
+          onSelect={(card) => {
+            setShowSearch(false);
+            setInspect(card);
+          }}
+        />
+      )}
     </div>
   );
 }

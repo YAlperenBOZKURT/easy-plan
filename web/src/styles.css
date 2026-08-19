@@ -289,6 +289,24 @@ input[type='checkbox'] { width: 18px; height: 18px; min-height: 0; flex: none; a
 .tag-suggestions button { min-height: 26px; padding: 3px 8px; border: 1px dashed var(--border-strong); border-radius: 999px; background: transparent; color: var(--text-muted); font-size: 11px; }
 .tag-suggestions button:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in oklab, var(--accent) 7%, transparent); }
 
+.search-open { display: inline-flex; align-items: center; gap: 6px; }
+.search-modal { max-width: 620px; }
+.search-input-wrap { display: flex; align-items: center; gap: 9px; margin: 15px 18px 8px; padding: 0 11px; border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface-2); }
+.search-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 14%, transparent); }
+.search-input-wrap > span:first-child { color: var(--text-faint); font-size: 20px; }
+.search-input-wrap input { min-width: 0; min-height: 44px; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; }
+.search-results { min-height: 170px; max-height: min(62dvh, 560px); padding: 8px 18px 18px; overflow-y: auto; }
+.search-empty { margin: 48px 0; text-align: center; color: var(--text-faint); font-size: 13px; }
+.danger-text { color: var(--danger); }
+.search-result { width: 100%; padding: 11px 10px; border: 0; border-bottom: 1px solid var(--border); border-radius: var(--r-sm); background: transparent; color: var(--text); text-align: left; }
+.search-result:hover, .search-result:focus-visible { background: var(--surface-hover); }
+.search-result-head { display: flex; align-items: baseline; gap: 10px; }
+.search-result-head strong { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.search-result-head time { flex: none; color: var(--text-faint); font-size: 11px; }
+.search-result-note { display: -webkit-box; margin-top: 4px; overflow: hidden; color: var(--text-muted); font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.search-result-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.search-result-meta > em { color: var(--text-faint); font-size: 10.5px; font-style: normal; font-weight: 600; }
+
 .checklist-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .checklist-editor { display: flex; flex-direction: column; gap: 7px; }
 .checklist-editor-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 34px; align-items: center; gap: 8px; }

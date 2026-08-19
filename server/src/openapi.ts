@@ -125,6 +125,10 @@ const operations: Record<string, OperationDoc> = {
     querystring: object({ from: string({ format: 'date' }), to: string({ format: 'date' }) }, ['from', 'to']),
   },
   'GET /api/v1/tags': { summary: 'Kullanıcının mevcut kart etiketlerini listeler', tag: 'Cards' },
+  'GET /api/v1/cards/search': {
+    summary: 'Kart başlığı ve notlarında tam metin arama yapar', tag: 'Cards',
+    querystring: object({ q: string({ minLength: 2, maxLength: 100 }) }, ['q']),
+  },
   'POST /api/v1/cards': { summary: 'Kart oluşturur', tag: 'Cards', body: { ...cardBody, required: ['day'] } },
   'PATCH /api/v1/cards/:id': { summary: 'Kartı günceller', tag: 'Cards', body: cardBody },
   'DELETE /api/v1/cards/:id': { summary: 'Kartı siler', tag: 'Cards' },

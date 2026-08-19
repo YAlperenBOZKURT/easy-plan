@@ -110,6 +110,8 @@ export const api = {
 
   /* kartlar */
   cards: (from: string, to: string) => request<{ cards: Card[] }>(`/cards?from=${from}&to=${to}`),
+  searchCards: (query: string) =>
+    request<{ query: string; cards: Card[] }>(`/cards/search?q=${encodeURIComponent(query)}`),
   tags: () => request<{ tags: string[] }>('/tags'),
   createCard: (input: Record<string, unknown>) =>
     request<{ card: Card }>('/cards', { method: 'POST', body: JSON.stringify(input) }),

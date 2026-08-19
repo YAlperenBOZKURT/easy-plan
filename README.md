@@ -8,6 +8,7 @@ The project is designed for individuals, families, and small teams that want to 
 
 - **Rolling calendar** — navigate a continuous date window instead of being constrained to calendar weeks.
 - **Flexible cards** — add titles, notes, priorities, deadlines, tags, checklists with progress, colors, start/end times, completion state, reminders, and images.
+- **Full-text search** — search every card title and note from web, mobile, or desktop, with an offline cache fallback in Flutter clients.
 - **Drag and drop** — reorder cards within a day or move them across days on web, mobile, and desktop.
 - **Mobile day navigation** — edge controls move one day at a time, keep the visible column synchronized with the day strip, and clearly highlight today.
 - **Recurring habits** — generate independent cards for selected weekdays across a one-year planning window.

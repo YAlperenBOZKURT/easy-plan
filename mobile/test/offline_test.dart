@@ -61,6 +61,24 @@ void main() {
     );
   });
 
+  test('çevrimdışıyken kart başlığı ve notunda arama yapılır', () async {
+    final today = todayKey();
+    await Cache.instance.saveCards([
+      card('search-title', today, 'Özel proje sunumu'),
+      card('search-note', addDays(today, 1), 'Toplantı').copyWith(
+        note: 'Müşteri taslağını hazırla',
+      ),
+    ]);
+    expect(
+      (await Cache.instance.searchCards('proje sun')).map((item) => item.id),
+      ['search-title'],
+    );
+    expect(
+      (await Cache.instance.searchCards('müşteri tasla')).map((item) => item.id),
+      ['search-note'],
+    );
+  });
+
   test('çevrimdışı yazmalar sırayla kuyruğa girer ve boşaltılır', () async {
     expect(await Cache.instance.pendingCount(), 0);
 

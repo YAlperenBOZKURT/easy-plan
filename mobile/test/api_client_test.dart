@@ -95,6 +95,31 @@ void main() {
     api.close();
   });
 
+  test('kart arama sorgusunu güvenli query parametresiyle gönderir', () async {
+    late http.Request captured;
+    final api = ApiClient(
+      baseUrl: 'https://planner.example',
+      client: MockClient((request) async {
+        captured = request;
+        return http.Response(
+          jsonEncode({
+            'query': 'proje sunumu',
+            'cards': [
+              {'id': 'card-1', 'day': '2026-08-18', 'title': 'Proje sunumu'},
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    final cards = await api.searchCards('proje sunumu');
+    expect(cards.single.title, 'Proje sunumu');
+    expect(captured.url.path, '/api/v1/cards/search');
+    expect(captured.url.queryParameters['q'], 'proje sunumu');
+    api.close();
+  });
+
   test('zaman aşımı ağ hatası olarak loglanır', () async {
     final api = ApiClient(
       baseUrl: 'https://planner.example',

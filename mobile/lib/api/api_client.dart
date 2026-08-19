@@ -210,6 +210,15 @@ class ApiClient {
         .toList();
   }
 
+  Future<List<PlannerCard>> searchCards(String query) async {
+    final json =
+        await _send('GET', '/cards/search', query: {'q': query})
+            as Map<String, dynamic>;
+    return (json['cards'] as List)
+        .map((entry) => PlannerCard.fromJson(entry as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<String>> tags() async {
     final json = await _send('GET', '/tags') as Map<String, dynamic>;
     return (json['tags'] as List).cast<String>();

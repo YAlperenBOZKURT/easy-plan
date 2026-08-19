@@ -11,6 +11,7 @@ import { addYears, isValidDay, isValidInstant, isValidTime, today } from '../tim
 import { CARD_COLORS, CARD_PRIORITIES } from '../types.ts';
 import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
 import { sanitizeTags } from '../tags.ts';
+import { MAX_SEARCH_RESULTS, readSearchQuery } from '../search.ts';
 
 export const storeFor = (req: FastifyRequest): Repo => repo(db(), req.user!.id);
 
@@ -77,6 +78,20 @@ export async function cardRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireUser);
 
   app.get('/tags', async (req) => ({ tags: storeFor(req).cards.allTags() }));
+
+  app.get<{ Querystring: { q?: string } }>('/cards/search', async (req, reply) => {
+    const parsed = readSearchQuery(req.query.q);
+    if (!parsed.valid) return reply.code(400).send({ error: 'invalid_search_query' });
+    const store = storeFor(req);
+    const cards = store.cards.search(parsed.match, MAX_SEARCH_RESULTS);
+    const ids = cards.map((card) => card.id);
+    const images = store.images.forCards(ids);
+    const reminders = store.reminders.forCards(ids);
+    return {
+      query: parsed.query,
+      cards: cards.map((card) => cardDto(card, images, reminders)),
+    };
+  });
 
   /** Belirli bir tarih aralığındaki kartlar, resim ve hatırlatmalarıyla. */
   app.get<{ Querystring: { from?: string; to?: string } }>('/cards', async (req, reply) => {
