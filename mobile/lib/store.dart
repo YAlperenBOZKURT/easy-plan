@@ -285,6 +285,19 @@ class PlannerStore extends ChangeNotifier {
     }
   }
 
+  Future<({List<PlannerCard> cards, bool offline})> searchCards(
+    String query,
+  ) async {
+    try {
+      final cards = await api.searchCards(query);
+      // Arama sonucunu bekletmeden göster; önbellek yazımı arka planda tamamlanır.
+      unawaited(Cache.instance.saveCards(cards).catchError((_) {}));
+      return (cards: cards, offline: false);
+    } catch (_) {
+      return (cards: await Cache.instance.searchCards(query), offline: true);
+    }
+  }
+
   void shift(int delta) {
     final next = addDays(anchor, delta);
     if (next.compareTo(minDay) < 0 ||

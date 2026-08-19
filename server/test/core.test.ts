@@ -10,6 +10,7 @@ import type { UserRow } from '../src/types.ts';
 import { isChecklistComplete, parseChecklist, sanitizeChecklist } from '../src/checklist.ts';
 import { cardDto } from '../src/dto.ts';
 import { parseTags, sanitizeTags } from '../src/tags.ts';
+import { MAX_SEARCH_RESULTS, readSearchQuery } from '../src/search.ts';
 
 /* --------------------------------------------------------------- yardımcılar */
 
@@ -123,6 +124,56 @@ test('kart etiketleri normalize edilir, sınırlandırılır ve öneriler tekill
   store.cards.create({ day: '2026-08-13', tags: ['Backend', 'İş'] });
   store.cards.create({ day: '2026-08-14', tags: ['backend', 'Kişisel'] });
   assert.deepEqual(store.cards.allTags(), ['Backend', 'İş', 'Kişisel']);
+});
+
+test('kart araması başlık ve notlarda çalışır, güncellemeleri izler ve kullanıcıyı ayırır', () => {
+  const db = makeDb();
+  const alice = makeUser(db, 'u-search-a', 'search-a@x.com');
+  const bob = makeUser(db, 'u-search-b', 'search-b@x.com');
+  const aliceStore = repo(db, alice.id);
+  const bobStore = repo(db, bob.id);
+
+  const first = aliceStore.cards.create({
+    day: '2026-08-18',
+    title: 'Proje sunumu',
+    note: 'Müşteri için son taslağı hazırla',
+  });
+  aliceStore.cards.create({ day: '2026-08-19', title: 'Market alışverişi' });
+  bobStore.cards.create({ day: '2026-08-18', title: 'Gizli proje sunumu' });
+
+  const parsed = readSearchQuery('  proje   sun  ');
+  assert.equal(parsed.valid, true);
+  if (!parsed.valid) return;
+  assert.equal(parsed.query, 'proje sun');
+  assert.deepEqual(
+    aliceStore.cards.search(parsed.match, MAX_SEARCH_RESULTS).map((card) => card.id),
+    [first.id],
+  );
+  assert.deepEqual(bobStore.cards.search(parsed.match, MAX_SEARCH_RESULTS).length, 1);
+
+  aliceStore.cards.update(first.id, { title: 'Tamamlandı', note: 'Arşiv kaydı' });
+  assert.equal(aliceStore.cards.search(parsed.match, MAX_SEARCH_RESULTS).length, 0);
+
+  const noteQuery = readSearchQuery('arş');
+  assert.equal(noteQuery.valid, true);
+  if (noteQuery.valid) {
+    assert.deepEqual(
+      aliceStore.cards.search(noteQuery.match, MAX_SEARCH_RESULTS).map((card) => card.id),
+      [first.id],
+    );
+  }
+  aliceStore.cards.remove(first.id);
+  if (noteQuery.valid) {
+    assert.equal(aliceStore.cards.search(noteQuery.match, MAX_SEARCH_RESULTS).length, 0);
+  }
+
+  assert.deepEqual(readSearchQuery('a'), { valid: false });
+  assert.deepEqual(readSearchQuery('x'.repeat(101)), { valid: false });
+  const operatorQuery = readSearchQuery('" OR *');
+  assert.equal(operatorQuery.valid, true, 'FTS operatörleri veri olarak işlenir');
+  if (operatorQuery.valid) {
+    assert.doesNotThrow(() => aliceStore.cards.search(operatorQuery.match, MAX_SEARCH_RESULTS));
+  }
 });
 
 /* -------------------------------------------------------- kullanıcı ayrımı */

@@ -12,6 +12,7 @@ import '../store.dart';
 import '../theme.dart';
 import '../widgets/draggable_card.dart';
 import 'card_editor.dart';
+import 'card_search.dart';
 import 'card_view.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
@@ -73,6 +74,15 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
       day: day,
     );
     if (saved == true && mounted) setState(() {});
+  }
+
+  Future<void> _openSearch() async {
+    final card = await showCardSearch(context, store: store);
+    if (card == null || !mounted) return;
+    final result = await showCardView(context, store: store, card: card);
+    if (result == 'edit' && mounted) {
+      await _openEditor(card: card, day: card.day);
+    }
   }
 
   void _cardActions(PlannerCard card) {
@@ -196,6 +206,11 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               ],
             ),
             actions: [
+              IconButton(
+                onPressed: _openSearch,
+                icon: const Icon(Icons.search),
+                tooltip: 'Kartlarda ara',
+              ),
               if (_isDesktopLayout && wide)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
