@@ -115,6 +115,7 @@ test('kart etiketleri normalize edilir, sınırlandırılır ve öneriler tekill
     tags: ['Backend', 'Kolay İş'],
   });
   assert.equal(sanitizeTags(['İş', 'iş']).valid, false);
+  assert.equal(sanitizeTags(['Backend API', 'backend api']).valid, false);
   assert.equal(sanitizeTags(['x'.repeat(31)]).valid, false);
   assert.deepEqual(parseTags('bozuk-json'), []);
 

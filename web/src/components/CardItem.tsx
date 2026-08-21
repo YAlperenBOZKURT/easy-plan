@@ -22,6 +22,7 @@ export default function CardItem({
   onToggleDone,
   onToggleChecklist,
   onDelete,
+  dragDisabled = false,
 }: {
   card: Card;
   open: boolean;
@@ -31,10 +32,12 @@ export default function CardItem({
   onToggleDone: () => void;
   onToggleChecklist: (itemId: string) => void;
   onDelete: () => void;
+  dragDisabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { day: card.day },
+    disabled: dragDisabled,
   });
 
   // Tıklamayı, işaretçinin gerçekten hareket edip etmediğine bakarak ayırt ediyoruz.

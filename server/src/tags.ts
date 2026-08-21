@@ -1,7 +1,7 @@
 export const MAX_CARD_TAGS = 10;
 export const MAX_TAG_LENGTH = 30;
 
-const tagKey = (tag: string): string => tag.toLocaleLowerCase('tr-TR');
+const tagKey = (tag: string): string => tag.replace(/[Iİ]/g, 'i').toLowerCase();
 
 export function sanitizeTags(value: unknown): { valid: boolean; tags: string[] } {
   if (!Array.isArray(value) || value.length > MAX_CARD_TAGS) {

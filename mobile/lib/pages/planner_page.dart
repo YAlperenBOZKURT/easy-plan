@@ -8,9 +8,11 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../dates.dart';
+import '../filters.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets/draggable_card.dart';
+import '../widgets/filter_dialog.dart';
 import 'card_editor.dart';
 import 'card_search.dart';
 import 'card_view.dart';
@@ -24,10 +26,12 @@ class PlannerPage extends StatefulWidget {
   @override
   State<PlannerPage> createState() => _PlannerPageState();
 }
-
 class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
   late final PageController _pages = PageController();
   int _index = 0;
+
+  /// Aktif filtreler.
+  CardFilterState _filters = CardFilterState.defaultFilters;
 
   /// Masaüstünde: fareyle sürükleyerek hızlı gün gezme.
   bool _fastNav = false;
@@ -85,6 +89,18 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _openFilters() async {
+    final result = await showCardFilterSheet(
+      context,
+      currentFilters: _filters,
+      allTags: store.allTags,
+      loadTags: store.availableTags,
+    );
+    if (result != null && mounted) {
+      setState(() => _filters = result);
+    }
+  }
+
   void _cardActions(PlannerCard card) {
     final t = context.tokens;
     showModalBottomSheet<void>(
@@ -129,7 +145,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   card: card,
                 );
                 if (result == 'edit' && mounted) {
-                  _openEditor(card: card, day: card.day);
+                  await _openEditor(card: card, day: card.day);
                 }
               },
             ),
@@ -211,6 +227,20 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                 icon: const Icon(Icons.search),
                 tooltip: 'Kartlarda ara',
               ),
+              IconButton(
+                onPressed: _openFilters,
+                icon: Badge(
+                  isLabelVisible: _filters.hasActiveFilters,
+                  label: Text('${_filters.activeCount}'),
+                  backgroundColor: t.accent,
+                  textColor: t.accentFg,
+                  child: Icon(
+                    _filters.hasActiveFilters ? Icons.tune : Icons.tune_outlined,
+                    color: _filters.hasActiveFilters ? t.accent : null,
+                  ),
+                ),
+                tooltip: 'Kartları filtrele',
+              ),
               if (_isDesktopLayout && wide)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
@@ -273,13 +303,16 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   // Kartı şeritteki bir güne bırakmak onu o güne taşır.
                   onDropOnDay: (i, card) {
                     final target = store.cardsOf(days[i]);
-                    _move(
-                      card,
-                      days[i],
-                      target.isEmpty ? null : target.last.id,
-                      null,
-                    );
+                    final last = target.isEmpty ? null : target.last;
+                    _move(card, days[i], last?.id, null);
                   },
+                ),
+              if (_filters.hasActiveFilters)
+                _ActiveFiltersBar(
+                  filters: _filters,
+                  onUpdate: (f) => setState(() => _filters = f),
+                  onClear: () =>
+                      setState(() => _filters = CardFilterState.defaultFilters),
                 ),
               if (store.error != null)
                 Semantics(
@@ -371,10 +404,13 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                                         child: _DayColumn(
                                           store: store,
                                           day: day,
+                                          filters: _filters,
                                           onAdd: _openEditor,
                                           onCard: _cardActions,
                                           onMove: _move,
-                                          dragEnabled: !_fastNav,
+                                          dragEnabled:
+                                              !_fastNav &&
+                                              !_filters.hasActiveFilters,
                                           onDragState: (active) =>
                                               _cardDragging = active,
                                         ),
@@ -425,9 +461,11 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                             itemBuilder: (_, i) => _DayColumn(
                               store: store,
                               day: days[i],
+                              filters: _filters,
                               onAdd: _openEditor,
                               onCard: _cardActions,
                               onMove: _move,
+                              dragEnabled: !_filters.hasActiveFilters,
                             ),
                           ),
                           // Sürüklenen kart kenarda beklerse gün değişir.
@@ -560,6 +598,7 @@ class _DayColumn extends StatelessWidget {
   const _DayColumn({
     required this.store,
     required this.day,
+    required this.filters,
     required this.onAdd,
     required this.onCard,
     required this.onMove,
@@ -569,6 +608,7 @@ class _DayColumn extends StatelessWidget {
 
   final PlannerStore store;
   final String day;
+  final CardFilterState filters;
   final void Function({PlannerCard? card, required String day}) onAdd;
   final void Function(PlannerCard card) onCard;
 
@@ -590,7 +630,7 @@ class _DayColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final cards = store.cardsOf(day);
+    final cards = store.cardsOf(day).where(filters.matches).toList();
     final isToday = day == todayKey();
     final isPast = day.compareTo(todayKey()) < 0;
 
@@ -698,7 +738,6 @@ class _DayColumn extends StatelessWidget {
     );
   }
 }
-
 class _AddButton extends StatelessWidget {
   const _AddButton({required this.onTap});
   final VoidCallback onTap;
@@ -922,6 +961,161 @@ class _EdgeFlipperState extends State<_EdgeFlipper> {
                   ),
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class _ActiveFiltersBar extends StatelessWidget {
+  const _ActiveFiltersBar({
+    required this.filters,
+    required this.onUpdate,
+    required this.onClear,
+  });
+
+  final CardFilterState filters;
+  final void Function(CardFilterState) onUpdate;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: t.accent.withValues(alpha: .06),
+        border: Border(
+          bottom: BorderSide(color: t.accent.withValues(alpha: .2)),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Text(
+              'Filtreler:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: t.textMuted,
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (filters.status != FilterStatus.all) ...[
+              _ActiveFilterChip(
+                label:
+                    'Durum: ${filters.status == FilterStatus.todo ? 'Tamamlanacak' : 'Tamamlanan'}',
+                onDeleted: () =>
+                    onUpdate(filters.copyWith(status: FilterStatus.all)),
+              ),
+              const SizedBox(width: 6),
+            ],
+            if (filters.priority != 'all') ...[
+              _ActiveFilterChip(
+                label: 'Öncelik: ${_priorityLabel(filters.priority)}',
+                onDeleted: () => onUpdate(filters.copyWith(priority: 'all')),
+              ),
+              const SizedBox(width: 6),
+            ],
+            for (final tag in filters.tags) ...[
+              _ActiveFilterChip(
+                label: '#$tag',
+                onDeleted: () {
+                  final next = Set<String>.from(filters.tags)..remove(tag);
+                  onUpdate(filters.copyWith(tags: next));
+                },
+              ),
+              const SizedBox(width: 6),
+            ],
+            if (filters.habit != FilterHabit.all) ...[
+              _ActiveFilterChip(
+                label:
+                    'Kaynak: ${filters.habit == FilterHabit.habit ? 'Alışkanlık' : 'Elle Eklenen'}',
+                onDeleted: () =>
+                    onUpdate(filters.copyWith(habit: FilterHabit.all)),
+              ),
+              const SizedBox(width: 6),
+            ],
+            if (filters.deadline != FilterDeadline.all) ...[
+              _ActiveFilterChip(
+                label: filters.deadline == FilterDeadline.overdue
+                    ? 'Gecikenler'
+                    : 'Son Tarihli',
+                onDeleted: () =>
+                    onUpdate(filters.copyWith(deadline: FilterDeadline.all)),
+              ),
+              const SizedBox(width: 6),
+            ],
+            if (filters.color != 'all') ...[
+              _ActiveFilterChip(
+                label: 'Renk: ${filters.color}',
+                onDeleted: () => onUpdate(filters.copyWith(color: 'all')),
+              ),
+              const SizedBox(width: 6),
+            ],
+            TextButton(
+              onPressed: onClear,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                foregroundColor: t.danger,
+              ),
+              child: const Text(
+                'Tümünü Temizle',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _priorityLabel(String key) => switch (key) {
+    'urgent' => 'Acil',
+    'high' => 'Yüksek',
+    'medium' => 'Orta',
+    'low' => 'Düşük',
+    'none' => 'Yok',
+    _ => key,
+  };
+}
+
+class _ActiveFilterChip extends StatelessWidget {
+  const _ActiveFilterChip({required this.label, required this.onDeleted});
+  final String label;
+  final VoidCallback onDeleted;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 2, 4, 2),
+      decoration: BoxDecoration(
+        color: t.surface,
+        border: Border.all(color: t.accent.withValues(alpha: .35)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: t.text,
+            ),
+          ),
+          const SizedBox(width: 3),
+          InkWell(
+            onTap: onDeleted,
+            borderRadius: BorderRadius.circular(999),
+            child: Icon(Icons.close, size: 13, color: t.textFaint),
+          ),
+        ],
       ),
     );
   }

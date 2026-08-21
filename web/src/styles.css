@@ -663,3 +663,263 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
   margin: 0 0 20px;
   color: var(--muted, #666);
 }
+
+/* ============ FİLTRELEME SİSTEMİ ============ */
+
+.filter-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  transition: all .16s ease;
+}
+
+.filter-open-btn.active {
+  background: color-mix(in oklab, var(--accent) 15%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+  color: var(--accent);
+}
+
+.filter-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.active-filters-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 18px;
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface));
+  border-bottom: 1px solid color-mix(in oklab, var(--accent) 20%, var(--border));
+  font-size: 12.5px;
+  animation: slideDown .14s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.active-filters-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-right: 2px;
+}
+
+.active-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--border));
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+.active-filter-tag button {
+  width: 14px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--text-faint);
+  font-size: 10px;
+  transition: color .12s, background .12s;
+}
+
+.active-filter-tag button:hover {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 15%, transparent);
+}
+
+.clear-filters-btn {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--danger);
+  padding: 2px 8px;
+  margin-left: auto;
+}
+
+.clear-filters-btn:hover {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+
+/* Filtre Modalı */
+.filter-modal {
+  width: min(520px, 94vw);
+}
+
+.filter-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(85vh - 120px);
+  overflow-y: auto;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.segmented-group {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 3px;
+  gap: 3px;
+}
+
+.segmented-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: var(--r-sm);
+  text-align: center;
+  transition: background .12s, color .12s, box-shadow .12s;
+}
+
+.segmented-btn.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.segmented-btn:hover:not(.active) {
+  color: var(--text);
+}
+
+.filter-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-chip {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all .14s;
+}
+
+.filter-chip.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.filter-chip:hover:not(.active) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.filter-tag-chip {
+  --tag: var(--c-blue);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--tag) 38%, transparent);
+  background: color-mix(in oklab, var(--tag) 10%, var(--surface));
+  color: color-mix(in oklab, var(--tag) 82%, var(--text));
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .14s;
+}
+
+.filter-tag-chip.selected {
+  border-color: var(--tag);
+  background: var(--tag);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-tag-chip .check-icon {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.color-dots-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.color-filter-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.color-filter-btn.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.color-dot-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  transition: transform .12s, border-color .12s;
+}
+
+.color-dot-btn.red { background: var(--c-red); }
+.color-dot-btn.orange { background: var(--c-orange); }
+.color-dot-btn.amber { background: var(--c-amber); }
+.color-dot-btn.green { background: var(--c-green); }
+.color-dot-btn.teal { background: var(--c-teal); }
+.color-dot-btn.blue { background: var(--c-blue); }
+.color-dot-btn.violet { background: var(--c-violet); }
+.color-dot-btn.pink { background: var(--c-pink); }
+
+.color-dot-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-dot-btn.selected {
+  border-color: var(--text);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.filter-modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

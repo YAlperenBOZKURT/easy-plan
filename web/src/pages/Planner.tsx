@@ -17,16 +17,24 @@ import {
 import { api } from '../lib/api.ts';
 import { addDays, addYears, dayNameShort, dayNumber, rangeLabel, todayKey } from '../lib/dates.ts';
 import { centeredColumnScrollLeft, closestDayToViewportCenter } from '../lib/mobileDayNavigation.ts';
-import type { Card, User } from '../lib/types.ts';
+import { priorityLabel, type Card, type User } from '../lib/types.ts';
 import { navigate } from '../App.tsx';
 import DayColumn from '../components/DayColumn.tsx';
 import CardModal, { type CardDraft } from '../components/CardModal.tsx';
 import CardViewModal from '../components/CardViewModal.tsx';
 import EdgeScroller from '../components/EdgeScroller.tsx';
+import FilterModal from '../components/FilterModal.tsx';
 import HabitModal from '../components/HabitModal.tsx';
 import SettingsModal from '../components/SettingsModal.tsx';
 import TopMenu from '../components/TopMenu.tsx';
 import { isChecklistComplete, toggleChecklistItem } from '../lib/checklist.ts';
+import {
+  countActiveFilters,
+  DEFAULT_FILTERS,
+  hasActiveFilters,
+  matchesFilter,
+  type CardFilterState,
+} from '../lib/filters.ts';
 import CardSearchModal from '../components/CardSearchModal.tsx';
 
 const VISIBLE_DAYS = 7;
@@ -42,6 +50,8 @@ export default function Planner({ user }: { user: User }) {
   const [showHabits, setShowHabits] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [inspect, setInspect] = useState<Card | null>(null);
   const [dragging, setDragging] = useState<Card | null>(null);
   const [fastNav, setFastNav] = useState(false);
@@ -115,14 +125,24 @@ export default function Planner({ user }: { user: User }) {
     refetchIntervalInBackground: false,
   });
 
+  const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: api.tags });
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
+
   const byDay = useMemo(() => {
     const map = new Map<string, Card[]>(days.map((day) => [day, []]));
-    for (const card of cards.data?.cards ?? []) map.get(card.day)?.push(card);
+    for (const card of cards.data?.cards ?? []) {
+      if (matchesFilter(card, filters)) {
+        map.get(card.day)?.push(card);
+      }
+    }
     for (const list of map.values()) list.sort((a, b) => a.sortIndex - b.sortIndex);
     return map;
-  }, [cards.data, days]);
+  }, [cards.data, days, filters]);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['cards'] });
+  const refresh = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['cards'] }),
+    queryClient.invalidateQueries({ queryKey: ['tags'] }),
+  ]);
 
   const toggleDone = useMutation({
     mutationFn: (card: Card) => api.updateCard(card.id, { done: !card.done }),
@@ -525,6 +545,16 @@ export default function Planner({ user }: { user: User }) {
           <span className="desktop-only">Ara</span>
         </button>
 
+        <button
+          className={`btn filter-open-btn${activeFilterCount > 0 ? ' active' : ''}`}
+          onClick={() => setShowFilters(true)}
+          aria-label="Kartları filtrele"
+        >
+          <span aria-hidden="true">⚲</span>
+          <span className="desktop-only">Filtre</span>
+          {activeFilterCount > 0 && <span className="filter-badge">{activeFilterCount}</span>}
+        </button>
+
         {/* Yalnızca masaüstünde: sürükleyerek hızlı gün gezme */}
         <button
           className={`btn desktop-only${fastNav ? ' fast-on' : ''}`}
@@ -568,6 +598,96 @@ export default function Planner({ user }: { user: User }) {
           </button>
         ))}
       </nav>
+
+      {hasActiveFilters(filters) && (
+        <div className="active-filters-bar" role="region" aria-label="Aktif filtreler">
+          <span className="active-filters-label">Filtreler:</span>
+          {filters.status !== 'all' && (
+            <span className="active-filter-tag">
+              Durum: {filters.status === 'todo' ? 'Tamamlanacak' : 'Tamamlanan'}
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, status: 'all' }))}
+                aria-label="Durum filtresini kaldır"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filters.priority !== 'all' && (
+            <span className="active-filter-tag">
+              Öncelik: {priorityLabel(filters.priority)}
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, priority: 'all' }))}
+                aria-label="Öncelik filtresini kaldır"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filters.tags.map((tag) => (
+            <span key={tag} className="active-filter-tag">
+              #{tag}
+              <button
+                type="button"
+                onClick={() =>
+                  setFilters((f) => ({
+                    ...f,
+                    tags: f.tags.filter((t) => t.toLowerCase() !== tag.toLowerCase()),
+                  }))
+                }
+                aria-label={`${tag} etiketini kaldır`}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          {filters.habit !== 'all' && (
+            <span className="active-filter-tag">
+              Kaynak: {filters.habit === 'habit' ? 'Alışkanlık' : 'Elle Eklenen'}
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, habit: 'all' }))}
+                aria-label="Kaynak filtresini kaldır"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filters.deadline !== 'all' && (
+            <span className="active-filter-tag">
+              {filters.deadline === 'overdue' ? 'Gecikenler' : 'Son Tarihli'}
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, deadline: 'all' }))}
+                aria-label="Son tarih filtresini kaldır"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          {filters.color !== 'all' && (
+            <span className="active-filter-tag">
+              Renk: {filters.color}
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, color: 'all' }))}
+                aria-label="Renk filtresini kaldır"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm clear-filters-btn"
+            onClick={() => setFilters(DEFAULT_FILTERS)}
+          >
+            Tümünü Temizle
+          </button>
+        </div>
+      )}
 
       {cards.isLoading && (
         <div className="status-banner" role="status" aria-live="polite">
@@ -630,6 +750,7 @@ export default function Planner({ user }: { user: User }) {
               onToggleDone={(card) => toggleDone.mutate(card)}
               onToggleChecklist={(card, itemId) => toggleChecklist.mutate({ card, itemId })}
               onDelete={(card) => removeCard.mutate(card)}
+              dragDisabled={fastNav || hasActiveFilters(filters)}
             />
           ))}
         </div>
@@ -667,6 +788,14 @@ export default function Planner({ user }: { user: User }) {
             setShowSearch(false);
             setInspect(card);
           }}
+        />
+      )}
+      {showFilters && (
+        <FilterModal
+          currentFilters={filters}
+          allTags={tagsQuery.data?.tags ?? []}
+          onApply={(nextFilters) => setFilters(nextFilters)}
+          onClose={() => setShowFilters(false)}
         />
       )}
     </div>

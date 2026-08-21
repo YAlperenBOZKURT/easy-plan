@@ -4,7 +4,8 @@ export const MAX_TAG_LENGTH = 30;
 export const normalizeTag = (value: string): string =>
   value.normalize('NFKC').trim().replace(/\s+/g, ' ');
 
-const tagKey = (value: string): string => normalizeTag(value).toLocaleLowerCase('tr-TR');
+export const tagKey = (value: string): string =>
+  normalizeTag(value).replace(/[Iİ]/g, 'i').toLowerCase();
 
 export function addTag(tags: string[], value: string): { tags: string[]; error?: string } {
   const tag = normalizeTag(value);

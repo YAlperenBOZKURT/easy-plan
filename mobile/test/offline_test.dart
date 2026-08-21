@@ -3,7 +3,12 @@ import 'package:planner/api/models.dart';
 import 'package:planner/cache.dart';
 import 'package:planner/dates.dart';
 
-PlannerCard card(String id, String day, String title) => PlannerCard(
+PlannerCard card(
+  String id,
+  String day,
+  String title, {
+  List<String> tags = const [],
+}) => PlannerCard(
   id: id,
   day: day,
   title: title,
@@ -17,6 +22,7 @@ PlannerCard card(String id, String day, String title) => PlannerCard(
   habitId: null,
   reminders: const [60],
   images: const [],
+  tags: tags,
   updatedAt: '2026-08-14T10:00:00.000Z',
 );
 
@@ -77,6 +83,21 @@ void main() {
       (await Cache.instance.searchCards('müşteri tasla')).map((item) => item.id),
       ['search-note'],
     );
+  });
+
+  test('tüm önbellekteki etiketleri tekrarsız ve sıralı döndürür', () async {
+    final today = todayKey();
+    await Cache.instance.saveCards([
+      card('tags-a', today, 'Bir', tags: const ['İş', 'Backend']),
+      card(
+        'tags-b',
+        addDays(today, 90),
+        'Uzak tarih',
+        tags: const ['iş', 'Mobil'],
+      ),
+    ]);
+
+    expect(await Cache.instance.allTags(), ['Backend', 'İş', 'Mobil']);
   });
 
   test('çevrimdışı yazmalar sırayla kuyruğa girer ve boşaltılır', () async {
