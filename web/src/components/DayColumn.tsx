@@ -17,6 +17,7 @@ export default function DayColumn({
   onToggleDone,
   onToggleChecklist,
   onDelete,
+  dragDisabled = false,
 }: {
   day: string;
   cards: Card[];
@@ -30,6 +31,7 @@ export default function DayColumn({
   onToggleDone: (card: Card) => void;
   onToggleChecklist: (card: Card, itemId: string) => void;
   onDelete: (card: Card) => void;
+  dragDisabled?: boolean;
 }) {
   // Kolonun kendisi de bırakma hedefi: boş güne ya da kartların altına bırakılabilsin.
   const { setNodeRef, isOver } = useDroppable({ id: `col:${day}`, data: { day } });
@@ -69,6 +71,7 @@ export default function DayColumn({
               onToggleDone={() => onToggleDone(card)}
               onToggleChecklist={(itemId) => onToggleChecklist(card, itemId)}
               onDelete={() => onDelete(card)}
+              dragDisabled={dragDisabled}
             />
           ))}
         </SortableContext>

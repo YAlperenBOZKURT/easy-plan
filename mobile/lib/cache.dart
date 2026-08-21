@@ -9,6 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'api/models.dart';
 import 'app_logger.dart';
 import 'search.dart';
+import 'tags.dart';
 
 /// Yerel kopya ve çevrimdışı yazma kuyruğu.
 ///
@@ -132,6 +133,24 @@ class Cache {
         return day != 0 ? day : a.sortIndex.compareTo(b.sortIndex);
       });
     return cards.take(maxSearchResults).toList();
+  }
+
+  Future<List<String>> allTags() async {
+    final db = await _open();
+    if (db == null) return const [];
+    final rows = await db.query('cards', columns: ['json']);
+    final tags = <String, String>{};
+    for (final row in rows) {
+      final card = PlannerCard.fromJson(
+        jsonDecode(row['json']! as String) as Map<String, dynamic>,
+      );
+      for (final tag in card.tags) {
+        tags.putIfAbsent(tagKey(tag), () => tag);
+      }
+    }
+    final sorted = tags.values.toList()
+      ..sort((a, b) => tagKey(a).compareTo(tagKey(b)));
+    return sorted;
   }
 
   /* -------------------------------------------------------------- senkron */

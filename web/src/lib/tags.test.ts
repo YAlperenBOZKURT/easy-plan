@@ -5,6 +5,7 @@ describe('card tags', () => {
   it('etiketi normalize eder ve Türkçe büyük-küçük harf tekrarını engeller', () => {
     expect(normalizeTag('  Kolay   İş ')).toBe('Kolay İş');
     expect(addTag(['İş'], 'iş').error).toBe('Bu etiket zaten ekli.');
+    expect(addTag(['Backend API'], 'backend api').error).toBe('Bu etiket zaten ekli.');
     expect(addTag(['Backend'], ' API ').tags).toEqual(['Backend', 'API']);
   });
 

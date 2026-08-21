@@ -4,6 +4,9 @@ const maxTagLength = 30;
 String normalizeTag(String value) =>
     value.trim().replaceAll(RegExp(r'\s+'), ' ');
 
+String tagKey(String value) =>
+    normalizeTag(value).replaceAll(RegExp('[Iİ]'), 'i').toLowerCase();
+
 ({List<String> tags, String? error}) addCardTag(
   List<String> tags,
   String value,
@@ -16,7 +19,7 @@ String normalizeTag(String value) =>
   if (tags.length >= maxCardTags) {
     return (tags: tags, error: 'Bir karta en fazla 10 etiket eklenebilir.');
   }
-  if (tags.any((current) => current.toLowerCase() == tag.toLowerCase())) {
+  if (tags.any((current) => tagKey(current) == tagKey(tag))) {
     return (tags: tags, error: 'Bu etiket zaten ekli.');
   }
   return (tags: [...tags, tag], error: null);

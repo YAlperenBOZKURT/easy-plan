@@ -8,6 +8,7 @@ import 'api/models.dart';
 import 'cache.dart';
 import 'dates.dart';
 import 'notifications.dart';
+import 'tags.dart';
 
 /// Uygulama durumu. Ek paket kullanmadan ChangeNotifier + ListenableBuilder.
 class PlannerStore extends ChangeNotifier {
@@ -86,6 +87,38 @@ class PlannerStore extends ChangeNotifier {
   String get maxDay => addYears(todayKey(), 1);
 
   List<PlannerCard> cardsOf(String day) => _byDay[day] ?? const [];
+
+  List<String> get allTags {
+    final seen = <String, String>{};
+    for (final list in _byDay.values) {
+      for (final card in list) {
+        for (final tag in card.tags) {
+          seen.putIfAbsent(tagKey(tag), () => tag);
+        }
+      }
+    }
+    final sorted = seen.values.toList()
+      ..sort((a, b) => tagKey(a).compareTo(tagKey(b)));
+    return sorted;
+  }
+
+  Future<List<String>> availableTags() async {
+    final values = <String, String>{
+      for (final tag in allTags) tagKey(tag): tag,
+    };
+    try {
+      for (final tag in await api.tags()) {
+        values.putIfAbsent(tagKey(tag), () => tag);
+      }
+    } catch (_) {
+      for (final tag in await Cache.instance.allTags()) {
+        values.putIfAbsent(tagKey(tag), () => tag);
+      }
+    }
+    final sorted = values.values.toList()
+      ..sort((a, b) => tagKey(a).compareTo(tagKey(b)));
+    return sorted;
+  }
 
   /* --------------------------------------------------------- açılış */
 

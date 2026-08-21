@@ -10,6 +10,8 @@ void main() {
     final duplicate = addCardTag(added.tags, 'backend api');
     expect(duplicate.tags, added.tags);
     expect(duplicate.error, isNotNull);
+
+    expect(addCardTag(const ['İş'], 'iş').error, isNotNull);
   });
 
   test('etiket uzunluğu ve kart başına etiket sayısı sınırlıdır', () {
