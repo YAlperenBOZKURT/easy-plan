@@ -923,3 +923,170 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
   align-items: center;
   gap: 8px;
 }
+
+/* ===================== PLAN GÖRÜNÜMLERİ ===================== */
+
+.view-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+
+.view-switcher::-webkit-scrollbar { display: none; }
+
+.view-switcher button {
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.view-switcher button:hover { background: var(--surface-hover); color: var(--text); }
+.view-switcher button.active {
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--border));
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.month-view, .agenda-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 18px 24px;
+}
+
+.month-view { display: flex; flex-direction: column; }
+.month-weekdays, .month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.month-weekdays { flex: none; }
+.month-weekdays span {
+  padding: 4px 8px 9px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.month-grid {
+  flex: 1;
+  min-height: 620px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--border);
+  gap: 1px;
+  box-shadow: var(--shadow-sm);
+}
+
+.month-day {
+  min-width: 0;
+  min-height: 98px;
+  padding: 7px;
+  background: var(--surface);
+}
+
+.month-day.outside { background: color-mix(in oklab, var(--surface-2) 65%, var(--surface)); }
+.month-day.outside > * { opacity: .52; }
+.month-day.today { background: color-mix(in oklab, var(--accent) 5%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
+.month-day > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.month-day-label { display: flex; align-items: center; gap: 5px; }
+.month-day-label > span { display: none; color: var(--text-faint); font-size: 10px; font-weight: 600; }
+.month-day > header time { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 999px; color: var(--text-muted); font-size: 12px; font-weight: 650; }
+.month-day.today > header time { background: var(--accent); color: var(--accent-fg); }
+.month-day > header button { width: 25px; height: 25px; border: 0; border-radius: 999px; background: transparent; color: var(--text-faint); font-size: 17px; }
+.month-day > header button:hover { background: var(--surface-hover); color: var(--accent); }
+.month-cards { display: flex; flex-direction: column; gap: 4px; }
+.month-card {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  padding: 5px 6px;
+  border: 0;
+  border-left: 3px solid var(--c);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--c) 8%, var(--surface-2));
+  color: var(--text);
+  text-align: left;
+  font-size: 11.5px;
+}
+.month-card:hover { background: color-mix(in oklab, var(--c) 15%, var(--surface-2)); }
+.month-card.done { opacity: .52; text-decoration: line-through; }
+.month-card time { flex: none; color: var(--text-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.month-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.month-more { padding: 2px 6px; color: var(--text-faint); font-size: 10.5px; }
+
+.agenda-view { width: min(900px, 100%); margin: 0 auto; }
+.agenda-day { margin-bottom: 20px; }
+.agenda-day > header { display: flex; align-items: center; justify-content: space-between; padding: 0 3px 8px; border-bottom: 1px solid var(--border); }
+.agenda-day > header > div { display: flex; align-items: baseline; gap: 8px; }
+.agenda-day h2 { margin: 0; font-size: 14px; font-weight: 650; }
+.agenda-day header time { color: var(--text-faint); font-size: 12px; }
+.agenda-today { padding: 3px 8px; border-radius: 999px; background: color-mix(in oklab, var(--accent) 14%, transparent); color: var(--accent); font-size: 10.5px; font-weight: 650; }
+.agenda-cards { display: flex; flex-direction: column; gap: 8px; padding-top: 9px; }
+.agenda-card { display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-sm); }
+.agenda-card.done { opacity: .68; }
+.agenda-check { flex: none; width: 44px; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--accent); font-size: 17px; }
+.agenda-check:hover { background: var(--surface-hover); }
+.agenda-card-main { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 12px; border: 0; background: transparent; color: var(--text); text-align: left; }
+.agenda-card-main:hover { background: var(--surface-hover); }
+.agenda-card-title { font-size: 13.5px; font-weight: 620; }
+.agenda-card.done .agenda-card-title { text-decoration: line-through; }
+.agenda-card-note { max-width: 100%; overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.agenda-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 3px; color: var(--text-faint); font-size: 11px; }
+.agenda-card-meta .tag-chip { font-size: 10.5px; font-style: normal; }
+
+.collection-empty { flex: 1; display: grid; place-content: center; justify-items: center; min-height: 0; padding: 30px; text-align: center; color: var(--text-muted); }
+.collection-empty > span { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: var(--surface-2); color: var(--accent); font-size: 22px; }
+.collection-empty h2 { margin: 13px 0 4px; color: var(--text); font-size: 16px; }
+.collection-empty p { max-width: 420px; margin: 0; font-size: 12.5px; }
+
+@media (max-width: 767px) {
+  .view-switcher { justify-content: flex-start; padding: 7px 10px; }
+  .view-switcher button { min-height: 38px; padding: 7px 13px; }
+  .month-view, .agenda-view { padding: 10px; }
+  .month-weekdays { display: none; }
+  .month-view { overflow-x: hidden; overflow-y: auto; }
+  .month-grid {
+    flex: none;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    min-width: 0;
+    min-height: 0;
+    grid-auto-rows: 142px;
+  }
+  .month-day.outside { display: none; }
+  .month-day { min-height: 0; padding: 7px; }
+  .month-day > header { margin-bottom: 7px; }
+  .month-day-label > span { display: inline; }
+  .month-day > header time { width: 24px; height: 24px; font-size: 11px; }
+  .month-day > header button { width: 26px; height: 26px; font-size: 16px; }
+  .month-cards { gap: 3px; padding: 1px 0; }
+  .month-card {
+    width: 100%;
+    min-width: 0;
+    min-height: 27px;
+    padding: 5px 6px;
+    border: 0;
+    border-left: 2px solid var(--c);
+    border-radius: 5px;
+    background: color-mix(in oklab, var(--c) 13%, var(--surface-2));
+  }
+  .month-card:hover { background: color-mix(in oklab, var(--c) 20%, var(--surface-2)); }
+  .month-card.done { opacity: .45; }
+  .month-card time { display: none; }
+  .month-card span { display: block; font-size: 10.5px; }
+  .month-more { padding: 0; font-size: 8.5px; }
+  .agenda-check { width: 42px; }
+}

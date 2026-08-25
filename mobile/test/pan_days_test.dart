@@ -114,4 +114,36 @@ void main() {
     // (844 + 12) / (190 + 12) = 4.23 → 4 gün, web ile birebir
     expect(gun, 4, reason: '844px ekranda 4 gün görünmeli, 7 değil');
   });
+
+  testWidgets('526px ay görünümü büyük metinde taşmadan açılır', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    final store = _FakeStore();
+
+    tester.view.physicalSize = const Size(526, 700);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.25;
+    addTearDown(tester.view.reset);
+    addTearDown(
+      tester.platformDispatcher.clearTextScaleFactorTestValue,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.dark),
+        home: PlannerPage(store: store),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ay'));
+    await tester.pumpAndSettle();
+
+    final grid = tester.widget<GridView>(find.byType(GridView));
+    expect(
+      (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+          .crossAxisCount,
+      3,
+    );
+    expect(tester.takeException(), isNull);
+    debugDefaultTargetPlatformOverride = null;
+  });
 }

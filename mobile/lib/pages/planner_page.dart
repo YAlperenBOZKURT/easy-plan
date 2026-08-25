@@ -9,10 +9,12 @@ import 'package:flutter/material.dart';
 import '../api/models.dart';
 import '../dates.dart';
 import '../filters.dart';
+import '../planner_views.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets/draggable_card.dart';
 import '../widgets/filter_dialog.dart';
+import '../widgets/planner_collection_view.dart';
 import 'card_editor.dart';
 import 'card_search.dart';
 import 'card_view.dart';
@@ -32,6 +34,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
 
   /// Aktif filtreler.
   CardFilterState _filters = CardFilterState.defaultFilters;
+  PlannerViewMode _view = PlannerViewMode.week;
 
   /// Masaüstünde: fareyle sürükleyerek hızlı gün gezme.
   bool _fastNav = false;
@@ -97,8 +100,65 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
       loadTags: store.availableTags,
     );
     if (result != null && mounted) {
-      setState(() => _filters = result);
+      setState(() {
+        _filters = _view == PlannerViewMode.completed
+            ? result.copyWith(status: FilterStatus.all)
+            : result;
+      });
     }
+  }
+
+  Future<void> _setView(PlannerViewMode view) async {
+    if (view == _view) return;
+    setState(() {
+      _view = view;
+      if (view == PlannerViewMode.completed) {
+        _filters = _filters.copyWith(status: FilterStatus.all);
+      }
+      _index = 0;
+      _fastNav = false;
+    });
+    final range = plannerRange(view, store.anchor, store.visibleDays);
+    await store.setPlannerRange(
+      anchorDay: store.anchor,
+      from: view == PlannerViewMode.week ? null : range.from,
+      to: view == PlannerViewMode.week ? null : range.to,
+    );
+    if (mounted && _pages.hasClients) _pages.jumpToPage(0);
+  }
+
+  Future<void> _navigatePeriod(int delta) async {
+    if (_view == PlannerViewMode.week) {
+      _shift(delta);
+      return;
+    }
+    final anchor = shiftPlannerAnchor(_view, store.anchor, delta);
+    if (anchor.compareTo(store.minDay) < 0 ||
+        anchor.compareTo(store.maxDay) > 0) {
+      return;
+    }
+    final range = plannerRange(_view, anchor, store.visibleDays);
+    await store.setPlannerRange(
+      anchorDay: anchor,
+      from: range.from,
+      to: range.to,
+    );
+  }
+
+  Future<void> _goToday() async {
+    final today = todayKey();
+    if (_view == PlannerViewMode.week) {
+      store.goToday();
+      if (_pages.hasClients) _pages.jumpToPage(0);
+      setState(() => _index = 0);
+      return;
+    }
+    final range = plannerRange(_view, today, store.visibleDays);
+    await store.setPlannerRange(
+      anchorDay: today,
+      from: range.from,
+      to: range.to,
+    );
   }
 
   void _cardActions(PlannerCard card) {
@@ -184,6 +244,14 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
       builder: (context, _) {
         final days = store.days;
         final wide = MediaQuery.sizeOf(context).width >= 768;
+        final viewRange = plannerRange(_view, store.anchor, store.visibleDays);
+        final collectionDays = daysBetween(viewRange.from, viewRange.to);
+        final appliedFilters = _view == PlannerViewMode.completed
+            ? _filters.copyWith(status: FilterStatus.all)
+            : _filters;
+        final collectionCards = store.loadedCards
+            .where(appliedFilters.matches)
+            .toList();
 
         return Scaffold(
           appBar: AppBar(
@@ -192,28 +260,30 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  onPressed: () => _shift(-1),
+                  onPressed: () => _navigatePeriod(-1),
                   icon: const Icon(Icons.chevron_left),
-                  tooltip: 'Önceki gün',
+                  tooltip: _view == PlannerViewMode.week
+                      ? 'Önceki gün'
+                      : 'Önceki ay',
                 ),
                 IconButton(
-                  onPressed: () => _shift(1),
+                  onPressed: () => _navigatePeriod(1),
                   icon: const Icon(Icons.chevron_right),
-                  tooltip: 'Sonraki gün',
+                  tooltip: _view == PlannerViewMode.week
+                      ? 'Sonraki gün'
+                      : 'Sonraki ay',
                 ),
                 OutlinedButton(
-                  onPressed: () {
-                    store.goToday();
-                    _pages.jumpToPage(0);
-                    setState(() => _index = 0);
-                  },
+                  onPressed: _goToday,
                   child: const Text('Bugün'),
                 ),
                 if (wide) ...[
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      rangeLabel(store.from, store.to),
+                      _view == PlannerViewMode.week
+                          ? rangeLabel(store.from, store.to)
+                          : monthLabel(store.anchor),
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13.5, color: t.textMuted),
                     ),
@@ -241,7 +311,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                 ),
                 tooltip: 'Kartları filtrele',
               ),
-              if (_isDesktopLayout && wide)
+              if (_view == PlannerViewMode.week && _isDesktopLayout && wide)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: OutlinedButton.icon(
@@ -286,7 +356,9 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
           ),
           body: Column(
             children: [
-              if (MediaQuery.sizeOf(context).width < 1101)
+              _ViewSwitcher(selected: _view, onSelected: _setView),
+              if (_view == PlannerViewMode.week &&
+                  MediaQuery.sizeOf(context).width < 1101)
                 _DayStrip(
                   days: days,
                   activeIndex: _index,
@@ -367,7 +439,17 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   ),
                 ),
               Expanded(
-                child: wide
+                child: _view != PlannerViewMode.week
+                    ? PlannerCollectionView(
+                        view: _view,
+                        anchor: store.anchor,
+                        days: collectionDays,
+                        cards: collectionCards,
+                        store: store,
+                        onAdd: (day) => _openEditor(day: day),
+                        onCard: _cardActions,
+                      )
+                    : wide
                     ? LayoutBuilder(
                         builder: (context, constraints) {
                           // Ekrana kaç gün sığıyorsa o kadarını göster.
@@ -495,8 +577,11 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
             ],
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () =>
-                _openEditor(day: days[_index.clamp(0, days.length - 1)]),
+            onPressed: () => _openEditor(
+              day: _view == PlannerViewMode.week
+                  ? days[_index.clamp(0, days.length - 1)]
+                  : store.anchor,
+            ),
             tooltip: 'Bu güne kart ekle',
             backgroundColor: t.accent,
             foregroundColor: t.accentFg,
@@ -591,6 +676,57 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
     store.shift(delta);
     if (_pages.hasClients) _pages.jumpToPage(0);
     setState(() => _index = 0);
+  }
+}
+
+class _ViewSwitcher extends StatelessWidget {
+  const _ViewSwitcher({required this.selected, required this.onSelected});
+
+  final PlannerViewMode selected;
+  final ValueChanged<PlannerViewMode> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: t.surface,
+        border: Border(bottom: BorderSide(color: t.border)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        child: Row(
+          children: [
+            for (final view in PlannerViewMode.values) ...[
+              ChoiceChip(
+                label: Text(plannerViewLabel(view)),
+                selected: selected == view,
+                onSelected: (_) => onSelected(view),
+                visualDensity: VisualDensity.compact,
+                selectedColor: t.accent.withValues(alpha: .14),
+                backgroundColor: Colors.transparent,
+                side: BorderSide(
+                  color: selected == view
+                      ? t.accent.withValues(alpha: .38)
+                      : Colors.transparent,
+                ),
+                labelStyle: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: selected == view
+                      ? FontWeight.w600
+                      : FontWeight.w500,
+                  color: selected == view ? t.accent : t.textMuted,
+                ),
+              ),
+              if (view != PlannerViewMode.values.last)
+                const SizedBox(width: 4),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
