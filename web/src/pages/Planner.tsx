@@ -36,6 +36,15 @@ import {
   type CardFilterState,
 } from '../lib/filters.ts';
 import CardSearchModal from '../components/CardSearchModal.tsx';
+import PlannerCollectionView from '../components/PlannerCollectionView.tsx';
+import {
+  daysBetween,
+  monthLabel,
+  PLANNER_VIEWS,
+  plannerRange,
+  shiftPlannerAnchor,
+  type PlannerView,
+} from '../lib/plannerViews.ts';
 
 const VISIBLE_DAYS = 7;
 
@@ -52,6 +61,7 @@ export default function Planner({ user }: { user: User }) {
   const [showSearch, setShowSearch] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
+  const [view, setView] = useState<PlannerView>('week');
   const [inspect, setInspect] = useState<Card | null>(null);
   const [dragging, setDragging] = useState<Card | null>(null);
   const [fastNav, setFastNav] = useState(false);
@@ -93,24 +103,22 @@ export default function Planner({ user }: { user: User }) {
       observer.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [view]);
 
-  const days = useMemo(
-    () => Array.from({ length: visibleDays }, (_, i) => addDays(anchor, i)),
-    [anchor, visibleDays],
-  );
-  const from = days[0]!;
-  const to = days[days.length - 1]!;
+  const range = useMemo(() => plannerRange(view, anchor, visibleDays), [anchor, view, visibleDays]);
+  const days = useMemo(() => daysBetween(range.from, range.to), [range.from, range.to]);
+  const from = range.from;
+  const to = range.to;
 
   const minDay = addYears(today, -1);
   const maxDay = addYears(today, 1);
-  const canGoBack = from > minDay;
-  const canGoForward = to < maxDay;
+  const canGoBack = anchor > minDay;
+  const canGoForward = view === 'week' ? to < maxDay : anchor < maxDay;
 
   const shift = (delta: number) => {
     setAnchor((current) => {
-      const next = addDays(current, delta);
-      if (next < minDay || addDays(next, days.length - 1) > maxDay) return current;
+      const next = shiftPlannerAnchor(view, current, delta);
+      if (next < minDay || next > maxDay) return current;
       return next;
     });
     setOpenCardId(null);
@@ -128,16 +136,17 @@ export default function Planner({ user }: { user: User }) {
   const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: api.tags });
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
+  const filteredCards = useMemo(() => {
+    const appliedFilters = view === 'completed' ? { ...filters, status: 'all' as const } : filters;
+    return (cards.data?.cards ?? []).filter((card) => matchesFilter(card, appliedFilters));
+  }, [cards.data, filters, view]);
+
   const byDay = useMemo(() => {
     const map = new Map<string, Card[]>(days.map((day) => [day, []]));
-    for (const card of cards.data?.cards ?? []) {
-      if (matchesFilter(card, filters)) {
-        map.get(card.day)?.push(card);
-      }
-    }
+    for (const card of filteredCards) map.get(card.day)?.push(card);
     for (const list of map.values()) list.sort((a, b) => a.sortIndex - b.sortIndex);
     return map;
-  }, [cards.data, days, filters]);
+  }, [days, filteredCards]);
 
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['cards'] }),
@@ -176,7 +185,7 @@ export default function Planner({ user }: { user: User }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (draft || showHabits || showSettings || showSearch) return;
+      if (draft || showFilters || showHabits || showSettings || showSearch) return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
       if (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
@@ -190,7 +199,7 @@ export default function Planner({ user }: { user: User }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [anchor, draft, showHabits, showSearch, showSettings]);
+  }, [anchor, draft, showFilters, showHabits, showSearch, showSettings, view]);
 
   /* ------------------------------------------- mobil: kaydırma ↔ gün şeridi */
 
@@ -388,6 +397,10 @@ export default function Planner({ user }: { user: User }) {
   /** Mobilde mevcut 7 günlük pencere içinde gerçek kolona geç; pencerenin
    * ucundaysa aralığı bir gün kaydırıp yine doğru kolonu görünür tut. */
   const navigateDay = (delta: number) => {
+    if (view !== 'week') {
+      shift(delta);
+      return;
+    }
     if (window.innerWidth > 767) {
       shift(delta);
       return;
@@ -516,19 +529,19 @@ export default function Planner({ user }: { user: User }) {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="btn btn-icon" onClick={() => navigateDay(-1)} disabled={!canGoBack} aria-label="Önceki gün">
+        <button className="btn btn-icon" onClick={() => navigateDay(-1)} disabled={!canGoBack} aria-label={view === 'week' ? 'Önceki gün' : 'Önceki ay'}>
           ‹
         </button>
-        <button className="btn btn-icon" onClick={() => navigateDay(1)} disabled={!canGoForward} aria-label="Sonraki gün">
+        <button className="btn btn-icon" onClick={() => navigateDay(1)} disabled={!canGoForward} aria-label={view === 'week' ? 'Sonraki gün' : 'Sonraki ay'}>
           ›
         </button>
         <button
           className="btn"
           onClick={() => {
-            if (days.includes(today)) {
+            if (view === 'week' && days.includes(today)) {
               scrollToDay(today);
             } else {
-              pendingScroll.current = today;
+              pendingScroll.current = view === 'week' ? today : null;
               setAnchor(today);
               setActiveDay(today);
             }
@@ -536,7 +549,7 @@ export default function Planner({ user }: { user: User }) {
         >
           Bugün
         </button>
-        <span className="topbar-range">{rangeLabel(from, to)}</span>
+        <span className="topbar-range">{view === 'week' ? rangeLabel(from, to) : monthLabel(anchor)}</span>
 
         <div className="spacer" />
 
@@ -556,13 +569,13 @@ export default function Planner({ user }: { user: User }) {
         </button>
 
         {/* Yalnızca masaüstünde: sürükleyerek hızlı gün gezme */}
-        <button
+        {view === 'week' && <button
           className={`btn desktop-only${fastNav ? ' fast-on' : ''}`}
           onClick={() => setFastNav((v) => !v)}
           title="Açıkken fare tekerleği gün geçirir; orta tuşla sürüklemek de hızlanır"
         >
           ⚡ Hızlı gezme
-        </button>
+        </button>}
 
         <TopMenu
           actions={[
@@ -584,7 +597,28 @@ export default function Planner({ user }: { user: User }) {
         />
       </header>
 
-      <nav className="day-strip" aria-label="Gün seçimi">
+      <nav className="view-switcher" aria-label="Plan görünümü">
+        {PLANNER_VIEWS.map((option) => (
+          <button
+            type="button"
+            className={view === option.value ? 'active' : ''}
+            aria-pressed={view === option.value}
+            key={option.value}
+            onClick={() => {
+              setView(option.value);
+              if (option.value === 'completed') {
+                setFilters((current) => ({ ...current, status: 'all' }));
+              }
+              setOpenCardId(null);
+              setDragging(null);
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </nav>
+
+      {view === 'week' && <nav className="day-strip" aria-label="Gün seçimi">
         {days.map((day) => (
           <button
             key={day}
@@ -597,7 +631,7 @@ export default function Planner({ user }: { user: User }) {
             <b>{dayNumber(day)}</b>
           </button>
         ))}
-      </nav>
+      </nav>}
 
       {hasActiveFilters(filters) && (
         <div className="active-filters-bar" role="region" aria-label="Aktif filtreler">
@@ -704,7 +738,7 @@ export default function Planner({ user }: { user: User }) {
         </div>
       )}
 
-      <DndContext
+      {view === 'week' ? <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
         /* Mobil web'i bir anda listenin sonuna atan piksel bazlı otomatik
@@ -766,7 +800,18 @@ export default function Planner({ user }: { user: User }) {
             </div>
           )}
         </DragOverlay>
-      </DndContext>
+      </DndContext> : (
+        <PlannerCollectionView
+          view={view}
+          anchor={anchor}
+          days={days}
+          cards={filteredCards}
+          today={today}
+          onAdd={(day) => setDraft({ day })}
+          onInspect={setInspect}
+          onToggleDone={(card) => toggleDone.mutate(card)}
+        />
+      )}
 
       {inspect && (
         <CardViewModal
@@ -794,7 +839,9 @@ export default function Planner({ user }: { user: User }) {
         <FilterModal
           currentFilters={filters}
           allTags={tagsQuery.data?.tags ?? []}
-          onApply={(nextFilters) => setFilters(nextFilters)}
+          onApply={(nextFilters) =>
+            setFilters(view === 'completed' ? { ...nextFilters, status: 'all' } : nextFilters)
+          }
           onClose={() => setShowFilters(false)}
         />
       )}

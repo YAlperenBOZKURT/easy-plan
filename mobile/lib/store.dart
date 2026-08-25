@@ -67,6 +67,8 @@ class PlannerStore extends ChangeNotifier {
   /// Görünen pencerenin ilk günü (varsayılan bugün).
   String anchor = todayKey();
   final Map<String, List<PlannerCard>> _byDay = {};
+  String? _rangeFrom;
+  String? _rangeTo;
 
   /// Ekrana kaç gün sığıyorsa o kadarı gösterilir (kolonlar okunmaz hâle gelmesin).
   int visibleDays = 7;
@@ -83,10 +85,20 @@ class PlannerStore extends ChangeNotifier {
       List.generate(visibleDays, (i) => addDays(anchor, i));
   String get from => days.first;
   String get to => days.last;
+  String get dataFrom => _rangeFrom ?? from;
+  String get dataTo => _rangeTo ?? to;
   String get minDay => addYears(todayKey(), -1);
   String get maxDay => addYears(todayKey(), 1);
 
   List<PlannerCard> cardsOf(String day) => _byDay[day] ?? const [];
+  List<PlannerCard> get loadedCards {
+    final cards = _byDay.values.expand((items) => items).toList();
+    cards.sort((a, b) {
+      final day = a.day.compareTo(b.day);
+      return day != 0 ? day : a.sortIndex.compareTo(b.sortIndex);
+    });
+    return cards;
+  }
 
   List<String> get allTags {
     final seen = <String, String>{};
@@ -237,15 +249,13 @@ class PlannerStore extends ChangeNotifier {
   /* --------------------------------------------------------- senkron */
 
   Future<void> _loadFromCache() async {
-    final cached = await Cache.instance.cardsBetween(from, to);
+    final cached = await Cache.instance.cardsBetween(dataFrom, dataTo);
     _fill(cached);
     notifyListeners();
   }
 
   void _fill(List<PlannerCard> cards) {
-    _byDay
-      ..clear()
-      ..addEntries(days.map((d) => MapEntry(d, <PlannerCard>[])));
+    _byDay.clear();
     for (final card in cards) {
       (_byDay[card.day] ??= []).add(card);
     }
@@ -298,7 +308,7 @@ class PlannerStore extends ChangeNotifier {
     loading = true;
     notifyListeners();
     try {
-      final cards = await api.cards(from, to);
+      final cards = await api.cards(dataFrom, dataTo);
       _fill(cards);
       await Cache.instance.saveCards(cards);
       // Görünen haftanın hatırlatmaları telefonda yerel bildirim olarak kurulur.
@@ -311,7 +321,7 @@ class PlannerStore extends ChangeNotifier {
       // Ağ yok: yerel kopyayla devam.
       offline = true;
       error = null;
-      _fill(await Cache.instance.cardsBetween(from, to));
+      _fill(await Cache.instance.cardsBetween(dataFrom, dataTo));
     } finally {
       loading = false;
       notifyListeners();
@@ -338,14 +348,30 @@ class PlannerStore extends ChangeNotifier {
       return;
     }
     anchor = next;
+    _rangeFrom = null;
+    _rangeTo = null;
     notifyListeners();
     loadRange();
   }
 
   void goToday() {
     anchor = todayKey();
+    _rangeFrom = null;
+    _rangeTo = null;
     notifyListeners();
     loadRange();
+  }
+
+  Future<void> setPlannerRange({
+    required String anchorDay,
+    String? from,
+    String? to,
+  }) async {
+    anchor = anchorDay;
+    _rangeFrom = from;
+    _rangeTo = to;
+    notifyListeners();
+    await loadRange();
   }
 
   Future<void> toggleDone(PlannerCard card) async {
