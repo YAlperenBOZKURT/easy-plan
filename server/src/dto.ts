@@ -30,6 +30,8 @@ export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: R
     priority: card.priority,
     deadlineAt: card.deadline_at,
     tags: parseTags(card.tags_json),
+    archivedAt: card.archived_at,
+    trashedAt: card.trashed_at,
     reminders: reminders
       .filter((r) => r.card_id === card.id)
       .map((r) => r.offset_minutes)

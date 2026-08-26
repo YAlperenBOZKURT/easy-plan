@@ -35,7 +35,8 @@ export function repo(db: Db, userId: string) {
     range(from: string, to: string): CardRow[] {
       return db
         .prepare(
-          `SELECT * FROM cards WHERE user_id = ? AND day >= ? AND day <= ?
+          `SELECT * FROM cards WHERE user_id = ? AND archived_at IS NULL AND trashed_at IS NULL
+           AND day >= ? AND day <= ?
            ORDER BY day, sort_index, created_at`,
         )
         .all(userId, from, to) as unknown as CardRow[];
@@ -47,6 +48,7 @@ export function repo(db: Db, userId: string) {
           `SELECT c.* FROM card_search
            JOIN cards c ON c.id = card_search.card_id
            WHERE card_search.user_id = ? AND card_search MATCH ?
+             AND c.archived_at IS NULL AND c.trashed_at IS NULL
            ORDER BY bm25(card_search), c.day DESC, c.sort_index, c.created_at
            LIMIT ?`,
         )
@@ -54,15 +56,37 @@ export function repo(db: Db, userId: string) {
     },
 
     get(id: string): CardRow | undefined {
+      return db
+        .prepare(
+          'SELECT * FROM cards WHERE id = ? AND user_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
+        )
+        .get(id, userId) as
+        | CardRow
+        | undefined;
+    },
+
+    getAny(id: string): CardRow | undefined {
       return db.prepare('SELECT * FROM cards WHERE id = ? AND user_id = ?').get(id, userId) as
         | CardRow
         | undefined;
     },
 
+    lifecycle(state: 'archived' | 'trash'): CardRow[] {
+      const column = state === 'archived' ? 'archived_at' : 'trashed_at';
+      return db
+        .prepare(
+          `SELECT * FROM cards WHERE user_id = ? AND ${column} IS NOT NULL
+           ORDER BY ${column} DESC, day DESC, sort_index`,
+        )
+        .all(userId) as unknown as CardRow[];
+    },
+
     /** O güne ait mevcut sort_index'ler — yeni kartın nereye gireceğini hesaplamak için. */
     dayIndexes(day: string): number[] {
       const rows = db
-        .prepare('SELECT sort_index FROM cards WHERE user_id = ? AND day = ?')
+        .prepare(
+          'SELECT sort_index FROM cards WHERE user_id = ? AND day = ? AND archived_at IS NULL AND trashed_at IS NULL',
+        )
         .all(userId, day) as { sort_index: number }[];
       return rows.map((r) => r.sort_index);
     },
@@ -183,7 +207,7 @@ export function repo(db: Db, userId: string) {
 
     /** Silinen kartın resim satırlarını döner — dosyaları çağıran taraf temizler. */
     remove(id: string): CardImageRow[] {
-      const card = cards.get(id);
+      const card = cards.getAny(id);
       if (!card) return [];
       const files = images.forCard(id);
       db.prepare('DELETE FROM cards WHERE id = ? AND user_id = ?').run(id, userId);
@@ -191,14 +215,54 @@ export function repo(db: Db, userId: string) {
       return files;
     },
 
+    archive(id: string): CardRow | undefined {
+      const card = cards.get(id);
+      if (!card) return undefined;
+      const at = nowIso();
+      db.prepare(
+        'UPDATE cards SET archived_at = ?, trashed_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?',
+      ).run(at, at, id, userId);
+      tombstone('card', id, at);
+      return cards.getAny(id);
+    },
+
+    trash(id: string): CardRow | undefined {
+      const card = cards.getAny(id);
+      if (!card || card.trashed_at) return undefined;
+      const at = nowIso();
+      db.prepare(
+        'UPDATE cards SET archived_at = NULL, trashed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+      ).run(at, at, id, userId);
+      tombstone('card', id, at);
+      return cards.getAny(id);
+    },
+
+    restore(id: string): CardRow | undefined {
+      const card = cards.getAny(id);
+      if (!card || (!card.archived_at && !card.trashed_at)) return undefined;
+      const at = nowIso();
+      db.prepare(
+        'UPDATE cards SET archived_at = NULL, trashed_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?',
+      ).run(at, id, userId);
+      db.prepare("DELETE FROM deletions WHERE entity = 'card' AND id = ? AND user_id = ?").run(id, userId);
+      return cards.get(id);
+    },
+
     changedSince(since: string): CardRow[] {
       return db
-        .prepare('SELECT * FROM cards WHERE user_id = ? AND updated_at > ? ORDER BY updated_at')
+        .prepare(
+          `SELECT * FROM cards WHERE user_id = ? AND updated_at > ?
+           AND archived_at IS NULL AND trashed_at IS NULL ORDER BY updated_at`,
+        )
         .all(userId, since) as unknown as CardRow[];
     },
 
     count(): number {
-      const row = db.prepare('SELECT COUNT(*) AS n FROM cards WHERE user_id = ?').get(userId) as {
+      const row = db
+        .prepare(
+          'SELECT COUNT(*) AS n FROM cards WHERE user_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
+        )
+        .get(userId) as {
         n: number;
       };
       return row.n;
@@ -206,7 +270,9 @@ export function repo(db: Db, userId: string) {
 
     allTags(): string[] {
       const rows = db
-        .prepare('SELECT tags_json FROM cards WHERE user_id = ?')
+        .prepare(
+          'SELECT tags_json FROM cards WHERE user_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
+        )
         .all(userId) as { tags_json: string }[];
       return uniqueTags(rows.map((row) => parseTags(row.tags_json)));
     },

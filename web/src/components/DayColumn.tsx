@@ -16,6 +16,7 @@ export default function DayColumn({
   onInspect,
   onToggleDone,
   onToggleChecklist,
+  onArchive,
   onDelete,
   dragDisabled = false,
 }: {
@@ -30,6 +31,7 @@ export default function DayColumn({
   onInspect: (card: Card) => void;
   onToggleDone: (card: Card) => void;
   onToggleChecklist: (card: Card, itemId: string) => void;
+  onArchive: (card: Card) => void;
   onDelete: (card: Card) => void;
   dragDisabled?: boolean;
 }) {
@@ -70,6 +72,7 @@ export default function DayColumn({
               onInspect={() => onInspect(card)}
               onToggleDone={() => onToggleDone(card)}
               onToggleChecklist={(itemId) => onToggleChecklist(card, itemId)}
+              onArchive={() => onArchive(card)}
               onDelete={() => onDelete(card)}
               dragDisabled={dragDisabled}
             />

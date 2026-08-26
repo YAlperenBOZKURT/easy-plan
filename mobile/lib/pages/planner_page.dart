@@ -16,6 +16,7 @@ import '../widgets/draggable_card.dart';
 import '../widgets/filter_dialog.dart';
 import '../widgets/planner_collection_view.dart';
 import 'card_editor.dart';
+import 'card_lifecycle.dart';
 import 'card_search.dart';
 import 'card_view.dart';
 
@@ -28,6 +29,7 @@ class PlannerPage extends StatefulWidget {
   @override
   State<PlannerPage> createState() => _PlannerPageState();
 }
+
 class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
   late final PageController _pages = PageController();
   int _index = 0;
@@ -221,8 +223,19 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               },
             ),
             ListTile(
+              leading: Icon(
+                Icons.archive_outlined,
+                color: t.cardColor('amber'),
+              ),
+              title: const Text('Arşivle'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                store.archiveCard(card);
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.delete_outline, color: t.danger),
-              title: Text('Sil', style: TextStyle(color: t.danger)),
+              title: Text('Çöpe at', style: TextStyle(color: t.danger)),
               onTap: () {
                 Navigator.pop(sheetContext);
                 store.deleteCard(card);
@@ -273,10 +286,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       ? 'Sonraki gün'
                       : 'Sonraki ay',
                 ),
-                OutlinedButton(
-                  onPressed: _goToday,
-                  child: const Text('Bugün'),
-                ),
+                OutlinedButton(onPressed: _goToday, child: const Text('Bugün')),
                 if (wide) ...[
                   const SizedBox(width: 10),
                   Flexible(
@@ -305,7 +315,9 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   backgroundColor: t.accent,
                   textColor: t.accentFg,
                   child: Icon(
-                    _filters.hasActiveFilters ? Icons.tune : Icons.tune_outlined,
+                    _filters.hasActiveFilters
+                        ? Icons.tune
+                        : Icons.tune_outlined,
                     color: _filters.hasActiveFilters ? t.accent : null,
                   ),
                 ),
@@ -338,16 +350,25 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                 icon: const Icon(Icons.more_horiz),
                 color: t.surface,
                 onSelected: (value) async {
-                  if (value == 'refresh') await store.loadRange();
-                  if (value == 'sync') {
-                    await store.syncNow();
-                    await store.loadRange();
+                  switch (value) {
+                    case 'refresh':
+                      await store.loadRange();
+                    case 'sync':
+                      await store.syncNow();
+                      await store.loadRange();
+                    case 'lifecycle':
+                      await showCardLifecycle(context, store: store);
+                    case 'logout':
+                      await store.logout();
                   }
-                  if (value == 'logout') await store.logout();
                 },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'refresh', child: Text('Yenile')),
                   PopupMenuItem(value: 'sync', child: Text('Senkronize et')),
+                  PopupMenuItem(
+                    value: 'lifecycle',
+                    child: Text('Arşiv ve Çöp Kutusu'),
+                  ),
                   PopupMenuItem(value: 'logout', child: Text('Çıkış')),
                 ],
               ),
@@ -720,8 +741,7 @@ class _ViewSwitcher extends StatelessWidget {
                   color: selected == view ? t.accent : t.textMuted,
                 ),
               ),
-              if (view != PlannerViewMode.values.last)
-                const SizedBox(width: 4),
+              if (view != PlannerViewMode.values.last) const SizedBox(width: 4),
             ],
           ],
         ),
@@ -874,6 +894,7 @@ class _DayColumn extends StatelessWidget {
     );
   }
 }
+
 class _AddButton extends StatelessWidget {
   const _AddButton({required this.onTap});
   final VoidCallback onTap;

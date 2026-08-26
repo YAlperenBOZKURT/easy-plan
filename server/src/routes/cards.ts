@@ -77,7 +77,20 @@ function readCardBody(body: Record<string, unknown> | undefined) {
 export async function cardRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireUser);
 
+  const lifecycleCards = (req: FastifyRequest, state: 'archived' | 'trash') => {
+    const store = storeFor(req);
+    const cards = store.cards.lifecycle(state);
+    const ids = cards.map((card) => card.id);
+    const images = store.images.forCards(ids);
+    const reminders = store.reminders.forCards(ids);
+    return { cards: cards.map((card) => cardDto(card, images, reminders)) };
+  };
+
   app.get('/tags', async (req) => ({ tags: storeFor(req).cards.allTags() }));
+
+  app.get('/cards/archived', async (req) => lifecycleCards(req, 'archived'));
+
+  app.get('/cards/trash', async (req) => lifecycleCards(req, 'trash'));
 
   app.get<{ Querystring: { q?: string } }>('/cards/search', async (req, reply) => {
     const parsed = readSearchQuery(req.query.q);
@@ -162,7 +175,30 @@ export async function cardRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>('/cards/:id', async (req, reply) => {
     const store = storeFor(req);
-    if (!store.cards.get(req.params.id)) return reply.code(404).send({ error: 'not_found' });
+    const card = store.cards.getAny(req.params.id);
+    if (!card) return reply.code(404).send({ error: 'not_found' });
+    if (!card.trashed_at) store.cards.trash(req.params.id);
+    return { ok: true };
+  });
+
+  app.post<{ Params: { id: string } }>('/cards/:id/archive', async (req, reply) => {
+    const store = storeFor(req);
+    const card = store.cards.archive(req.params.id);
+    if (!card) return reply.code(404).send({ error: 'not_found' });
+    return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
+  });
+
+  app.post<{ Params: { id: string } }>('/cards/:id/restore', async (req, reply) => {
+    const store = storeFor(req);
+    const card = store.cards.restore(req.params.id);
+    if (!card) return reply.code(404).send({ error: 'not_found' });
+    return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
+  });
+
+  app.delete<{ Params: { id: string } }>('/cards/:id/permanent', async (req, reply) => {
+    const store = storeFor(req);
+    const card = store.cards.getAny(req.params.id);
+    if (!card || !card.trashed_at) return reply.code(404).send({ error: 'not_found' });
     const images = store.cards.remove(req.params.id);
     await removeImageFiles(images);
     return { ok: true };

@@ -298,7 +298,7 @@ class _CardEditorState extends State<CardEditor> {
               const Spacer(),
               if (widget.card != null)
                 IconButton(
-                  tooltip: 'Sil',
+                  tooltip: 'Çöpe at',
                   icon: Icon(Icons.delete_outline, size: 20, color: t.danger),
                   onPressed: () async {
                     await widget.store.deleteCard(widget.card!);

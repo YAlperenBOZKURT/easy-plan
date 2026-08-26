@@ -37,6 +37,7 @@ import {
 } from '../lib/filters.ts';
 import CardSearchModal from '../components/CardSearchModal.tsx';
 import PlannerCollectionView from '../components/PlannerCollectionView.tsx';
+import CardLifecycleModal from '../components/CardLifecycleModal.tsx';
 import {
   daysBetween,
   monthLabel,
@@ -60,6 +61,7 @@ export default function Planner({ user }: { user: User }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showLifecycle, setShowLifecycle] = useState(false);
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<PlannerView>('week');
   const [inspect, setInspect] = useState<Card | null>(null);
@@ -171,6 +173,11 @@ export default function Planner({ user }: { user: User }) {
 
   const removeCard = useMutation({
     mutationFn: (card: Card) => api.deleteCard(card.id),
+    onSuccess: refresh,
+  });
+
+  const archiveCard = useMutation({
+    mutationFn: (card: Card) => api.archiveCard(card.id),
     onSuccess: refresh,
   });
 
@@ -580,6 +587,7 @@ export default function Planner({ user }: { user: User }) {
         <TopMenu
           actions={[
             { label: 'Davranış ekle', color: 'var(--c-violet)', onSelect: () => setShowHabits(true) },
+            { label: 'Arşiv ve Çöp Kutusu', color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
             { label: 'Ayarlar', color: 'var(--c-blue)', onSelect: () => setShowSettings(true) },
             ...(user.role === 'admin'
               ? [{ label: 'Yönetim', color: 'var(--c-teal)', onSelect: () => navigate('/admin') }]
@@ -783,6 +791,7 @@ export default function Planner({ user }: { user: User }) {
               onInspect={(card) => setInspect(card)}
               onToggleDone={(card) => toggleDone.mutate(card)}
               onToggleChecklist={(card, itemId) => toggleChecklist.mutate({ card, itemId })}
+              onArchive={(card) => archiveCard.mutate(card)}
               onDelete={(card) => removeCard.mutate(card)}
               dragDisabled={fastNav || hasActiveFilters(filters)}
             />
@@ -821,11 +830,20 @@ export default function Planner({ user }: { user: User }) {
             setDraft({ card: inspect, day: inspect.day });
             setInspect(null);
           }}
+          onArchive={() => {
+            archiveCard.mutate(inspect);
+            setInspect(null);
+          }}
+          onDelete={() => {
+            removeCard.mutate(inspect);
+            setInspect(null);
+          }}
         />
       )}
       {draft && <CardModal draft={draft} onClose={() => setDraft(null)} onSaved={refresh} />}
       {showHabits && <HabitModal onClose={() => setShowHabits(false)} />}
       {showSettings && <SettingsModal user={user} onClose={() => setShowSettings(false)} />}
+      {showLifecycle && <CardLifecycleModal onClose={() => setShowLifecycle(false)} />}
       {showSearch && (
         <CardSearchModal
           onClose={() => setShowSearch(false)}

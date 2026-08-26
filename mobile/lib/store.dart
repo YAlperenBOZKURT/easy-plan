@@ -388,9 +388,7 @@ class PlannerStore extends ChangeNotifier {
   Future<void> toggleChecklistItem(PlannerCard card, String itemId) async {
     final checklist = card.checklist
         .map(
-          (item) => item.id == itemId
-              ? item.copyWith(done: !item.done)
-              : item,
+          (item) => item.id == itemId ? item.copyWith(done: !item.done) : item,
         )
         .toList();
     final done = isChecklistComplete(checklist);
@@ -422,6 +420,29 @@ class PlannerStore extends ChangeNotifier {
       method: 'DELETE',
       path: '/cards/${card.id}',
     );
+  }
+
+  Future<void> archiveCard(PlannerCard card) async {
+    await _write(
+      optimistic: () => _removeLocal(card.id),
+      send: () async {
+        await api.archiveCard(card.id);
+        return null;
+      },
+      method: 'POST',
+      path: '/cards/${card.id}/archive',
+    );
+  }
+
+  Future<void> restoreCard(PlannerCard card) async {
+    final restored = await api.restoreCard(card.id);
+    await Cache.instance.saveCards([restored]);
+    await loadRange();
+  }
+
+  Future<void> permanentlyDeleteCard(PlannerCard card) async {
+    await api.permanentlyDeleteCard(card.id);
+    await Cache.instance.removeCards([card.id]);
   }
 
   Future<PlannerCard?> saveCard({

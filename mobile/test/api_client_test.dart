@@ -85,7 +85,12 @@ void main() {
       baseUrl: 'https://planner.example',
       client: MockClient((request) async {
         captured = request;
-        return http.Response(jsonEncode({'tags': ['Backend', 'Mobil']}), 200);
+        return http.Response(
+          jsonEncode({
+            'tags': ['Backend', 'Mobil'],
+          }),
+          200,
+        );
       }),
     );
 
@@ -119,6 +124,46 @@ void main() {
     expect(captured.url.queryParameters['q'], 'proje sunumu');
     api.close();
   });
+
+  test(
+    'arşiv ve çöp kutusu endpointlerini doğru yöntemlerle çağırır',
+    () async {
+      final calls = <String>[];
+      final api = ApiClient(
+        baseUrl: 'https://planner.example',
+        client: MockClient((request) async {
+          calls.add('${request.method} ${request.url.path}');
+          if (request.url.path.endsWith('/restore')) {
+            return http.Response(
+              jsonEncode({
+                'card': {'id': 'card-1', 'day': '2026-08-25'},
+              }),
+              200,
+            );
+          }
+          if (request.method == 'GET') {
+            return http.Response(jsonEncode({'cards': []}), 200);
+          }
+          return http.Response(jsonEncode({'ok': true}), 200);
+        }),
+      );
+
+      expect(await api.archivedCards(), isEmpty);
+      expect(await api.trashedCards(), isEmpty);
+      await api.archiveCard('card-1');
+      expect((await api.restoreCard('card-1')).id, 'card-1');
+      await api.permanentlyDeleteCard('card-1');
+
+      expect(calls, [
+        'GET /api/v1/cards/archived',
+        'GET /api/v1/cards/trash',
+        'POST /api/v1/cards/card-1/archive',
+        'POST /api/v1/cards/card-1/restore',
+        'DELETE /api/v1/cards/card-1/permanent',
+      ]);
+      api.close();
+    },
+  );
 
   test('zaman aşımı ağ hatası olarak loglanır', () async {
     final api = ApiClient(

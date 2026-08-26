@@ -118,6 +118,12 @@ export const api = {
   updateCard: (id: string, patch: Record<string, unknown>) =>
     request<{ card: Card }>(`/cards/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteCard: (id: string) => request<{ ok: true }>(`/cards/${id}`, { method: 'DELETE' }),
+  archivedCards: () => request<{ cards: Card[] }>('/cards/archived'),
+  trashedCards: () => request<{ cards: Card[] }>('/cards/trash'),
+  archiveCard: (id: string) => request<{ card: Card }>(`/cards/${id}/archive`, { method: 'POST' }),
+  restoreCard: (id: string) => request<{ card: Card }>(`/cards/${id}/restore`, { method: 'POST' }),
+  permanentlyDeleteCard: (id: string) =>
+    request<{ ok: true }>(`/cards/${id}/permanent`, { method: 'DELETE' }),
   moveCard: (id: string, body: { day: string; beforeId?: string | null; afterId?: string | null }) =>
     request<{ card: Card }>(`/cards/${id}/move`, { method: 'PATCH', body: JSON.stringify(body) }),
 

@@ -31,6 +31,8 @@ export interface Card {
   priority: CardPriority;
   deadlineAt: string | null;
   tags: string[];
+  archivedAt?: string | null;
+  trashedAt?: string | null;
   reminders: number[];
   images: CardImage[];
   createdAt: string;

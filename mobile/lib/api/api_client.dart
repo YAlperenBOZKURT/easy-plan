@@ -238,6 +238,29 @@ class ApiClient {
 
   Future<void> deleteCard(String id) => _send('DELETE', '/cards/$id');
 
+  Future<List<PlannerCard>> archivedCards() =>
+      _lifecycleCards('/cards/archived');
+
+  Future<List<PlannerCard>> trashedCards() => _lifecycleCards('/cards/trash');
+
+  Future<List<PlannerCard>> _lifecycleCards(String path) async {
+    final json = await _send('GET', path) as Map<String, dynamic>;
+    return (json['cards'] as List)
+        .map((entry) => PlannerCard.fromJson(entry as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> archiveCard(String id) => _send('POST', '/cards/$id/archive');
+
+  Future<PlannerCard> restoreCard(String id) async {
+    final json =
+        await _send('POST', '/cards/$id/restore') as Map<String, dynamic>;
+    return PlannerCard.fromJson(json['card'] as Map<String, dynamic>);
+  }
+
+  Future<void> permanentlyDeleteCard(String id) =>
+      _send('DELETE', '/cards/$id/permanent');
+
   Future<PlannerCard> moveCard(
     String id, {
     required String day,
