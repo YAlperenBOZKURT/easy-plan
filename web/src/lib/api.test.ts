@@ -33,6 +33,30 @@ describe('API client', () => {
     expect(new Headers(init.headers).has('content-type')).toBe(false);
   });
 
+  it('kart yaşam döngüsü endpointlerini doğru yöntemlerle çağırır', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, cards: [], card: {} }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.archivedCards();
+    await api.trashedCards();
+    await api.archiveCard('card-1');
+    await api.restoreCard('card-1');
+    await api.permanentlyDeleteCard('card-1');
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/api/v1/cards/archived',
+      '/api/v1/cards/trash',
+      '/api/v1/cards/card-1/archive',
+      '/api/v1/cards/card-1/restore',
+      '/api/v1/cards/card-1/permanent',
+    ]);
+    expect(fetchMock.mock.calls.map(([, init]) => (init as RequestInit).method ?? 'GET')).toEqual([
+      'GET', 'GET', 'POST', 'POST', 'DELETE',
+    ]);
+  });
+
   it('sunucu hata kodunu ve request id değerini ApiError ile taşır', async () => {
     vi.stubGlobal(
       'fetch',

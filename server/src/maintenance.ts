@@ -67,7 +67,29 @@ export function materializeHabit(database: Db, user: UserRow, habit: HabitRow, n
 export async function purgeOldHabitCards(database: Db, user: UserRow, now = new Date()): Promise<number> {
   const cutoff = addYears(today(user.timezone || config.defaultTz, now), -config.windowYears);
   const doomed = database
-    .prepare('SELECT id FROM cards WHERE user_id = ? AND habit_id IS NOT NULL AND day < ?')
+    .prepare(
+      `SELECT id FROM cards WHERE user_id = ? AND habit_id IS NOT NULL AND day < ?
+       AND archived_at IS NULL AND trashed_at IS NULL`,
+    )
+    .all(user.id, cutoff) as { id: string }[];
+  if (doomed.length === 0) return 0;
+
+  const store = repo(database, user.id);
+  const files = [];
+  for (const row of doomed) files.push(...store.cards.remove(row.id));
+  await removeImageFiles(files);
+  return doomed.length;
+}
+
+/** Saklama süresi dolan çöp kartlarını ve görsellerini kalıcı olarak temizler. */
+export async function purgeExpiredTrash(
+  database: Db,
+  user: UserRow,
+  now = new Date(),
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - config.trashRetentionDays * 86_400_000).toISOString();
+  const doomed = database
+    .prepare('SELECT id FROM cards WHERE user_id = ? AND trashed_at IS NOT NULL AND trashed_at <= ?')
     .all(user.id, cutoff) as { id: string }[];
   if (doomed.length === 0) return 0;
 
@@ -82,6 +104,7 @@ export async function runMaintenance(database: Db = db(), now = new Date()) {
   const users = database.prepare('SELECT * FROM users WHERE active = 1').all() as unknown as UserRow[];
   let created = 0;
   let purged = 0;
+  let purgedTrash = 0;
 
   for (const user of users) {
     const habits = database
@@ -89,11 +112,12 @@ export async function runMaintenance(database: Db = db(), now = new Date()) {
       .all(user.id) as unknown as HabitRow[];
     for (const habit of habits) created += materializeHabit(database, user, habit, now);
     purged += await purgeOldHabitCards(database, user, now);
+    purgedTrash += await purgeExpiredTrash(database, user, now);
   }
 
   database
     .prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .run('last_maintenance', now.toISOString());
 
-  return { created, purged, users: users.length };
+  return { created, purged, purgedTrash, users: users.length };
 }

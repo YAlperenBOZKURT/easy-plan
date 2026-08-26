@@ -77,6 +77,13 @@ export const config = {
 
   /** Gezinme ve veri saklama penceresi */
   windowYears: 1,
+  /** Çöp kutusundaki kartların otomatik kalıcı silinme süresi */
+  trashRetentionDays: positiveInteger(
+    'TRASH_RETENTION_DAYS',
+    process.env.TRASH_RETENTION_DAYS,
+    30,
+    3650,
+  ),
 };
 
 if (config.isProd) {

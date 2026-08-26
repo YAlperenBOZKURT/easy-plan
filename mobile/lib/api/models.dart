@@ -46,11 +46,8 @@ class ChecklistItem {
   final String text;
   final bool done;
 
-  ChecklistItem copyWith({String? text, bool? done}) => ChecklistItem(
-    id: id,
-    text: text ?? this.text,
-    done: done ?? this.done,
-  );
+  ChecklistItem copyWith({String? text, bool? done}) =>
+      ChecklistItem(id: id, text: text ?? this.text, done: done ?? this.done);
 
   Map<String, dynamic> toJson() => {'id': id, 'text': text, 'done': done};
 
@@ -91,6 +88,8 @@ class PlannerCard {
     this.priority = 'none',
     this.deadlineAt,
     this.tags = const [],
+    this.archivedAt,
+    this.trashedAt,
     required this.reminders,
     required this.images,
     required this.updatedAt,
@@ -111,6 +110,8 @@ class PlannerCard {
   final String priority;
   final String? deadlineAt;
   final List<String> tags;
+  final String? archivedAt;
+  final String? trashedAt;
   final List<int> reminders;
   final List<CardImage> images;
   final String updatedAt;
@@ -141,6 +142,8 @@ class PlannerCard {
     'priority': priority,
     'deadlineAt': deadlineAt,
     'tags': tags,
+    'archivedAt': archivedAt,
+    'trashedAt': trashedAt,
     'reminders': reminders,
     'images': images.map((i) => i.toJson()).toList(),
     'updatedAt': updatedAt,
@@ -180,6 +183,8 @@ class PlannerCard {
         ? this.deadlineAt
         : deadlineAt as String?,
     tags: tags ?? this.tags,
+    archivedAt: archivedAt,
+    trashedAt: trashedAt,
     reminders: reminders ?? this.reminders,
     images: images,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -205,6 +210,8 @@ class PlannerCard {
         : 'none',
     deadlineAt: json['deadlineAt'] as String?,
     tags: ((json['tags'] as List?) ?? []).cast<String>(),
+    archivedAt: json['archivedAt'] as String?,
+    trashedAt: json['trashedAt'] as String?,
     reminders: ((json['reminders'] as List?) ?? [])
         .map((e) => (e as num).toInt())
         .toList(),

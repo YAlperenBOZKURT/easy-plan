@@ -21,6 +21,7 @@ export default function CardItem({
   onInspect,
   onToggleDone,
   onToggleChecklist,
+  onArchive,
   onDelete,
   dragDisabled = false,
 }: {
@@ -31,6 +32,7 @@ export default function CardItem({
   onInspect: () => void;
   onToggleDone: () => void;
   onToggleChecklist: (itemId: string) => void;
+  onArchive: () => void;
   onDelete: () => void;
   dragDisabled?: boolean;
 }) {
@@ -175,8 +177,11 @@ export default function CardItem({
           <button className="btn btn-sm btn-green" onClick={onToggleDone}>
             {card.done ? 'Geri al' : 'Yapıldı'}
           </button>
+          <button className="btn btn-sm" onClick={onArchive}>
+            Arşivle
+          </button>
           <button className="btn btn-sm btn-red" onClick={onDelete}>
-            Sil
+            Çöpe at
           </button>
         </div>
       )}

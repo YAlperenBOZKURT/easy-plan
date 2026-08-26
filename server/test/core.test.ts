@@ -5,7 +5,7 @@ import { repo } from '../src/repo.ts';
 import { defaultSortIndex, indexBetween, minutesOf, UNTIMED_BASE } from '../src/sorting.ts';
 import { addDays, addYears, isValidInstant, today, weekdayOf, zonedToUtc } from '../src/time.ts';
 import { fireAtFor, sanitizeOffsets } from '../src/reminders.ts';
-import { materializeHabit, purgeOldHabitCards } from '../src/maintenance.ts';
+import { materializeHabit, purgeExpiredTrash, purgeOldHabitCards } from '../src/maintenance.ts';
 import type { UserRow } from '../src/types.ts';
 import { isChecklistComplete, parseChecklist, sanitizeChecklist } from '../src/checklist.ts';
 import { cardDto } from '../src/dto.ts';
@@ -63,6 +63,41 @@ test('elle taşınan kartın sırası saat değişse de korunur, sıfırlanınca
 
   const reset = store.cards.update(card.id, { manualSort: false })!;
   assert.equal(reset.sort_index, 420, 'sıfırlanınca yeniden saate göre hesaplanmalı');
+});
+
+test('kart arşiv ve çöp kutusu yaşam döngüsünde güvenle geri yüklenir', () => {
+  const db = makeDb();
+  const user = makeUser(db, 'lifecycle-user', 'lifecycle@example.com');
+  const store = repo(db, user.id);
+  const card = store.cards.create({ day: '2026-08-25', title: 'Saklanacak kart' });
+
+  assert.ok(store.cards.archive(card.id));
+  assert.equal(store.cards.get(card.id), undefined, 'arşiv kartı ana planlayıcıdan gizlenmeli');
+  assert.equal(store.cards.lifecycle('archived')[0]?.id, card.id);
+  assert.equal(store.cards.range('2026-08-25', '2026-08-25').length, 0);
+
+  assert.ok(store.cards.restore(card.id));
+  assert.equal(store.cards.get(card.id)?.id, card.id);
+  assert.equal(store.cards.lifecycle('archived').length, 0);
+
+  assert.ok(store.cards.trash(card.id));
+  assert.equal(store.cards.get(card.id), undefined, 'çöp kartı ana planlayıcıdan gizlenmeli');
+  assert.equal(store.cards.lifecycle('trash')[0]?.id, card.id);
+
+  assert.ok(store.cards.restore(card.id));
+  assert.equal(store.cards.get(card.id)?.id, card.id);
+});
+
+test('saklama süresi dolan çöp kartları bakımda kalıcı silinir', async () => {
+  const db = makeDb();
+  const user = makeUser(db, 'trash-user', 'trash@example.com');
+  const store = repo(db, user.id);
+  const card = store.cards.create({ day: '2026-06-01', title: 'Eski çöp' });
+  store.cards.trash(card.id);
+  db.prepare('UPDATE cards SET trashed_at = ? WHERE id = ?').run('2026-01-01T00:00:00.000Z', card.id);
+
+  assert.equal(await purgeExpiredTrash(db, user, new Date('2026-08-25T12:00:00.000Z')), 1);
+  assert.equal(store.cards.getAny(card.id), undefined);
 });
 
 test('checklist temizlenir, doğrulanır ve kartla birlikte kalıcı olur', () => {

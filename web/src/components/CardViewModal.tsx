@@ -12,10 +12,14 @@ export default function CardViewModal({
   card,
   onClose,
   onEdit,
+  onArchive,
+  onDelete,
 }: {
   card: Card;
   onClose: () => void;
   onEdit: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
 }) {
   const [zoom, setZoom] = useState<string | null>(null);
 
@@ -144,6 +148,12 @@ export default function CardViewModal({
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>
             Kapat
+          </button>
+          <button className="btn" onClick={onArchive}>
+            Arşivle
+          </button>
+          <button className="btn btn-red" onClick={onDelete}>
+            Çöpe at
           </button>
           <button className="btn btn-primary" onClick={onEdit}>
             Düzenle

@@ -129,9 +129,14 @@ const operations: Record<string, OperationDoc> = {
     summary: 'Kart başlığı ve notlarında tam metin arama yapar', tag: 'Cards',
     querystring: object({ q: string({ minLength: 2, maxLength: 100 }) }, ['q']),
   },
+  'GET /api/v1/cards/archived': { summary: 'Arşivlenen kartları listeler', tag: 'Cards' },
+  'GET /api/v1/cards/trash': { summary: 'Çöp kutusundaki kartları listeler', tag: 'Cards' },
   'POST /api/v1/cards': { summary: 'Kart oluşturur', tag: 'Cards', body: { ...cardBody, required: ['day'] } },
   'PATCH /api/v1/cards/:id': { summary: 'Kartı günceller', tag: 'Cards', body: cardBody },
-  'DELETE /api/v1/cards/:id': { summary: 'Kartı siler', tag: 'Cards' },
+  'DELETE /api/v1/cards/:id': { summary: 'Kartı çöp kutusuna taşır', tag: 'Cards' },
+  'POST /api/v1/cards/:id/archive': { summary: 'Kartı arşivler', tag: 'Cards' },
+  'POST /api/v1/cards/:id/restore': { summary: 'Kartı arşivden veya çöpten geri yükler', tag: 'Cards' },
+  'DELETE /api/v1/cards/:id/permanent': { summary: 'Çöp kutusundaki kartı kalıcı siler', tag: 'Cards' },
   'PATCH /api/v1/cards/:id/move': {
     summary: 'Kartı gün veya sıra içinde taşır', tag: 'Cards',
     body: object({

@@ -60,6 +60,11 @@ test('HTTP yüzeyi sağlık, hata ve OpenAPI sözleşmesini korur', async (t) =>
       10,
     );
     assert.ok(document.paths['/api/v1/tags']?.get);
+    assert.ok(document.paths['/api/v1/cards/archived']?.get);
+    assert.ok(document.paths['/api/v1/cards/trash']?.get);
+    assert.ok(document.paths['/api/v1/cards/{id}/archive']?.post);
+    assert.ok(document.paths['/api/v1/cards/{id}/restore']?.post);
+    assert.ok(document.paths['/api/v1/cards/{id}/permanent']?.delete);
     assert.equal(
       document.paths['/api/v1/cards/search'].get.parameters.find(
         (parameter: { name: string }) => parameter.name === 'q',

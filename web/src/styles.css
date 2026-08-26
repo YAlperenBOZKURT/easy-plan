@@ -1053,6 +1053,25 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .collection-empty h2 { margin: 13px 0 4px; color: var(--text); font-size: 16px; }
 .collection-empty p { max-width: 420px; margin: 0; font-size: 12.5px; }
 
+.lifecycle-modal { max-width: 680px; max-height: min(760px, 88dvh); }
+.lifecycle-tabs { display: flex; gap: 6px; padding: 10px 18px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.lifecycle-tabs button { min-height: 34px; padding: 6px 13px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--text-muted); font-weight: 600; }
+.lifecycle-tabs button.active { border-color: color-mix(in oklab, var(--accent) 38%, var(--border)); background: color-mix(in oklab, var(--accent) 13%, var(--surface)); color: var(--accent); }
+.lifecycle-body { min-height: 260px; }
+.lifecycle-list { display: flex; flex-direction: column; gap: 9px; }
+.lifecycle-card { display: flex; align-items: center; gap: 14px; padding: 12px 13px; border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: var(--r-md); background: var(--surface); }
+.lifecycle-card-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.lifecycle-card-copy small { color: var(--text-faint); font-size: 11px; }
+.lifecycle-card-copy strong { overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.lifecycle-card-copy p { margin: 0; overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.lifecycle-actions { display: flex; flex: none; gap: 6px; }
+.lifecycle-status { margin: auto; color: var(--text-muted); }
+.lifecycle-status.danger { color: var(--danger); }
+.lifecycle-empty { display: grid; place-items: center; margin: auto; color: var(--text-muted); text-align: center; }
+.lifecycle-empty > span { font-size: 28px; color: var(--accent); }
+.lifecycle-empty h3 { margin: 9px 0 4px; color: var(--text); font-size: 16px; }
+.lifecycle-empty p { margin: 0; font-size: 12.5px; }
+
 @media (max-width: 767px) {
   .view-switcher { justify-content: flex-start; padding: 7px 10px; }
   .view-switcher button { min-height: 38px; padding: 7px 13px; }
@@ -1089,4 +1108,6 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
   .month-card span { display: block; font-size: 10.5px; }
   .month-more { padding: 0; font-size: 8.5px; }
   .agenda-check { width: 42px; }
+  .lifecycle-card { align-items: stretch; flex-direction: column; }
+  .lifecycle-actions { justify-content: flex-end; }
 }
