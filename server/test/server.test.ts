@@ -59,12 +59,24 @@ test('HTTP yüzeyi sağlık, hata ve OpenAPI sözleşmesini korur', async (t) =>
       document.paths['/api/v1/cards'].post.requestBody.content['application/json'].schema.properties.tags.maxItems,
       10,
     );
+    assert.equal(
+      document.paths['/api/v1/cards'].post.requestBody.content['application/json'].schema.properties.templateId.format,
+      'uuid',
+    );
     assert.ok(document.paths['/api/v1/tags']?.get);
     assert.ok(document.paths['/api/v1/cards/archived']?.get);
     assert.ok(document.paths['/api/v1/cards/trash']?.get);
     assert.ok(document.paths['/api/v1/cards/{id}/archive']?.post);
     assert.ok(document.paths['/api/v1/cards/{id}/restore']?.post);
     assert.ok(document.paths['/api/v1/cards/{id}/permanent']?.delete);
+    assert.ok(document.paths['/api/v1/cards/{id}/duplicate']?.post);
+    assert.ok(document.paths['/api/v1/cards/{id}/template']?.post);
+    assert.ok(document.paths['/api/v1/card-templates']?.get);
+    assert.ok(document.paths['/api/v1/card-templates']?.post);
+    assert.ok(document.paths['/api/v1/card-templates/{id}']?.patch);
+    assert.ok(document.paths['/api/v1/card-templates/{id}/create-card']?.post);
+    assert.ok(document.paths['/api/v1/card-templates/{id}/images']?.post);
+    assert.ok(document.paths['/api/v1/card-template-images/{id}']?.delete);
     assert.equal(
       document.paths['/api/v1/cards/search'].get.parameters.find(
         (parameter: { name: string }) => parameter.name === 'q',

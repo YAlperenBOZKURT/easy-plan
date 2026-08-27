@@ -34,6 +34,7 @@ export interface CardRow {
   sort_index: number;
   manual_sort: number;
   habit_id: string | null;
+  template_id: string | null;
   checklist_json: string;
   priority: CardPriority;
   deadline_at: string | null;
@@ -81,6 +82,36 @@ export interface ReminderRow {
   fire_at: string;
   sent_at: string | null;
   status: string | null;
+}
+
+export interface CardTemplateRow {
+  id: string;
+  user_id: string;
+  name: string;
+  title: string;
+  note: string;
+  start_time: string | null;
+  end_time: string | null;
+  color: string;
+  checklist_json: string;
+  priority: CardPriority;
+  tags_json: string;
+  reminders: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CardTemplateImageRow {
+  id: string;
+  template_id: string;
+  user_id: string;
+  file: string;
+  thumb: string;
+  bytes: number;
+  width: number;
+  height: number;
+  position: number;
+  created_at: string;
 }
 
 /** Kullanıcının seçebileceği hatırlatma aralıkları (dakika) */

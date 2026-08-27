@@ -50,6 +50,7 @@ const tags = (): JsonSchema => ({
 
 const cardBody = object({
   id: string({ format: 'uuid' }),
+  templateId: string({ format: 'uuid' }),
   day: string({ format: 'date' }),
   title: string({ maxLength: 200 }),
   note: string({ maxLength: 5000 }),
@@ -64,6 +65,19 @@ const cardBody = object({
   reminders: numberArray(),
   checklist: checklist(),
   updatedAt: string({ format: 'date-time' }),
+});
+
+const templateBody = object({
+  name: string({ minLength: 1, maxLength: 100 }),
+  title: string({ maxLength: 200 }),
+  note: string({ maxLength: 5000 }),
+  startTime: { anyOf: [string({ pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }), { type: 'null' }] },
+  endTime: { anyOf: [string({ pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }), { type: 'null' }] },
+  color: string(),
+  priority: string({ enum: ['none', 'low', 'medium', 'high', 'urgent'] }),
+  tags: tags(),
+  reminders: numberArray(),
+  checklist: checklist(),
 });
 
 const habitBody = object({
@@ -132,6 +146,10 @@ const operations: Record<string, OperationDoc> = {
   'GET /api/v1/cards/archived': { summary: 'Arşivlenen kartları listeler', tag: 'Cards' },
   'GET /api/v1/cards/trash': { summary: 'Çöp kutusundaki kartları listeler', tag: 'Cards' },
   'POST /api/v1/cards': { summary: 'Kart oluşturur', tag: 'Cards', body: { ...cardBody, required: ['day'] } },
+  'POST /api/v1/cards/:id/duplicate': {
+    summary: 'Kartı yeni kimlikle çoğaltır', tag: 'Cards',
+    body: object({ day: string({ format: 'date' }) }),
+  },
   'PATCH /api/v1/cards/:id': { summary: 'Kartı günceller', tag: 'Cards', body: cardBody },
   'DELETE /api/v1/cards/:id': { summary: 'Kartı çöp kutusuna taşır', tag: 'Cards' },
   'POST /api/v1/cards/:id/archive': { summary: 'Kartı arşivler', tag: 'Cards' },
@@ -144,6 +162,28 @@ const operations: Record<string, OperationDoc> = {
       beforeId: { anyOf: [string(), { type: 'null' }] },
       afterId: { anyOf: [string(), { type: 'null' }] },
     }),
+  },
+  'GET /api/v1/card-templates': { summary: 'Kart şablonlarını listeler', tag: 'Templates' },
+  'POST /api/v1/card-templates': {
+    summary: 'Kart şablonu oluşturur', tag: 'Templates', body: { ...templateBody, required: ['name'] },
+  },
+  'PATCH /api/v1/card-templates/:id': {
+    summary: 'Kart şablonunu günceller', tag: 'Templates', body: templateBody,
+  },
+  'DELETE /api/v1/card-templates/:id': { summary: 'Kart şablonunu siler', tag: 'Templates' },
+  'POST /api/v1/cards/:id/template': {
+    summary: 'Kartı tekrar kullanılabilir şablon olarak kaydeder', tag: 'Templates',
+    body: object({ name: string({ minLength: 1, maxLength: 100 }) }, ['name']),
+  },
+  'POST /api/v1/card-templates/:id/create-card': {
+    summary: 'Şablondan seçilen güne kart oluşturur', tag: 'Templates',
+    body: object({ day: string({ format: 'date' }) }, ['day']),
+  },
+  'POST /api/v1/card-templates/:id/images': {
+    summary: 'Şablona görsel ekler ve bağlı kartlara uygular', tag: 'Templates',
+  },
+  'DELETE /api/v1/card-template-images/:id': {
+    summary: 'Şablon görselini kaldırır ve bağlı kartlara uygular', tag: 'Templates',
   },
   'POST /api/v1/cards/:id/images': { summary: 'Karta görsel yükler', tag: 'Images' },
   'DELETE /api/v1/images/:id': { summary: 'Görseli siler', tag: 'Images' },
@@ -228,6 +268,7 @@ export async function registerOpenApi(app: FastifyInstance, uiEnabled: boolean) 
         { name: 'Authentication', description: 'Kimlik doğrulama ve oturumlar' },
         { name: 'Profile', description: 'Kullanıcı profili' },
         { name: 'Cards', description: 'Plan kartları' },
+        { name: 'Templates', description: 'Tekrar kullanılabilir kart şablonları' },
         { name: 'Images', description: 'Kart görselleri' },
         { name: 'Habits', description: 'Tekrarlanan davranışlar' },
         { name: 'Sync', description: 'Native istemci senkronizasyonu' },

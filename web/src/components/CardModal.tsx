@@ -5,6 +5,7 @@ import {
   CARD_PRIORITY_OPTIONS,
   type Card,
   type CardPriority,
+  type CardTemplate,
   type ChecklistItem,
 } from '../lib/types.ts';
 import { dayName, shortDate } from '../lib/dates.ts';
@@ -44,6 +45,8 @@ export default function CardModal({
   const [deadline, setDeadline] = useState(deadlineToInput(existing?.deadlineAt ?? null));
   const [tags, setTags] = useState(existing?.tags ?? []);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [templates, setTemplates] = useState<CardTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [reminders, setReminders] = useState<number[]>(existing?.reminders ?? []);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(existing?.checklist ?? []);
   const [images, setImages] = useState(existing?.images ?? []);
@@ -66,11 +69,41 @@ export default function CardModal({
 
   useEffect(() => {
     let active = true;
-    api.tags()
-      .then((response) => active && setTagSuggestions(response.tags))
-      .catch(() => undefined);
+    Promise.allSettled([api.tags(), api.cardTemplates()]).then(([tagResult, templateResult]) => {
+      if (!active) return;
+      if (tagResult.status === 'fulfilled') setTagSuggestions(tagResult.value.tags);
+      if (templateResult.status === 'fulfilled') setTemplates(templateResult.value.templates);
+    });
     return () => { active = false; };
   }, []);
+
+  const applyTemplate = (template: CardTemplate) => {
+    setTitle(template.title);
+    setNote(template.note);
+    setStartTime(template.startTime ?? '');
+    setEndTime(template.endTime ?? '');
+    setColor(template.color);
+    setPriority(template.priority);
+    setTags(template.tags);
+    setReminders(template.reminders);
+    setChecklist(template.checklist.map((item) => ({ ...newChecklistItem(), text: item.text })));
+    setDeadline('');
+  };
+
+  const removeTemplate = async () => {
+    if (!selectedTemplate) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.deleteCardTemplate(selectedTemplate);
+      setTemplates((current) => current.filter((template) => template.id !== selectedTemplate));
+      setSelectedTemplate('');
+    } catch {
+      setError('Şablon silinemedi. Tekrar dene.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
@@ -115,6 +148,7 @@ export default function CardModal({
         tags,
         reminders,
         checklist: normalizeChecklist(checklist),
+        ...(!existing && selectedTemplate ? { templateId: selectedTemplate } : {}),
         ...(resetOrder ? { manualSort: false } : {}),
       };
       const saved = existing
@@ -155,6 +189,39 @@ export default function CardModal({
         </div>
 
         <div className="modal-body">
+          {!existing && templates.length > 0 && (
+            <div className="field">
+              <label className="label" htmlFor="card-template">Şablondan başla</label>
+              <div className="row template-picker-row">
+                <select
+                  id="card-template"
+                  value={selectedTemplate}
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    setSelectedTemplate(id);
+                    const template = templates.find((item) => item.id === id);
+                    if (template) applyTemplate(template);
+                  }}
+                >
+                  <option value="">Şablon seç…</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}{template.images.length > 0 ? ` · ${template.images.length} görsel` : ''}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-red"
+                  disabled={!selectedTemplate || busy}
+                  onClick={removeTemplate}
+                >
+                  Şablonu sil
+                </button>
+              </div>
+              <span className="hint">İçerik ve ayarlar doldurulur; şablon görselleri kart kaydedildiğinde eklenir.</span>
+            </div>
+          )}
           <div className="field">
             <label className="label" htmlFor="title">
               Başlık

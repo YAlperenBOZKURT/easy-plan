@@ -94,6 +94,8 @@ class _CardEditorState extends State<CardEditor> {
   late List<String> _tags = [...?widget.card?.tags];
   final _tagInput = TextEditingController();
   List<String> _tagSuggestions = [];
+  List<CardTemplate> _templates = [];
+  String? _selectedTemplateId;
   String? _tagError;
   late List<CardImage> _images = [...?widget.card?.images];
 
@@ -116,6 +118,53 @@ class _CardEditorState extends State<CardEditor> {
     super.initState();
     _tagSuggestions = [..._tags];
     _loadTagSuggestions();
+    if (widget.card == null) _loadTemplates();
+  }
+
+  Future<void> _loadTemplates() async {
+    try {
+      final templates = await widget.store.api.cardTemplates();
+      if (mounted) setState(() => _templates = templates);
+    } catch (_) {
+      // Şablonlar yalnızca çevrimiçiyken yüklenir; editör normal çalışmaya devam eder.
+    }
+  }
+
+  void _applyTemplate(CardTemplate template) {
+    setState(() {
+      _selectedTemplateId = template.id;
+      _title.text = template.title;
+      _note.text = template.note;
+      _start = _parse(template.startTime);
+      _end = _parse(template.endTime);
+      _color = template.color;
+      _priority = template.priority;
+      _deadline = null;
+      _tags = [...template.tags];
+      _reminders
+        ..clear()
+        ..addAll(template.reminders);
+      _checklist
+        ..clear()
+        ..addAll(template.checklist.map((item) => ChecklistItem(id: newUuid(), text: item.text, done: false)));
+    });
+  }
+
+  Future<void> _deleteTemplate() async {
+    final id = _selectedTemplateId;
+    if (id == null) return;
+    setState(() => _saving = true);
+    try {
+      await widget.store.api.deleteCardTemplate(id);
+      if (mounted) {
+        setState(() {
+          _templates.removeWhere((template) => template.id == id);
+          _selectedTemplateId = null;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _loadTagSuggestions() async {
@@ -221,6 +270,7 @@ class _CardEditorState extends State<CardEditor> {
           .map((item) => item.copyWith(text: item.text.trim()))
           .where((item) => item.text.isNotEmpty)
           .toList(),
+      templateId: _selectedTemplateId,
       resetOrder: _resetOrder,
     );
     // Kart oluştuktan sonra bekleyen görseller yüklenir.
@@ -320,6 +370,43 @@ class _CardEditorState extends State<CardEditor> {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
             children: [
+              if (widget.card == null && _templates.isNotEmpty) ...[
+                const _Label('Şablondan başla'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedTemplateId,
+                        hint: const Text('Şablon seç…'),
+                        items: _templates
+                            .map(
+                              (template) => DropdownMenuItem(
+                                value: template.id,
+                                child: Text(
+                                  template.images.isEmpty
+                                      ? template.name
+                                      : '${template.name} · ${template.images.length} görsel',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (id) {
+                          final template = _templates.where((item) => item.id == id).firstOrNull;
+                          if (template != null) _applyTemplate(template);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Şablonu sil',
+                      onPressed: _selectedTemplateId == null || _saving ? null : _deleteTemplate,
+                      icon: Icon(Icons.delete_outline, color: t.danger),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
               const _Label('Başlık'),
               TextField(
                 controller: _title,

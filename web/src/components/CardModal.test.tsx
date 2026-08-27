@@ -60,4 +60,38 @@ describe('CardModal checklist', () => {
     });
     expect(onSaved).toHaveBeenCalledOnce();
   });
+
+  it('seçilen şablonun kart alanlarını yeni karta uygular', async () => {
+    vi.spyOn(api, 'tags').mockResolvedValue({ tags: [] });
+    vi.spyOn(api, 'cardTemplates').mockResolvedValue({
+      templates: [{
+        id: 'template-1', name: 'Sabah', title: 'Planla', note: 'Günü gözden geçir',
+        startTime: '08:30', endTime: null, color: 'teal', priority: 'high',
+        tags: ['Rutin'], reminders: [60],
+        checklist: [{ id: 'old-item', text: 'Ajandayı aç', done: true }],
+        images: [], createdAt: '', updatedAt: '',
+      }],
+    });
+    const create = vi.spyOn(api, 'createCard').mockResolvedValue({
+      card: {
+        id: 'card-2', day: '2026-08-15', title: 'Planla', note: 'Günü gözden geçir',
+        startTime: '08:30', endTime: null, color: 'teal', done: false, sortIndex: 0,
+        manualSort: false, habitId: null, checklist: [], priority: 'high', deadlineAt: null,
+        tags: ['Rutin'], reminders: [60], images: [], createdAt: '', updatedAt: '',
+      },
+    });
+    const user = userEvent.setup();
+    render(<CardModal draft={{ day: '2026-08-15' }} onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    await user.selectOptions(await screen.findByLabelText('Şablondan başla'), 'template-1');
+    expect(screen.getByLabelText('Başlık')).toHaveValue('Planla');
+    await user.click(screen.getByRole('button', { name: 'Kaydet' }));
+
+    expect(create.mock.calls[0]?.[0]).toMatchObject({
+      title: 'Planla', startTime: '08:30', color: 'teal', priority: 'high',
+      tags: ['Rutin'], reminders: [60],
+      templateId: 'template-1',
+      checklist: [{ text: 'Ajandayı aç', done: false }],
+    });
+  });
 });

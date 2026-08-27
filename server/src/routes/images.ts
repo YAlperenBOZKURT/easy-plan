@@ -30,7 +30,7 @@ export async function imageRoutes(app: FastifyInstance) {
     const store = storeFor(req);
     const removed = store.images.remove(req.params.id);
     if (!removed) return reply.code(404).send({ error: 'not_found' });
-    await removeImageFiles([removed]);
+    await removeImageFiles(store.images.unreferenced([removed]));
     return { ok: true };
   });
 }

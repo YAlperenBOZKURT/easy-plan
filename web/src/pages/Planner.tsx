@@ -38,6 +38,8 @@ import {
 import CardSearchModal from '../components/CardSearchModal.tsx';
 import PlannerCollectionView from '../components/PlannerCollectionView.tsx';
 import CardLifecycleModal from '../components/CardLifecycleModal.tsx';
+import CardTemplateNameModal from '../components/CardTemplateNameModal.tsx';
+import CardTemplatesModal from '../components/CardTemplatesModal.tsx';
 import {
   daysBetween,
   monthLabel,
@@ -62,9 +64,11 @@ export default function Planner({ user }: { user: User }) {
   const [showSearch, setShowSearch] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLifecycle, setShowLifecycle] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<PlannerView>('week');
   const [inspect, setInspect] = useState<Card | null>(null);
+  const [templateSource, setTemplateSource] = useState<Card | null>(null);
   const [dragging, setDragging] = useState<Card | null>(null);
   const [fastNav, setFastNav] = useState(false);
   const [panDir, setPanDir] = useState(0); // -1 geri, +1 ileri (renkli geri bildirim)
@@ -181,6 +185,16 @@ export default function Planner({ user }: { user: User }) {
     onSuccess: refresh,
   });
 
+  const duplicateCard = useMutation({
+    mutationFn: (card: Card) => api.duplicateCard(card.id),
+    onSuccess: refresh,
+  });
+
+  const openTemplateModal = (card: Card) => {
+    setOpenCardId(null);
+    setTemplateSource(card);
+  };
+
   const move = useMutation({
     mutationFn: (input: { id: string; day: string; beforeId: string | null; afterId: string | null }) =>
       api.moveCard(input.id, { day: input.day, beforeId: input.beforeId, afterId: input.afterId }),
@@ -192,7 +206,7 @@ export default function Planner({ user }: { user: User }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (draft || showFilters || showHabits || showSettings || showSearch) return;
+      if (draft || showFilters || showHabits || showSettings || showSearch || showTemplates) return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
       if (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
@@ -206,7 +220,7 @@ export default function Planner({ user }: { user: User }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [anchor, draft, showFilters, showHabits, showSearch, showSettings, view]);
+  }, [anchor, draft, showFilters, showHabits, showSearch, showSettings, showTemplates, view]);
 
   /* ------------------------------------------- mobil: kaydırma ↔ gün şeridi */
 
@@ -588,6 +602,7 @@ export default function Planner({ user }: { user: User }) {
           actions={[
             { label: 'Davranış ekle', color: 'var(--c-violet)', onSelect: () => setShowHabits(true) },
             { label: 'Arşiv ve Çöp Kutusu', color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
+            { label: 'Şablonlar', color: 'var(--c-teal)', onSelect: () => setShowTemplates(true) },
             { label: 'Ayarlar', color: 'var(--c-blue)', onSelect: () => setShowSettings(true) },
             ...(user.role === 'admin'
               ? [{ label: 'Yönetim', color: 'var(--c-teal)', onSelect: () => navigate('/admin') }]
@@ -792,6 +807,8 @@ export default function Planner({ user }: { user: User }) {
               onToggleDone={(card) => toggleDone.mutate(card)}
               onToggleChecklist={(card, itemId) => toggleChecklist.mutate({ card, itemId })}
               onArchive={(card) => archiveCard.mutate(card)}
+              onDuplicate={(card) => duplicateCard.mutate(card)}
+              onSaveTemplate={openTemplateModal}
               onDelete={(card) => removeCard.mutate(card)}
               dragDisabled={fastNav || hasActiveFilters(filters)}
             />
@@ -834,6 +851,14 @@ export default function Planner({ user }: { user: User }) {
             archiveCard.mutate(inspect);
             setInspect(null);
           }}
+          onDuplicate={() => {
+            duplicateCard.mutate(inspect);
+            setInspect(null);
+          }}
+          onSaveTemplate={() => {
+            setTemplateSource(inspect);
+            setInspect(null);
+          }}
           onDelete={() => {
             removeCard.mutate(inspect);
             setInspect(null);
@@ -841,9 +866,29 @@ export default function Planner({ user }: { user: User }) {
         />
       )}
       {draft && <CardModal draft={draft} onClose={() => setDraft(null)} onSaved={refresh} />}
+      {templateSource && (
+        <CardTemplateNameModal
+          card={templateSource}
+          onClose={() => setTemplateSource(null)}
+          onSaved={() => void Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['card-templates'] }),
+            queryClient.invalidateQueries({ queryKey: ['cards'] }),
+          ])}
+        />
+      )}
       {showHabits && <HabitModal onClose={() => setShowHabits(false)} />}
       {showSettings && <SettingsModal user={user} onClose={() => setShowSettings(false)} />}
       {showLifecycle && <CardLifecycleModal onClose={() => setShowLifecycle(false)} />}
+      {showTemplates && (
+        <CardTemplatesModal
+          onClose={() => setShowTemplates(false)}
+          onChanged={() => void Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['cards'] }),
+            queryClient.invalidateQueries({ queryKey: ['card-templates'] }),
+            queryClient.invalidateQueries({ queryKey: ['tags'] }),
+          ])}
+        />
+      )}
       {showSearch && (
         <CardSearchModal
           onClose={() => setShowSearch(false)}

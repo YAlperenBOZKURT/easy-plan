@@ -19,6 +19,7 @@ import 'card_editor.dart';
 import 'card_lifecycle.dart';
 import 'card_search.dart';
 import 'card_view.dart';
+import 'card_templates.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
 /// Telefonda tek gün + kaydırma, geniş ekranda kolonlar yan yana.
@@ -107,6 +108,49 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
             ? result.copyWith(status: FilterStatus.all)
             : result;
       });
+    }
+  }
+
+  Future<void> _saveTemplate(PlannerCard card) async {
+    final controller = TextEditingController(
+      text: card.title.isEmpty ? 'Yeni şablon' : card.title,
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Şablon olarak kaydet'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 100,
+          decoration: const InputDecoration(labelText: 'Şablon adı'),
+          onSubmitted: (value) {
+            final trimmed = value.trim();
+            if (trimmed.isNotEmpty) Navigator.pop(dialogContext, trimmed);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final trimmed = controller.text.trim();
+              if (trimmed.isNotEmpty) Navigator.pop(dialogContext, trimmed);
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || !mounted) return;
+    final saved = await store.saveCardAsTemplate(card, name);
+    if (mounted && saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kart şablon olarak kaydedildi.')),
+      );
     }
   }
 
@@ -234,6 +278,25 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               },
             ),
             ListTile(
+              leading: Icon(Icons.copy_outlined, color: t.cardColor('blue')),
+              title: const Text('Çoğalt'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                store.duplicateCard(card);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.bookmark_add_outlined,
+                color: t.cardColor('violet'),
+              ),
+              title: const Text('Şablon yap'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _saveTemplate(card);
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.delete_outline, color: t.danger),
               title: Text('Çöpe at', style: TextStyle(color: t.danger)),
               onTap: () {
@@ -358,6 +421,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       await store.loadRange();
                     case 'lifecycle':
                       await showCardLifecycle(context, store: store);
+                    case 'templates':
+                      await showCardTemplates(context, store: store);
                     case 'logout':
                       await store.logout();
                   }
@@ -369,6 +434,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     value: 'lifecycle',
                     child: Text('Arşiv ve Çöp Kutusu'),
                   ),
+                  PopupMenuItem(value: 'templates', child: Text('Şablonlar')),
                   PopupMenuItem(value: 'logout', child: Text('Çıkış')),
                 ],
               ),

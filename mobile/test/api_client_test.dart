@@ -165,6 +165,69 @@ void main() {
     },
   );
 
+  test('kart çoğaltma ve görselli şablon endpointlerini doğru çağırır', () async {
+    final calls = <String>[];
+    final api = ApiClient(
+      baseUrl: 'https://planner.example',
+      client: MockClient((request) async {
+        calls.add('${request.method} ${request.url.path}');
+        if (request.url.path.endsWith('/duplicate')) {
+          return http.Response(
+            jsonEncode({
+              'card': {
+                'id': 'card-copy',
+                'day': '2026-08-27',
+                'images': [
+                  {
+                    'id': 'image-copy',
+                    'url': '/uploads/shared.webp',
+                    'thumbUrl': '/uploads/shared.thumb.webp',
+                    'width': 800,
+                    'height': 600,
+                  },
+                ],
+              },
+            }),
+            201,
+          );
+        }
+        if (request.method == 'GET') {
+          return http.Response(
+            jsonEncode({
+              'templates': [
+                {
+                  'id': 'template-1',
+                  'name': 'Görselli',
+                  'images': [
+                    {
+                      'id': 'template-image',
+                      'url': '/uploads/shared.webp',
+                      'thumbUrl': '/uploads/shared.thumb.webp',
+                      'width': 800,
+                      'height': 600,
+                    },
+                  ],
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response(jsonEncode({'ok': true}), 200);
+      }),
+    );
+
+    expect((await api.duplicateCard('card-1')).images.single.id, 'image-copy');
+    expect((await api.cardTemplates()).single.images.single.id, 'template-image');
+    await api.deleteCardTemplate('template-1');
+    expect(calls, [
+      'POST /api/v1/cards/card-1/duplicate',
+      'GET /api/v1/card-templates',
+      'DELETE /api/v1/card-templates/template-1',
+    ]);
+    api.close();
+  });
+
   test('zaman aşımı ağ hatası olarak loglanır', () async {
     final api = ApiClient(
       baseUrl: 'https://planner.example',
