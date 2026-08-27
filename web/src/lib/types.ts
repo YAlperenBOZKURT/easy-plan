@@ -27,12 +27,30 @@ export interface Card {
   sortIndex: number;
   manualSort: boolean;
   habitId: string | null;
+  templateId?: string | null;
   checklist: ChecklistItem[];
   priority: CardPriority;
   deadlineAt: string | null;
   tags: string[];
   archivedAt?: string | null;
   trashedAt?: string | null;
+  reminders: number[];
+  images: CardImage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CardTemplate {
+  id: string;
+  name: string;
+  title: string;
+  note: string;
+  startTime: string | null;
+  endTime: string | null;
+  color: string;
+  checklist: ChecklistItem[];
+  priority: CardPriority;
+  tags: string[];
   reminders: number[];
   images: CardImage[];
   createdAt: string;

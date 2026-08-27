@@ -15,6 +15,7 @@ void main() {
       'tags': ['Backend', 'v1'],
       'archivedAt': '2026-08-25T10:00:00.000Z',
       'trashedAt': null,
+      'templateId': 'template-1',
     });
 
     expect(card.checklist, hasLength(2));
@@ -24,6 +25,7 @@ void main() {
     expect(card.tags, ['Backend', 'v1']);
     expect(card.archivedAt, '2026-08-25T10:00:00.000Z');
     expect(card.trashedAt, isNull);
+    expect(card.templateId, 'template-1');
     expect(isChecklistComplete(card.checklist), isFalse);
     expect(card.toJson()['checklist'], [
       {'id': 'item-1', 'text': 'İlk iş', 'done': true},
@@ -55,5 +57,41 @@ void main() {
     final cleared = card.copyWith(deadlineAt: null);
     expect(cleared.deadlineAt, isNull);
     expect(card.deadlineAt, isNotNull);
+    expect(card.copyWith(templateId: null).templateId, isNull);
+  });
+
+  test('kart şablonu tüm yeniden kullanılabilir alanları ayrıştırır', () {
+    final template = CardTemplate.fromJson({
+      'id': 'template-1',
+      'name': 'Sabah rutini',
+      'title': 'Planla',
+      'note': 'Günü gözden geçir',
+      'startTime': '08:30',
+      'endTime': null,
+      'color': 'teal',
+      'priority': 'high',
+      'tags': ['Rutin'],
+      'reminders': [60],
+      'checklist': [
+        {'id': 'item-1', 'text': 'Ajandayı aç', 'done': false},
+      ],
+      'images': [
+        {
+          'id': 'image-1',
+          'url': '/uploads/shared.webp',
+          'thumbUrl': '/uploads/shared.thumb.webp',
+          'width': 800,
+          'height': 600,
+        },
+      ],
+    });
+
+    expect(template.name, 'Sabah rutini');
+    expect(template.startTime, '08:30');
+    expect(template.priority, 'high');
+    expect(template.tags, ['Rutin']);
+    expect(template.reminders, [60]);
+    expect(template.checklist.single.text, 'Ajandayı aç');
+    expect(template.images.single.id, 'image-1');
   });
 }

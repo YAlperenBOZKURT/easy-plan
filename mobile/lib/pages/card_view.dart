@@ -258,7 +258,11 @@ class CardView extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: item.done
-                                    ? Icon(Icons.check, size: 11, color: t.surface)
+                                    ? Icon(
+                                        Icons.check,
+                                        size: 11,
+                                        color: t.surface,
+                                      )
                                     : null,
                               ),
                               const SizedBox(width: 8),
@@ -361,6 +365,11 @@ class CardView extends StatelessWidget {
                       const _Meta(
                         label: 'Kaynak',
                         value: 'Davranıştan üretildi',
+                      ),
+                    if (card.templateId != null)
+                      const _Meta(
+                        label: 'Şablon',
+                        value: 'Bağlı · değiştirilirse ayrılır',
                       ),
                     _Meta(label: 'Görsel', value: '${card.images.length}'),
                   ],

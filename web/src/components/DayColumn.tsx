@@ -17,6 +17,8 @@ export default function DayColumn({
   onToggleDone,
   onToggleChecklist,
   onArchive,
+  onDuplicate,
+  onSaveTemplate,
   onDelete,
   dragDisabled = false,
 }: {
@@ -32,6 +34,8 @@ export default function DayColumn({
   onToggleDone: (card: Card) => void;
   onToggleChecklist: (card: Card, itemId: string) => void;
   onArchive: (card: Card) => void;
+  onDuplicate: (card: Card) => void;
+  onSaveTemplate: (card: Card) => void;
   onDelete: (card: Card) => void;
   dragDisabled?: boolean;
 }) {
@@ -73,6 +77,8 @@ export default function DayColumn({
               onToggleDone={() => onToggleDone(card)}
               onToggleChecklist={(itemId) => onToggleChecklist(card, itemId)}
               onArchive={() => onArchive(card)}
+              onDuplicate={() => onDuplicate(card)}
+              onSaveTemplate={() => onSaveTemplate(card)}
               onDelete={() => onDelete(card)}
               dragDisabled={dragDisabled}
             />

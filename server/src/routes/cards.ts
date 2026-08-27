@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { requireUser } from '../auth.ts';
 import { config } from '../config.ts';
 import { db } from '../db.ts';
-import { cardDto } from '../dto.ts';
+import { cardDto, cardTemplateDto, type CardTemplateDto } from '../dto.ts';
 import { repo, type Repo } from '../repo.ts';
 import { applyReminders, sanitizeOffsets } from '../reminders.ts';
 import { indexBetween } from '../sorting.ts';
@@ -12,11 +12,12 @@ import { CARD_COLORS, CARD_PRIORITIES } from '../types.ts';
 import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
 import { sanitizeTags } from '../tags.ts';
 import { MAX_SEARCH_RESULTS, readSearchQuery } from '../search.ts';
+import { newId } from '../ids.ts';
 
 export const storeFor = (req: FastifyRequest): Repo => repo(db(), req.user!.id);
 
 /** Gezinme ve veri penceresi: bugünden ±1 yıl. */
-function withinWindow(day: string, tz: string): boolean {
+export function withinWindow(day: string, tz: string): boolean {
   const now = today(tz);
   return day >= addYears(now, -config.windowYears) && day <= addYears(now, config.windowYears);
 }
@@ -74,6 +75,34 @@ function readCardBody(body: Record<string, unknown> | undefined) {
   return { out, errors };
 }
 
+function stillMatchesTemplate(
+  body: Record<string, unknown>,
+  out: Record<string, unknown>,
+  template: CardTemplateDto,
+  reminders: number[],
+): boolean {
+  const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+  const fields: Array<[string, keyof CardTemplateDto]> = [
+    ['title', 'title'], ['note', 'note'], ['startTime', 'startTime'], ['endTime', 'endTime'],
+    ['color', 'color'], ['priority', 'priority'], ['tags', 'tags'],
+  ];
+  for (const [bodyKey, templateKey] of fields) {
+    if (bodyKey in body && !same(out[bodyKey], template[templateKey])) return false;
+  }
+  if ('checklist' in body) {
+    const incoming = (out.checklist as Array<{ text: string; done: boolean }> | undefined) ?? [];
+    const compact = (items: Array<{ text: string; done: boolean }>) =>
+      items.map((item) => ({ text: item.text, done: item.done }));
+    if (!same(compact(incoming), compact(template.checklist))) return false;
+  }
+  if ('reminders' in body && !same(reminders, template.reminders)) return false;
+  // Son tarih şablonun parçası değildir; oluştururken eklenmesi bile kartı
+  // özelleştirilmiş yapar. null göndermek istemcilerin normal boş alanıdır.
+  if ('deadlineAt' in body && out.deadlineAt != null) return false;
+  if (body.done === true) return false;
+  return true;
+}
+
 export async function cardRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireUser);
 
@@ -127,16 +156,77 @@ export async function cardRoutes(app: FastifyInstance) {
     if (!withinWindow(out.day, req.user!.timezone)) return reply.code(400).send({ error: 'out_of_window' });
 
     const store = storeFor(req);
+    const templateId = typeof req.body?.templateId === 'string' ? req.body.templateId : undefined;
+    const template = templateId ? store.templates.get(templateId) : undefined;
+    if (templateId && !template) return reply.code(404).send({ error: 'template_not_found' });
+    const templateDto = template ? cardTemplateDto(template) : undefined;
     // İstemcinin ürettiği id kabul edilir: çevrimdışı oluşturulan kart senkronda çakışmaz.
     const id = typeof req.body?.id === 'string' ? req.body.id : undefined;
     if (id && store.cards.get(id)) return reply.code(409).send({ error: 'already_exists' });
 
-    const card = store.cards.create({ id, ...(out as { day: string }) });
-    const offsets = sanitizeOffsets(req.body?.reminders);
+    const offsets = req.body && 'reminders' in req.body
+      ? sanitizeOffsets(req.body.reminders)
+      : (templateDto?.reminders ?? []);
+    const linked = Boolean(
+      template && templateDto && stillMatchesTemplate(req.body, out, templateDto, offsets),
+    );
+    const defaults = templateDto
+      ? {
+          title: templateDto.title,
+          note: templateDto.note,
+          startTime: templateDto.startTime,
+          endTime: templateDto.endTime,
+          color: templateDto.color,
+          priority: templateDto.priority,
+          tags: templateDto.tags,
+          checklist: templateDto.checklist.map((item) => ({
+            id: newId(), text: item.text, done: false,
+          })),
+        }
+      : {};
+    const card = store.cards.create({
+      id,
+      ...defaults,
+      ...(out as { day: string }),
+      templateId: linked ? template!.id : null,
+    });
+    if (template) store.images.cloneForCard(card.id, store.templates.images(template.id));
     if (offsets.length > 0) applyReminders(store, card, req.user!, offsets);
 
-    return reply.code(201).send({ card: cardDto(card, [], store.reminders.forCard(card.id)) });
+    return reply.code(201).send({
+      card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)),
+    });
   });
+
+  app.post<{ Params: { id: string }; Body: { day?: string } }>(
+    '/cards/:id/duplicate',
+    async (req, reply) => {
+      const store = storeFor(req);
+      const source = store.cards.get(req.params.id);
+      if (!source) return reply.code(404).send({ error: 'not_found' });
+      const day = req.body?.day ?? source.day;
+      if (!isValidDay(day)) return reply.code(400).send({ error: 'invalid_day' });
+      if (!withinWindow(day, req.user!.timezone)) return reply.code(400).send({ error: 'out_of_window' });
+
+      const sourceDto = cardDto(source);
+      const card = store.cards.create({
+        day,
+        title: source.title,
+        note: source.note,
+        startTime: source.start_time,
+        endTime: source.end_time,
+        color: source.color,
+        done: false,
+        priority: source.priority,
+        tags: sourceDto.tags,
+        checklist: sourceDto.checklist.map((item) => ({ id: newId(), text: item.text, done: false })),
+      });
+      const offsets = store.reminders.forCard(source.id).map((row) => row.offset_minutes);
+      const images = store.images.cloneForCard(card.id, store.images.forCard(source.id));
+      applyReminders(store, card, req.user!, offsets);
+      return reply.code(201).send({ card: cardDto(card, images, store.reminders.forCard(card.id)) });
+    },
+  );
 
   app.patch<{ Params: { id: string }; Body: Record<string, unknown> }>(
     '/cards/:id',
@@ -200,7 +290,7 @@ export async function cardRoutes(app: FastifyInstance) {
     const card = store.cards.getAny(req.params.id);
     if (!card || !card.trashed_at) return reply.code(404).send({ error: 'not_found' });
     const images = store.cards.remove(req.params.id);
-    await removeImageFiles(images);
+    await removeImageFiles(store.images.unreferenced(images));
     return { ok: true };
   });
 

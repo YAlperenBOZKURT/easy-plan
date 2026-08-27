@@ -236,6 +236,47 @@ class ApiClient {
     return PlannerCard.fromJson(json['card'] as Map<String, dynamic>);
   }
 
+  Future<PlannerCard> duplicateCard(String id, {String? day}) async {
+    final json =
+        await _send('POST', '/cards/$id/duplicate', body: {'day': ?day})
+            as Map<String, dynamic>;
+    return PlannerCard.fromJson(json['card'] as Map<String, dynamic>);
+  }
+
+  Future<List<CardTemplate>> cardTemplates() async {
+    final json = await _send('GET', '/card-templates') as Map<String, dynamic>;
+    return (json['templates'] as List)
+        .map((item) => CardTemplate.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<CardTemplate> saveCardAsTemplate(String id, String name) async {
+    final json =
+        await _send('POST', '/cards/$id/template', body: {'name': name})
+            as Map<String, dynamic>;
+    return CardTemplate.fromJson(json['template'] as Map<String, dynamic>);
+  }
+
+  Future<CardTemplate> createCardTemplate(Map<String, dynamic> input) async {
+    final json =
+        await _send('POST', '/card-templates', body: input)
+            as Map<String, dynamic>;
+    return CardTemplate.fromJson(json['template'] as Map<String, dynamic>);
+  }
+
+  Future<CardTemplate> updateCardTemplate(
+    String id,
+    Map<String, dynamic> input,
+  ) async {
+    final json =
+        await _send('PATCH', '/card-templates/$id', body: input)
+            as Map<String, dynamic>;
+    return CardTemplate.fromJson(json['template'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCardTemplate(String id) =>
+      _send('DELETE', '/card-templates/$id');
+
   Future<void> deleteCard(String id) => _send('DELETE', '/cards/$id');
 
   Future<List<PlannerCard>> archivedCards() =>
@@ -292,18 +333,24 @@ class ApiClient {
   Future<List<CardImage>> uploadImages(
     String cardId,
     List<({String name, Uint8List bytes})> files,
-  ) => _uploadImages(cardId, files, allowRefresh: true);
+  ) => _uploadImagesAt('/cards/$cardId/images', files, allowRefresh: true);
 
-  Future<List<CardImage>> _uploadImages(
-    String cardId,
+  Future<List<CardImage>> uploadCardTemplateImages(
+    String templateId,
+    List<({String name, Uint8List bytes})> files,
+  ) => _uploadImagesAt(
+    '/card-templates/$templateId/images',
+    files,
+    allowRefresh: true,
+  );
+
+  Future<List<CardImage>> _uploadImagesAt(
+    String path,
     List<({String name, Uint8List bytes})> files, {
     required bool allowRefresh,
   }) async {
     final clientRequestId = 'flutter-${DateTime.now().microsecondsSinceEpoch}';
-    final request = http.MultipartRequest(
-      'POST',
-      _uri('/cards/$cardId/images'),
-    );
+    final request = http.MultipartRequest('POST', _uri(path));
     request.headers.addAll(_headers(requestId: clientRequestId));
     for (final file in files) {
       request.files.add(
@@ -318,7 +365,7 @@ class ApiClient {
     final response = await http.Response.fromStream(await request.send());
     if (response.statusCode == 401 && allowRefresh && refreshToken != null) {
       await _refreshTokens();
-      return _uploadImages(cardId, files, allowRefresh: false);
+      return _uploadImagesAt(path, files, allowRefresh: false);
     }
     if (response.statusCode >= 400) {
       dynamic decoded;
@@ -341,6 +388,9 @@ class ApiClient {
   }
 
   Future<void> deleteImage(String id) => _send('DELETE', '/images/$id');
+
+  Future<void> deleteCardTemplateImage(String id) =>
+      _send('DELETE', '/card-template-images/$id');
 
   static MediaType _mediaType(String filename) {
     final ext = filename.toLowerCase().split('.').last;

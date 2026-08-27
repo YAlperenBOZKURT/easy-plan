@@ -117,6 +117,51 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
     assert.equal(invalid.json().error, 'validation_error');
   });
 
+  await t.test('şablona multipart görsel yüklenir ve şablon cevabında görünür', async () => {
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/token',
+      payload: { email: 'jwt-user@example.com', password: 'correct horse battery staple' },
+    });
+    const authorization = `Bearer ${login.json().accessToken as string}`;
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/card-templates',
+      headers: { authorization },
+      payload: { name: 'Görselli şablon', title: 'Kontrol' },
+    });
+    assert.equal(created.statusCode, 201);
+    const templateId = created.json().template.id as string;
+    const boundary = 'planner-template-image-boundary';
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    );
+    const multipart = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="pixel.png"\r\nContent-Type: image/png\r\n\r\n`,
+      ),
+      png,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const upload = await app.inject({
+      method: 'POST',
+      url: `/api/v1/card-templates/${templateId}/images`,
+      headers: { authorization, 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload: multipart,
+    });
+    assert.equal(upload.statusCode, 201, upload.body);
+    assert.equal(upload.json().images.length, 1);
+
+    const templates = await app.inject({
+      method: 'GET',
+      url: '/api/v1/card-templates',
+      headers: { authorization },
+    });
+    const template = templates.json().templates.find((item: { id: string }) => item.id === templateId);
+    assert.equal(template.images.length, 1);
+  });
+
   await t.test('web refresh Origin kontrolü uygular, token döndürür ve reuse oturumu iptal eder', async () => {
     const login = await app.inject({
       method: 'POST',

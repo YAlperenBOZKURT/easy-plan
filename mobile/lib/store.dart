@@ -375,7 +375,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> toggleDone(PlannerCard card) async {
-    final updated = card.copyWith(done: !card.done);
+    final updated = card.copyWith(done: !card.done, templateId: null);
     await _write(
       optimistic: () => _replaceLocal(updated),
       send: () => api.updateCard(card.id, {'done': updated.done}),
@@ -395,6 +395,7 @@ class PlannerStore extends ChangeNotifier {
     final updated = card.copyWith(
       checklist: checklist,
       done: done,
+      templateId: null,
       updatedAt: DateTime.now().toUtc().toIso8601String(),
     );
     final body = <String, dynamic>{
@@ -434,6 +435,38 @@ class PlannerStore extends ChangeNotifier {
     );
   }
 
+  Future<void> duplicateCard(PlannerCard card) async {
+    try {
+      final duplicate = await api.duplicateCard(card.id);
+      _replaceLocal(duplicate);
+      await Cache.instance.saveCards([duplicate]);
+      offline = false;
+      error = null;
+      notifyListeners();
+    } on ApiException catch (e) {
+      error = 'Kart çoğaltılamadı (${e.code}).';
+      notifyListeners();
+    } catch (_) {
+      error = 'Kart çoğaltılamadı: sunucuya ulaşılamadı.';
+      notifyListeners();
+    }
+  }
+
+  Future<bool> saveCardAsTemplate(PlannerCard card, String name) async {
+    try {
+      await api.saveCardAsTemplate(card.id, name);
+      await loadRange();
+      error = null;
+      return true;
+    } on ApiException catch (e) {
+      error = 'Şablon kaydedilemedi (${e.code}).';
+    } catch (_) {
+      error = 'Şablon kaydedilemedi: sunucuya ulaşılamadı.';
+    }
+    notifyListeners();
+    return false;
+  }
+
   Future<void> restoreCard(PlannerCard card) async {
     final restored = await api.restoreCard(card.id);
     await Cache.instance.saveCards([restored]);
@@ -458,6 +491,7 @@ class PlannerStore extends ChangeNotifier {
     required List<String> tags,
     required List<int> reminders,
     required List<ChecklistItem> checklist,
+    String? templateId,
     bool resetOrder = false,
   }) async {
     final body = <String, dynamic>{
@@ -472,6 +506,7 @@ class PlannerStore extends ChangeNotifier {
       'tags': tags,
       'reminders': reminders,
       'checklist': checklist.map((item) => item.toJson()).toList(),
+      if (existing == null && templateId != null) 'templateId': templateId,
       if (checklist.isNotEmpty) 'done': isChecklistComplete(checklist),
       if (resetOrder) 'manualSort': false,
     };
@@ -496,6 +531,7 @@ class PlannerStore extends ChangeNotifier {
                   sortIndex: 9999,
                   manualSort: false,
                   habitId: null,
+                  templateId: templateId,
                   reminders: const [],
                   images: const [],
                   updatedAt: DateTime.now().toIso8601String(),
@@ -515,6 +551,7 @@ class PlannerStore extends ChangeNotifier {
               done: checklist.isNotEmpty
                   ? isChecklistComplete(checklist)
                   : null,
+              templateId: existing == null ? templateId : null,
               updatedAt: DateTime.now().toIso8601String(),
             );
 
@@ -570,7 +607,8 @@ class PlannerStore extends ChangeNotifier {
     String? afterId,
   }) async {
     await _write(
-      optimistic: () => _replaceLocal(card.copyWith(day: day)),
+      optimistic: () =>
+          _replaceLocal(card.copyWith(day: day, templateId: null)),
       send: () =>
           api.moveCard(card.id, day: day, beforeId: beforeId, afterId: afterId),
       method: 'PATCH',

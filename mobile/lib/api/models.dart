@@ -84,6 +84,7 @@ class PlannerCard {
     required this.sortIndex,
     required this.manualSort,
     required this.habitId,
+    this.templateId,
     this.checklist = const [],
     this.priority = 'none',
     this.deadlineAt,
@@ -106,6 +107,7 @@ class PlannerCard {
   final double sortIndex;
   final bool manualSort;
   final String? habitId;
+  final String? templateId;
   final List<ChecklistItem> checklist;
   final String priority;
   final String? deadlineAt;
@@ -138,6 +140,7 @@ class PlannerCard {
     'sortIndex': sortIndex,
     'manualSort': manualSort,
     'habitId': habitId,
+    'templateId': templateId,
     'checklist': checklist.map((item) => item.toJson()).toList(),
     'priority': priority,
     'deadlineAt': deadlineAt,
@@ -163,6 +166,7 @@ class PlannerCard {
     List<ChecklistItem>? checklist,
     String? priority,
     Object? deadlineAt = _notProvided,
+    Object? templateId = _notProvided,
     List<String>? tags,
     String? updatedAt,
   }) => PlannerCard(
@@ -177,6 +181,9 @@ class PlannerCard {
     sortIndex: sortIndex ?? this.sortIndex,
     manualSort: manualSort,
     habitId: habitId,
+    templateId: identical(templateId, _notProvided)
+        ? this.templateId
+        : templateId as String?,
     checklist: checklist ?? this.checklist,
     priority: priority ?? this.priority,
     deadlineAt: identical(deadlineAt, _notProvided)
@@ -202,6 +209,7 @@ class PlannerCard {
     sortIndex: (json['sortIndex'] as num?)?.toDouble() ?? 0,
     manualSort: json['manualSort'] == true,
     habitId: json['habitId'] as String?,
+    templateId: json['templateId'] as String?,
     checklist: ((json['checklist'] as List?) ?? [])
         .map((item) => ChecklistItem.fromJson(item as Map<String, dynamic>))
         .toList(),
@@ -219,6 +227,59 @@ class PlannerCard {
         .map((e) => CardImage.fromJson(e as Map<String, dynamic>))
         .toList(),
     updatedAt: (json['updatedAt'] as String?) ?? '',
+  );
+}
+
+class CardTemplate {
+  CardTemplate({
+    required this.id,
+    required this.name,
+    required this.title,
+    required this.note,
+    required this.startTime,
+    required this.endTime,
+    required this.color,
+    required this.checklist,
+    required this.priority,
+    required this.tags,
+    required this.reminders,
+    required this.images,
+  });
+
+  final String id;
+  final String name;
+  final String title;
+  final String note;
+  final String? startTime;
+  final String? endTime;
+  final String color;
+  final List<ChecklistItem> checklist;
+  final String priority;
+  final List<String> tags;
+  final List<int> reminders;
+  final List<CardImage> images;
+
+  factory CardTemplate.fromJson(Map<String, dynamic> json) => CardTemplate(
+    id: json['id'] as String,
+    name: (json['name'] as String?) ?? '',
+    title: (json['title'] as String?) ?? '',
+    note: (json['note'] as String?) ?? '',
+    startTime: json['startTime'] as String?,
+    endTime: json['endTime'] as String?,
+    color: (json['color'] as String?) ?? 'blue',
+    checklist: ((json['checklist'] as List?) ?? [])
+        .map((item) => ChecklistItem.fromJson(item as Map<String, dynamic>))
+        .toList(),
+    priority: cardPriorityKeys.contains(json['priority'])
+        ? json['priority'] as String
+        : 'none',
+    tags: ((json['tags'] as List?) ?? []).cast<String>(),
+    reminders: ((json['reminders'] as List?) ?? [])
+        .map((item) => (item as num).toInt())
+        .toList(),
+    images: ((json['images'] as List?) ?? [])
+        .map((item) => CardImage.fromJson(item as Map<String, dynamic>))
+        .toList(),
   );
 }
 

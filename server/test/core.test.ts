@@ -8,9 +8,10 @@ import { fireAtFor, sanitizeOffsets } from '../src/reminders.ts';
 import { materializeHabit, purgeExpiredTrash, purgeOldHabitCards } from '../src/maintenance.ts';
 import type { UserRow } from '../src/types.ts';
 import { isChecklistComplete, parseChecklist, sanitizeChecklist } from '../src/checklist.ts';
-import { cardDto } from '../src/dto.ts';
+import { cardDto, cardTemplateDto } from '../src/dto.ts';
 import { parseTags, sanitizeTags } from '../src/tags.ts';
 import { MAX_SEARCH_RESULTS, readSearchQuery } from '../src/search.ts';
+import { syncLinkedCards } from '../src/template-sync.ts';
 
 /* --------------------------------------------------------------- yardımcılar */
 
@@ -160,6 +161,76 @@ test('kart etiketleri normalize edilir, sınırlandırılır ve öneriler tekill
   store.cards.create({ day: '2026-08-13', tags: ['Backend', 'İş'] });
   store.cards.create({ day: '2026-08-14', tags: ['backend', 'Kişisel'] });
   assert.deepEqual(store.cards.allTags(), ['Backend', 'İş', 'Kişisel']);
+});
+
+test('kart şablonları kullanıcıya özel saklanır ve kart alanlarını eksiksiz taşır', () => {
+  const db = makeDb();
+  const alice = makeUser(db, 'u-template-a', 'template-a@x.com');
+  const bob = makeUser(db, 'u-template-b', 'template-b@x.com');
+  const aliceStore = repo(db, alice.id);
+  const bobStore = repo(db, bob.id);
+  const sourceCard = aliceStore.cards.create({ day: '2026-08-13', title: 'Görselli kart' });
+  const sourceImage = aliceStore.images.add({
+    cardId: sourceCard.id,
+    file: `${alice.id}/2026/08/shared.webp`,
+    thumb: `${alice.id}/2026/08/shared.thumb.webp`,
+    bytes: 1200,
+    width: 800,
+    height: 600,
+  });
+
+  const created = aliceStore.templates.create({
+    name: 'Sabah rutini',
+    title: 'Güne hazırlan',
+    startTime: '08:00',
+    color: 'teal',
+    priority: 'high',
+    tags: ['Rutin'],
+    reminders: [60],
+    checklist: [{ id: 'template-item', text: 'Ajandayı aç', done: false }],
+    images: [sourceImage, sourceImage],
+  });
+  const templateImages = aliceStore.templates.images(created.id);
+  aliceStore.cards.linkTemplate(sourceCard.id, created.id);
+  const dto = cardTemplateDto(created, templateImages);
+  assert.equal(dto.name, 'Sabah rutini');
+  assert.equal(dto.startTime, '08:00');
+  assert.equal(dto.priority, 'high');
+  assert.deepEqual(dto.tags, ['Rutin']);
+  assert.deepEqual(dto.reminders, [60]);
+  assert.equal(dto.checklist[0]?.text, 'Ajandayı aç');
+  assert.equal(dto.images.length, 1, 'aynı görsel şablona yalnızca bir kez bağlanmalı');
+  assert.equal(bobStore.templates.get(created.id), undefined);
+  assert.deepEqual(bobStore.templates.list(), []);
+
+  const updated = aliceStore.templates.update(created.id, { name: 'Gün başlangıcı', reminders: [1440, 60] });
+  assert.equal(updated?.name, 'Gün başlangıcı');
+  assert.deepEqual(cardTemplateDto(updated!).reminders, [1440, 60]);
+  assert.equal(bobStore.templates.remove(created.id), undefined);
+
+  const targetCard = aliceStore.cards.create({ day: '2026-08-14' });
+  aliceStore.cards.linkTemplate(targetCard.id, created.id);
+  const cloned = aliceStore.images.cloneForCard(targetCard.id, [...templateImages, ...templateImages]);
+  assert.equal(cloned.length, 1, 'aynı görsel çoğaltılan karta yalnızca bir kez bağlanmalı');
+  assert.equal(cloned[0]?.file, sourceImage.file, 'fiziksel dosya yolu paylaşılmalı');
+  assert.notEqual(cloned[0]?.id, sourceImage.id, 'kart bağlantısının kimliği ayrı olmalı');
+
+  aliceStore.templates.update(created.id, { title: 'Şablondan güncellendi' });
+  syncLinkedCards(aliceStore, created.id, alice);
+  assert.equal(aliceStore.cards.get(sourceCard.id)?.title, 'Şablondan güncellendi');
+  assert.equal(aliceStore.cards.get(targetCard.id)?.title, 'Şablondan güncellendi');
+  assert.equal(aliceStore.cards.get(targetCard.id)?.template_id, created.id);
+
+  aliceStore.cards.update(targetCard.id, { done: true });
+  assert.equal(aliceStore.cards.get(targetCard.id)?.template_id, null, 'en küçük kart değişikliği bağlantıyı kesmeli');
+  aliceStore.templates.update(created.id, { title: 'Yalnızca bağlı karta gider' });
+  syncLinkedCards(aliceStore, created.id, alice);
+  assert.equal(aliceStore.cards.get(sourceCard.id)?.title, 'Yalnızca bağlı karta gider');
+  assert.equal(aliceStore.cards.get(targetCard.id)?.title, 'Şablondan güncellendi');
+  assert.deepEqual(aliceStore.images.unreferenced(aliceStore.cards.remove(sourceCard.id)), []);
+  assert.deepEqual(aliceStore.images.unreferenced(aliceStore.cards.remove(targetCard.id)), []);
+  const removedTemplateImages = aliceStore.templates.remove(created.id)!;
+  assert.equal(aliceStore.images.unreferenced(removedTemplateImages).length, 1);
 });
 
 test('kart araması başlık ve notlarda çalışır, güncellemeleri izler ve kullanıcıyı ayırır', () => {

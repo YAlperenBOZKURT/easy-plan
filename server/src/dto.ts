@@ -1,10 +1,10 @@
-import type { CardImageRow, CardRow, HabitRow, ReminderRow, UserRow } from './types.ts';
+import type { CardImageRow, CardRow, CardTemplateImageRow, CardTemplateRow, HabitRow, ReminderRow, UserRow } from './types.ts';
 import { parseChecklist } from './checklist.ts';
 import { parseTags } from './tags.ts';
 
 /** DB satırlarını istemcinin gördüğü şekle çevirir (camelCase, hash'siz, yol yerine URL). */
 
-export const imageDto = (row: CardImageRow) => ({
+export const imageDto = (row: Pick<CardImageRow, 'id' | 'file' | 'thumb' | 'width' | 'height' | 'bytes'>) => ({
   id: row.id,
   url: `/uploads/${row.file}`,
   thumbUrl: `/uploads/${row.thumb}`,
@@ -26,6 +26,7 @@ export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: R
     sortIndex: card.sort_index,
     manualSort: card.manual_sort === 1,
     habitId: card.habit_id,
+    templateId: card.template_id,
     checklist: parseChecklist(card.checklist_json),
     priority: card.priority,
     deadlineAt: card.deadline_at,
@@ -57,6 +58,23 @@ export const habitDto = (row: HabitRow) => ({
   updatedAt: row.updated_at,
 });
 
+export const cardTemplateDto = (row: CardTemplateRow, images: CardTemplateImageRow[] = []) => ({
+  id: row.id,
+  name: row.name,
+  title: row.title,
+  note: row.note,
+  startTime: row.start_time,
+  endTime: row.end_time,
+  color: row.color,
+  checklist: parseChecklist(row.checklist_json),
+  priority: row.priority,
+  tags: parseTags(row.tags_json),
+  reminders: row.reminders ? row.reminders.split(',').map(Number) : [],
+  images: images.map(imageDto),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
 export const userDto = (row: UserRow) => ({
   id: row.id,
   email: row.email,
@@ -69,4 +87,5 @@ export const userDto = (row: UserRow) => ({
 
 export type CardDto = ReturnType<typeof cardDto>;
 export type HabitDto = ReturnType<typeof habitDto>;
+export type CardTemplateDto = ReturnType<typeof cardTemplateDto>;
 export type UserDto = ReturnType<typeof userDto>;

@@ -1,4 +1,4 @@
-import type { AdminStats, AdminUser, Card, Habit, User } from './types.ts';
+import type { AdminStats, AdminUser, Card, CardTemplate, Habit, User } from './types.ts';
 import { logger } from './logger.ts';
 
 const BASE = '/api/v1';
@@ -126,6 +126,34 @@ export const api = {
     request<{ ok: true }>(`/cards/${id}/permanent`, { method: 'DELETE' }),
   moveCard: (id: string, body: { day: string; beforeId?: string | null; afterId?: string | null }) =>
     request<{ card: Card }>(`/cards/${id}/move`, { method: 'PATCH', body: JSON.stringify(body) }),
+  duplicateCard: (id: string, day?: string) =>
+    request<{ card: Card }>(`/cards/${id}/duplicate`, {
+      method: 'POST', body: JSON.stringify(day ? { day } : {}),
+    }),
+
+  /* kart şablonları */
+  cardTemplates: () => request<{ templates: CardTemplate[] }>('/card-templates'),
+  createCardTemplate: (input: Record<string, unknown>) =>
+    request<{ template: CardTemplate }>('/card-templates', { method: 'POST', body: JSON.stringify(input) }),
+  updateCardTemplate: (id: string, input: Record<string, unknown>) =>
+    request<{ template: CardTemplate }>(`/card-templates/${id}`, {
+      method: 'PATCH', body: JSON.stringify(input),
+    }),
+  saveCardAsTemplate: (id: string, name: string) =>
+    request<{ template: CardTemplate }>(`/cards/${id}/template`, {
+      method: 'POST', body: JSON.stringify({ name }),
+    }),
+  deleteCardTemplate: (id: string) =>
+    request<{ ok: true }>(`/card-templates/${id}`, { method: 'DELETE' }),
+  uploadCardTemplateImages: (id: string, files: File[]) => {
+    const form = new FormData();
+    for (const file of files) form.append('file', file);
+    return request<{ images: CardTemplate['images'] }>(`/card-templates/${id}/images`, {
+      method: 'POST', body: form,
+    });
+  },
+  deleteCardTemplateImage: (id: string) =>
+    request<{ ok: true }>(`/card-template-images/${id}`, { method: 'DELETE' }),
 
   /* görseller */
   uploadImages: (cardId: string, files: File[]) => {

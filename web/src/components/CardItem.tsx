@@ -22,6 +22,8 @@ export default function CardItem({
   onToggleDone,
   onToggleChecklist,
   onArchive,
+  onDuplicate,
+  onSaveTemplate,
   onDelete,
   dragDisabled = false,
 }: {
@@ -33,6 +35,8 @@ export default function CardItem({
   onToggleDone: () => void;
   onToggleChecklist: (itemId: string) => void;
   onArchive: () => void;
+  onDuplicate: () => void;
+  onSaveTemplate: () => void;
   onDelete: () => void;
   dragDisabled?: boolean;
 }) {
@@ -142,10 +146,11 @@ export default function CardItem({
         </div>
       )}
 
-      {(card.reminders.length > 0 || card.habitId) && (
+      {(card.reminders.length > 0 || card.habitId || card.templateId) && (
         <div className="card-meta">
           {card.reminders.length > 0 && <span>🔔 {card.reminders.length}</span>}
           {card.habitId && <span title="Davranıştan üretildi">↻</span>}
+          {card.templateId && <span title="Şablona bağlı">◇ Şablon</span>}
         </div>
       )}
 
@@ -179,6 +184,12 @@ export default function CardItem({
           </button>
           <button className="btn btn-sm" onClick={onArchive}>
             Arşivle
+          </button>
+          <button className="btn btn-sm" onClick={onDuplicate}>
+            Çoğalt
+          </button>
+          <button className="btn btn-sm" onClick={onSaveTemplate}>
+            Şablon yap
           </button>
           <button className="btn btn-sm btn-red" onClick={onDelete}>
             Çöpe at

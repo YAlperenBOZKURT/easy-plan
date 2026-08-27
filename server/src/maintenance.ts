@@ -77,7 +77,7 @@ export async function purgeOldHabitCards(database: Db, user: UserRow, now = new 
   const store = repo(database, user.id);
   const files = [];
   for (const row of doomed) files.push(...store.cards.remove(row.id));
-  await removeImageFiles(files);
+  await removeImageFiles(store.images.unreferenced(files));
   return doomed.length;
 }
 
@@ -96,7 +96,7 @@ export async function purgeExpiredTrash(
   const store = repo(database, user.id);
   const files = [];
   for (const row of doomed) files.push(...store.cards.remove(row.id));
-  await removeImageFiles(files);
+  await removeImageFiles(store.images.unreferenced(files));
   return doomed.length;
 }
 

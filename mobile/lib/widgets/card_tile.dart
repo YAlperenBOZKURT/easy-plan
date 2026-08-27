@@ -164,32 +164,64 @@ class CardTile extends StatelessWidget {
                       ),
                     ),
                   ],
-                  if (card.reminders.isNotEmpty || card.habitId != null) ...[
+                  if (card.reminders.isNotEmpty ||
+                      card.habitId != null ||
+                      card.templateId != null) ...[
                     const SizedBox(height: 7),
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (card.reminders.isNotEmpty) ...[
-                          Icon(
-                            Icons.notifications_none,
-                            size: 13,
-                            color: t.textFaint,
+                        if (card.reminders.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.notifications_none,
+                                size: 13,
+                                color: t.textFaint,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                '${card.reminders.length}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: t.textFaint,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${card.reminders.length}',
-                            style: TextStyle(fontSize: 11, color: t.textFaint),
-                          ),
-                        ],
-                        if (card.habitId != null) ...[
-                          const SizedBox(width: 10),
+                        if (card.habitId != null)
                           Icon(Icons.repeat, size: 13, color: t.textFaint),
-                        ],
+                        if (card.templateId != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bookmark_outline,
+                                size: 13,
+                                color: t.textFaint,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'Şablon',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: t.textFaint,
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ],
                   if (card.tags.isNotEmpty) ...[
                     const SizedBox(height: 7),
-                    Opacity(opacity: faded, child: _CardTags(tags: card.tags)),
+                    Opacity(
+                      opacity: faded,
+                      child: _CardTags(tags: card.tags),
+                    ),
                   ],
                 ],
               ),
@@ -201,19 +233,21 @@ class CardTile extends StatelessWidget {
   }
 }
 
-Color _priorityColor(PlannerTokens tokens, String priority) => switch (priority) {
-  'low' => tokens.cardColor('blue'),
-  'medium' => tokens.cardColor('amber'),
-  'high' => tokens.cardColor('orange'),
-  'urgent' => tokens.cardColor('red'),
-  _ => tokens.textFaint,
-};
+Color _priorityColor(PlannerTokens tokens, String priority) =>
+    switch (priority) {
+      'low' => tokens.cardColor('blue'),
+      'medium' => tokens.cardColor('amber'),
+      'high' => tokens.cardColor('orange'),
+      'urgent' => tokens.cardColor('red'),
+      _ => tokens.textFaint,
+    };
 
-Color _deadlineColor(PlannerTokens tokens, DeadlineState state) => switch (state) {
-  DeadlineState.overdue => tokens.cardColor('red'),
-  DeadlineState.soon => tokens.cardColor('amber'),
-  _ => tokens.cardColor('violet'),
-};
+Color _deadlineColor(PlannerTokens tokens, DeadlineState state) =>
+    switch (state) {
+      DeadlineState.overdue => tokens.cardColor('red'),
+      DeadlineState.soon => tokens.cardColor('amber'),
+      _ => tokens.cardColor('violet'),
+    };
 
 class _CardTags extends StatelessWidget {
   const _CardTags({required this.tags});
@@ -269,7 +303,11 @@ class _CardTags extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.color, this.tabular = false});
+  const _Badge({
+    required this.label,
+    required this.color,
+    this.tabular = false,
+  });
 
   final String label;
   final Color color;
@@ -299,11 +337,7 @@ class _Badge extends StatelessWidget {
 }
 
 class _Checklist extends StatelessWidget {
-  const _Checklist({
-    required this.card,
-    required this.color,
-    this.onToggle,
-  });
+  const _Checklist({required this.card, required this.color, this.onToggle});
 
   final PlannerCard card;
   final Color color;

@@ -13,12 +13,16 @@ export default function CardViewModal({
   onClose,
   onEdit,
   onArchive,
+  onDuplicate,
+  onSaveTemplate,
   onDelete,
 }: {
   card: Card;
   onClose: () => void;
   onEdit: () => void;
   onArchive: () => void;
+  onDuplicate: () => void;
+  onSaveTemplate: () => void;
   onDelete: () => void;
 }) {
   const [zoom, setZoom] = useState<string | null>(null);
@@ -138,6 +142,12 @@ export default function CardViewModal({
                 <dd>Davranıştan üretildi</dd>
               </div>
             )}
+            {card.templateId && (
+              <div>
+                <dt>Şablon</dt>
+                <dd>Bağlı · değiştirilirse ayrılır</dd>
+              </div>
+            )}
             <div>
               <dt>Görsel</dt>
               <dd>{card.images.length}</dd>
@@ -151,6 +161,12 @@ export default function CardViewModal({
           </button>
           <button className="btn" onClick={onArchive}>
             Arşivle
+          </button>
+          <button className="btn" onClick={onDuplicate}>
+            Çoğalt
+          </button>
+          <button className="btn" onClick={onSaveTemplate}>
+            Şablon yap
           </button>
           <button className="btn btn-red" onClick={onDelete}>
             Çöpe at
