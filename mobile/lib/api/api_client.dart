@@ -362,7 +362,9 @@ class ApiClient {
         ),
       );
     }
-    final response = await http.Response.fromStream(await request.send());
+    final response = await http.Response.fromStream(
+      await _http.send(request).timeout(timeout),
+    );
     if (response.statusCode == 401 && allowRefresh && refreshToken != null) {
       await _refreshTokens();
       return _uploadImagesAt(path, files, allowRefresh: false);
@@ -391,6 +393,96 @@ class ApiClient {
 
   Future<void> deleteCardTemplateImage(String id) =>
       _send('DELETE', '/card-template-images/$id');
+
+  /* ------------------------------------------------ içe / dışa aktarma */
+
+  Future<({Uint8List bytes, String filename})> exportData(
+    String format,
+    String from,
+    String to, {
+    bool allowRefresh = true,
+  }) async {
+    final clientRequestId = 'flutter-${DateTime.now().microsecondsSinceEpoch}';
+    final response = await _http
+        .get(
+          _uri('/data/export', {'format': format, 'from': from, 'to': to}),
+          headers: _headers(requestId: clientRequestId),
+        )
+        .timeout(timeout);
+    if (response.statusCode == 401 && allowRefresh && refreshToken != null) {
+      await _refreshTokens();
+      return exportData(format, from, to, allowRefresh: false);
+    }
+    if (response.statusCode >= 400) {
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {}
+      throw ApiException(
+        response.statusCode,
+        decoded is Map && decoded['error'] is String
+            ? decoded['error'] as String
+            : 'http_${response.statusCode}',
+        requestId: response.headers['x-request-id'] ?? clientRequestId,
+      );
+    }
+    final disposition = response.headers['content-disposition'] ?? '';
+    final match = RegExp('filename="([^"]+)"').firstMatch(disposition);
+    return (
+      bytes: response.bodyBytes,
+      filename: match?.group(1) ?? 'easy-plan-export.$format',
+    );
+  }
+
+  Future<({int imported, int skipped})> importData(
+    String filename,
+    Uint8List bytes, {
+    bool allowRefresh = true,
+  }) async {
+    final clientRequestId = 'flutter-${DateTime.now().microsecondsSinceEpoch}';
+    final extension = filename.toLowerCase().split('.').last;
+    final contentType = switch (extension) {
+      'json' => MediaType('application', 'json'),
+      'csv' => MediaType('text', 'csv'),
+      'ics' => MediaType('text', 'calendar'),
+      _ => MediaType('application', 'octet-stream'),
+    };
+    final request = http.MultipartRequest('POST', _uri('/data/import'));
+    request.headers.addAll(_headers(requestId: clientRequestId));
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: filename,
+        contentType: contentType,
+      ),
+    );
+    final response = await http.Response.fromStream(
+      await _http.send(request).timeout(timeout),
+    );
+    if (response.statusCode == 401 && allowRefresh && refreshToken != null) {
+      await _refreshTokens();
+      return importData(filename, bytes, allowRefresh: false);
+    }
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {}
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        response.statusCode,
+        decoded is Map && decoded['error'] is String
+            ? decoded['error'] as String
+            : 'http_${response.statusCode}',
+        requestId: response.headers['x-request-id'] ?? clientRequestId,
+      );
+    }
+    final json = decoded as Map<String, dynamic>;
+    return (
+      imported: (json['imported'] as num).toInt(),
+      skipped: (json['skipped'] as num).toInt(),
+    );
+  }
 
   static MediaType _mediaType(String filename) {
     final ext = filename.toLowerCase().split('.').last;

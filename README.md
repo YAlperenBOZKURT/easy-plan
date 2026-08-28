@@ -13,6 +13,7 @@ The project is designed for individuals, families, and small teams that want to 
 - **Multiple planner views** — move between the responsive week board, monthly calendar, chronological agenda, and monthly completed-items view.
 - **Safe card lifecycle** — archive cards, move deletions to a recycle bin, restore them, or permanently remove them after a configurable retention period.
 - **Card duplication and linked templates** — manage reusable templates from dedicated React and Flutter views. Template edits propagate to linked cards; any individual card change detaches that card. Image files are reference-counted and reused instead of being duplicated on disk.
+- **Portable planning data** — export a selected date range as JSON, CSV, or iCalendar and import any of those formats from the web or Flutter clients. Imports are validated and never overwrite existing cards.
 - **Drag and drop** — reorder cards within a day or move them across days on web, mobile, and desktop.
 - **Mobile day navigation** — edge controls move one day at a time, keep the visible column synchronized with the day strip, and clearly highlight today.
 - **Recurring habits** — generate independent cards for selected weekdays across a one-year planning window.
@@ -217,6 +218,10 @@ Important native-client endpoints include:
 - `POST /api/v1/cards/:id/duplicate` — duplicates a card with a new identity and reset completion state.
 - `GET|POST /api/v1/card-templates` — lists or creates reusable, user-scoped card templates.
 - `POST /api/v1/cards/:id/template` — saves an existing card as a reusable template.
+- `GET /api/v1/data/export` — downloads a date range as JSON, CSV, or iCalendar.
+- `POST /api/v1/data/import` — validates and imports up to 1,000 cards from a JSON, CSV, or iCalendar file.
+
+Exports contain card fields, checklists, tags, priorities, deadlines, and reminders. Image binaries are intentionally excluded; back up the `data/` directory when a complete disaster-recovery copy including uploads is required.
 
 ## Email delivery
 

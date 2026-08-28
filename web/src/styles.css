@@ -1077,7 +1077,20 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .lifecycle-empty h3 { margin: 9px 0 4px; color: var(--text); font-size: 16px; }
 .lifecycle-empty p { margin: 0; font-size: 12.5px; }
 
+.transfer-modal { max-width: 660px; }
+.transfer-body { display: flex; flex-direction: column; gap: 18px; }
+.transfer-body section { display: flex; flex-direction: column; gap: 11px; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.transfer-body h3 { margin: 0; font-size: 14px; }
+.transfer-body p { margin: 0; }
+.transfer-formats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.transfer-formats button { display: flex; min-width: 0; min-height: 86px; flex-direction: column; gap: 4px; padding: 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text); text-align: left; }
+.transfer-formats button.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.transfer-formats small { color: var(--text-faint); font-size: 10.5px; line-height: 1.35; }
+.success-text { color: var(--c-green); }
+
 @media (max-width: 767px) {
+  .transfer-formats { grid-template-columns: 1fr; }
+  .transfer-formats button { min-height: 64px; }
   .view-switcher { justify-content: flex-start; padding: 7px 10px; }
   .view-switcher button { min-height: 38px; padding: 7px 13px; }
   .month-view, .agenda-view { padding: 10px; }

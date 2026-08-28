@@ -89,6 +89,31 @@ async function request<T>(path: string, init: RequestInit = {}, allowRefresh = t
   return data as T;
 }
 
+async function download(path: string, allowRefresh = true): Promise<{ blob: Blob; filename: string }> {
+  const clientRequestId = requestId();
+  const response = await fetch(BASE + path, {
+    credentials: 'same-origin',
+    headers: { 'x-request-id': clientRequestId },
+  });
+  if (response.status === 401 && allowRefresh) {
+    refreshPromise ??= refreshWebSession().finally(() => { refreshPromise = undefined; });
+    await refreshPromise;
+    return download(path, false);
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => undefined);
+    throw new ApiError(
+      response.status,
+      (data as { error?: string } | undefined)?.error ?? `http_${response.status}`,
+      data,
+      response.headers.get('x-request-id') ?? clientRequestId,
+    );
+  }
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'easy-plan-export';
+  return { blob: await response.blob(), filename };
+}
+
 export const api = {
   /* kimlik */
   me: () => request<{ user: User }>('/auth/me'),
@@ -154,6 +179,18 @@ export const api = {
   },
   deleteCardTemplateImage: (id: string) =>
     request<{ ok: true }>(`/card-template-images/${id}`, { method: 'DELETE' }),
+
+  /* içe / dışa aktarma */
+  exportData: (format: 'json' | 'csv' | 'ics', from: string, to: string) =>
+    download(`/data/export?${new URLSearchParams({ format, from, to })}`),
+  importData: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<{ imported: number; skipped: number; errors: Array<{ row: number; error: string }> }>(
+      '/data/import',
+      { method: 'POST', body: form },
+    );
+  },
 
   /* görseller */
   uploadImages: (cardId: string, files: File[]) => {

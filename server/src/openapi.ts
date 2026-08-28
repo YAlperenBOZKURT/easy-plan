@@ -185,6 +185,19 @@ const operations: Record<string, OperationDoc> = {
   'DELETE /api/v1/card-template-images/:id': {
     summary: 'Şablon görselini kaldırır ve bağlı kartlara uygular', tag: 'Templates',
   },
+  'GET /api/v1/data/export': {
+    summary: 'Seçilen tarih aralığını JSON, CSV veya iCalendar olarak indirir',
+    tag: 'Data Transfer',
+    querystring: object({
+      format: string({ enum: ['json', 'csv', 'ics'] }),
+      from: string({ format: 'date' }),
+      to: string({ format: 'date' }),
+    }, ['format', 'from', 'to']),
+  },
+  'POST /api/v1/data/import': {
+    summary: 'JSON, CSV veya iCalendar dosyasından kartları içe aktarır',
+    tag: 'Data Transfer',
+  },
   'POST /api/v1/cards/:id/images': { summary: 'Karta görsel yükler', tag: 'Images' },
   'DELETE /api/v1/images/:id': { summary: 'Görseli siler', tag: 'Images' },
   'GET /api/v1/habits': { summary: 'Davranışları listeler', tag: 'Habits' },
@@ -269,6 +282,7 @@ export async function registerOpenApi(app: FastifyInstance, uiEnabled: boolean) 
         { name: 'Profile', description: 'Kullanıcı profili' },
         { name: 'Cards', description: 'Plan kartları' },
         { name: 'Templates', description: 'Tekrar kullanılabilir kart şablonları' },
+        { name: 'Data Transfer', description: 'JSON, CSV ve iCalendar içe/dışa aktarma' },
         { name: 'Images', description: 'Kart görselleri' },
         { name: 'Habits', description: 'Tekrarlanan davranışlar' },
         { name: 'Sync', description: 'Native istemci senkronizasyonu' },
