@@ -162,6 +162,47 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
     assert.equal(template.images.length, 1);
   });
 
+  await t.test('dışa aktarılan JSON dosyası multipart olarak tekrar içe alınır', async () => {
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/token',
+      payload: { email: 'jwt-user@example.com', password: 'correct horse battery staple' },
+    });
+    const authorization = `Bearer ${login.json().accessToken as string}`;
+    const day = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const boundary = 'planner-json-import-boundary';
+    const json = Buffer.from(JSON.stringify({
+      version: 1,
+      cards: [{ day, title: 'İçe aktarılan kart', tags: [], checklist: [], reminders: [] }],
+    }));
+    const multipart = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="easy-plan.json"\r\nContent-Type: application/json\r\n\r\n`,
+      ),
+      json,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const imported = await app.inject({
+      method: 'POST',
+      url: '/api/v1/data/import',
+      headers: { authorization, 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload: multipart,
+    });
+    assert.equal(imported.statusCode, 201, imported.body);
+    assert.equal(imported.json().imported, 1, imported.body);
+
+    const exported = await app.inject({
+      method: 'GET',
+      url: `/api/v1/data/export?format=json&from=${day}&to=${day}`,
+      headers: { authorization },
+    });
+    assert.equal(exported.statusCode, 200);
+    assert.match(String(exported.headers['content-disposition']), /easy-plan.*\.json/);
+    assert.ok(exported.json().cards.some((card: { title: string }) => card.title === 'İçe aktarılan kart'));
+  });
+
   await t.test('web refresh Origin kontrolü uygular, token döndürür ve reuse oturumu iptal eder', async () => {
     const login = await app.inject({
       method: 'POST',

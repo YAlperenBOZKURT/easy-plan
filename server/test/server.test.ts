@@ -77,6 +77,13 @@ test('HTTP yüzeyi sağlık, hata ve OpenAPI sözleşmesini korur', async (t) =>
     assert.ok(document.paths['/api/v1/card-templates/{id}/create-card']?.post);
     assert.ok(document.paths['/api/v1/card-templates/{id}/images']?.post);
     assert.ok(document.paths['/api/v1/card-template-images/{id}']?.delete);
+    assert.deepEqual(
+      document.paths['/api/v1/data/export'].get.parameters.find(
+        (parameter: { name: string }) => parameter.name === 'format',
+      ).schema.enum,
+      ['json', 'csv', 'ics'],
+    );
+    assert.ok(document.paths['/api/v1/data/import']?.post);
     assert.equal(
       document.paths['/api/v1/cards/search'].get.parameters.find(
         (parameter: { name: string }) => parameter.name === 'q',

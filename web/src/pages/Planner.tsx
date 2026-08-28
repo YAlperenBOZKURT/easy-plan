@@ -40,6 +40,7 @@ import PlannerCollectionView from '../components/PlannerCollectionView.tsx';
 import CardLifecycleModal from '../components/CardLifecycleModal.tsx';
 import CardTemplateNameModal from '../components/CardTemplateNameModal.tsx';
 import CardTemplatesModal from '../components/CardTemplatesModal.tsx';
+import DataTransferModal from '../components/DataTransferModal.tsx';
 import {
   daysBetween,
   monthLabel,
@@ -65,6 +66,7 @@ export default function Planner({ user }: { user: User }) {
   const [showFilters, setShowFilters] = useState(false);
   const [showLifecycle, setShowLifecycle] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<PlannerView>('week');
   const [inspect, setInspect] = useState<Card | null>(null);
@@ -206,7 +208,7 @@ export default function Planner({ user }: { user: User }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (draft || showFilters || showHabits || showSettings || showSearch || showTemplates) return;
+      if (draft || showFilters || showHabits || showSettings || showSearch || showTemplates || showTransfer) return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
       if (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
@@ -603,6 +605,7 @@ export default function Planner({ user }: { user: User }) {
             { label: 'Davranış ekle', color: 'var(--c-violet)', onSelect: () => setShowHabits(true) },
             { label: 'Arşiv ve Çöp Kutusu', color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
             { label: 'Şablonlar', color: 'var(--c-teal)', onSelect: () => setShowTemplates(true) },
+            { label: 'İçe / Dışa Aktar', color: 'var(--c-violet)', onSelect: () => setShowTransfer(true) },
             { label: 'Ayarlar', color: 'var(--c-blue)', onSelect: () => setShowSettings(true) },
             ...(user.role === 'admin'
               ? [{ label: 'Yönetim', color: 'var(--c-teal)', onSelect: () => navigate('/admin') }]
@@ -887,6 +890,14 @@ export default function Planner({ user }: { user: User }) {
             queryClient.invalidateQueries({ queryKey: ['card-templates'] }),
             queryClient.invalidateQueries({ queryKey: ['tags'] }),
           ])}
+        />
+      )}
+      {showTransfer && (
+        <DataTransferModal
+          initialFrom={days[0]!}
+          initialTo={days[days.length - 1]!}
+          onClose={() => setShowTransfer(false)}
+          onImported={() => void refresh()}
         />
       )}
       {showSearch && (

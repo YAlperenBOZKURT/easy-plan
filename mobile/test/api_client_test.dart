@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -165,42 +166,23 @@ void main() {
     },
   );
 
-  test('kart çoğaltma ve görselli şablon endpointlerini doğru çağırır', () async {
-    final calls = <String>[];
-    final api = ApiClient(
-      baseUrl: 'https://planner.example',
-      client: MockClient((request) async {
-        calls.add('${request.method} ${request.url.path}');
-        if (request.url.path.endsWith('/duplicate')) {
-          return http.Response(
-            jsonEncode({
-              'card': {
-                'id': 'card-copy',
-                'day': '2026-08-27',
-                'images': [
-                  {
-                    'id': 'image-copy',
-                    'url': '/uploads/shared.webp',
-                    'thumbUrl': '/uploads/shared.thumb.webp',
-                    'width': 800,
-                    'height': 600,
-                  },
-                ],
-              },
-            }),
-            201,
-          );
-        }
-        if (request.method == 'GET') {
-          return http.Response(
-            jsonEncode({
-              'templates': [
-                {
-                  'id': 'template-1',
-                  'name': 'Görselli',
+  test(
+    'kart çoğaltma ve görselli şablon endpointlerini doğru çağırır',
+    () async {
+      final calls = <String>[];
+      final api = ApiClient(
+        baseUrl: 'https://planner.example',
+        client: MockClient((request) async {
+          calls.add('${request.method} ${request.url.path}');
+          if (request.url.path.endsWith('/duplicate')) {
+            return http.Response(
+              jsonEncode({
+                'card': {
+                  'id': 'card-copy',
+                  'day': '2026-08-27',
                   'images': [
                     {
-                      'id': 'template-image',
+                      'id': 'image-copy',
                       'url': '/uploads/shared.webp',
                       'thumbUrl': '/uploads/shared.thumb.webp',
                       'width': 800,
@@ -208,23 +190,98 @@ void main() {
                     },
                   ],
                 },
-              ],
-            }),
+              }),
+              201,
+            );
+          }
+          if (request.method == 'GET') {
+            return http.Response(
+              jsonEncode({
+                'templates': [
+                  {
+                    'id': 'template-1',
+                    'name': 'Görselli',
+                    'images': [
+                      {
+                        'id': 'template-image',
+                        'url': '/uploads/shared.webp',
+                        'thumbUrl': '/uploads/shared.thumb.webp',
+                        'width': 800,
+                        'height': 600,
+                      },
+                    ],
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(jsonEncode({'ok': true}), 200);
+        }),
+      );
+
+      expect(
+        (await api.duplicateCard('card-1')).images.single.id,
+        'image-copy',
+      );
+      expect(
+        (await api.cardTemplates()).single.images.single.id,
+        'template-image',
+      );
+      await api.deleteCardTemplate('template-1');
+      expect(calls, [
+        'POST /api/v1/cards/card-1/duplicate',
+        'GET /api/v1/card-templates',
+        'DELETE /api/v1/card-templates/template-1',
+      ]);
+      api.close();
+    },
+  );
+
+  test('aktarım dosyasını indirir ve multipart olarak içe aktarır', () async {
+    final calls = <http.Request>[];
+    final api = ApiClient(
+      baseUrl: 'https://planner.example',
+      accessToken: 'access-jwt',
+      client: MockClient((request) async {
+        calls.add(request);
+        if (request.method == 'GET') {
+          return http.Response(
+            '{"cards":[]}',
             200,
+            headers: {
+              'content-disposition':
+                  'attachment; filename="easy-plan-2026-08.json"',
+            },
           );
         }
-        return http.Response(jsonEncode({'ok': true}), 200);
+        return http.Response(
+          jsonEncode({'imported': 2, 'skipped': 1, 'errors': []}),
+          201,
+        );
       }),
     );
 
-    expect((await api.duplicateCard('card-1')).images.single.id, 'image-copy');
-    expect((await api.cardTemplates()).single.images.single.id, 'template-image');
-    await api.deleteCardTemplate('template-1');
-    expect(calls, [
-      'POST /api/v1/cards/card-1/duplicate',
-      'GET /api/v1/card-templates',
-      'DELETE /api/v1/card-templates/template-1',
-    ]);
+    final exported = await api.exportData('json', '2026-08-01', '2026-08-31');
+    expect(exported.filename, 'easy-plan-2026-08.json');
+    expect(utf8.decode(exported.bytes), '{"cards":[]}');
+    final imported = await api.importData(
+      'plan.json',
+      Uint8List.fromList(utf8.encode('{"cards":[]}')),
+    );
+    expect(imported.imported, 2);
+    expect(imported.skipped, 1);
+    expect(calls.first.url.queryParameters, {
+      'format': 'json',
+      'from': '2026-08-01',
+      'to': '2026-08-31',
+    });
+    expect(calls.last.method, 'POST');
+    expect(calls.last.url.path, '/api/v1/data/import');
+    expect(
+      calls.last.headers['content-type'],
+      startsWith('multipart/form-data'),
+    );
     api.close();
   });
 

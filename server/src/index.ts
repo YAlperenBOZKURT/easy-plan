@@ -13,6 +13,7 @@ import { authRoutes } from './routes/auth.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { cardRoutes } from './routes/cards.ts';
 import { cardTemplateRoutes } from './routes/card-templates.ts';
+import { dataTransferRoutes } from './routes/data-transfer.ts';
 import { habitRoutes } from './routes/habits.ts';
 import { imageRoutes } from './routes/images.ts';
 import { mailRoutes } from './routes/mail.ts';
@@ -57,6 +58,7 @@ export async function buildServer(options: { logger?: boolean; docs?: boolean } 
   await app.register(adminRoutes, { prefix: '/api/v1' });
   await app.register(cardRoutes, { prefix: '/api/v1' });
   await app.register(cardTemplateRoutes, { prefix: '/api/v1' });
+  await app.register(dataTransferRoutes, { prefix: '/api/v1' });
   await app.register(imageRoutes, { prefix: '/api/v1' });
   await app.register(habitRoutes, { prefix: '/api/v1' });
   await app.register(mailRoutes, { prefix: '/api/v1' });

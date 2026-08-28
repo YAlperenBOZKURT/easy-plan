@@ -20,6 +20,7 @@ import 'card_lifecycle.dart';
 import 'card_search.dart';
 import 'card_view.dart';
 import 'card_templates.dart';
+import 'data_transfer.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
 /// Telefonda tek gün + kaydırma, geniş ekranda kolonlar yan yana.
@@ -423,6 +424,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       await showCardLifecycle(context, store: store);
                     case 'templates':
                       await showCardTemplates(context, store: store);
+                    case 'transfer':
+                      await showDataTransfer(context, store: store);
                     case 'logout':
                       await store.logout();
                   }
@@ -435,6 +438,10 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     child: Text('Arşiv ve Çöp Kutusu'),
                   ),
                   PopupMenuItem(value: 'templates', child: Text('Şablonlar')),
+                  PopupMenuItem(
+                    value: 'transfer',
+                    child: Text('İçe / Dışa Aktar'),
+                  ),
                   PopupMenuItem(value: 'logout', child: Text('Çıkış')),
                 ],
               ),
