@@ -1,4 +1,4 @@
-import type { CardImageRow, CardRow, CardTemplateImageRow, CardTemplateRow, HabitRow, ReminderRow, UserRow } from './types.ts';
+import type { BoardMemberRow, BoardRole, BoardRow, CardImageRow, CardRow, CardTemplateImageRow, CardTemplateRow, HabitRow, ReminderRow, UserRow } from './types.ts';
 import { parseChecklist } from './checklist.ts';
 import { parseTags } from './tags.ts';
 
@@ -16,6 +16,7 @@ export const imageDto = (row: Pick<CardImageRow, 'id' | 'file' | 'thumb' | 'widt
 export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: ReminderRow[] = []) {
   return {
     id: card.id,
+    boardId: card.board_id,
     day: card.day,
     title: card.title,
     note: card.note,
@@ -42,6 +43,26 @@ export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: R
     updatedAt: card.updated_at,
   };
 }
+
+export const boardDto = (row: BoardRow & { role: BoardRole; member_count: number }) => ({
+  id: row.id,
+  name: row.name,
+  role: row.role,
+  personal: row.is_personal === 1,
+  memberCount: row.member_count,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+export const boardMemberDto = (
+  row: BoardMemberRow & Pick<UserRow, 'email' | 'name'>,
+) => ({
+  userId: row.user_id,
+  email: row.email,
+  name: row.name,
+  role: row.role,
+  joinedAt: row.created_at,
+});
 
 export const habitDto = (row: HabitRow) => ({
   id: row.id,

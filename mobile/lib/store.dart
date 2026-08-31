@@ -18,6 +18,7 @@ class PlannerStore extends ChangeNotifier {
   static const _legacyTokenKey = 'planner_token';
   static const _accessTokenKey = 'planner_access_token';
   static const _refreshTokenKey = 'planner_refresh_token';
+  static const _boardKey = 'planner_active_board';
 
   /// Emülatörde makinenin localhost'u 10.0.2.2'dir; masaüstünde doğrudan localhost.
   static const defaultBaseUrl = String.fromEnvironment(
@@ -28,6 +29,9 @@ class PlannerStore extends ChangeNotifier {
   late ApiClient api = ApiClient(baseUrl: defaultBaseUrl);
 
   PlannerUser? user;
+  List<PlannerBoard> boards = const [];
+  PlannerBoard? activeBoard;
+  bool get boardReadOnly => activeBoard != null && !activeBoard!.canEdit;
   bool booting = true;
   bool loading = false;
   String? error;
@@ -137,6 +141,7 @@ class PlannerStore extends ChangeNotifier {
   Future<void> bootstrap() async {
     final savedAccessToken = await _storage.read(key: _accessTokenKey);
     final savedRefreshToken = await _storage.read(key: _refreshTokenKey);
+    final savedBoardId = await _storage.read(key: _boardKey);
     // Opaque sessions from versions before the JWT migration are invalidated.
     await _storage.delete(key: _legacyTokenKey);
     // Server selection was removed from the login UI; discard older overrides.
@@ -145,6 +150,7 @@ class PlannerStore extends ChangeNotifier {
       baseUrl: defaultBaseUrl,
       accessToken: savedAccessToken,
       refreshToken: savedRefreshToken,
+      activeBoardId: savedBoardId,
       onTokensChanged: _storeTokens,
       onAuthenticationFailed: _handleAuthenticationFailed,
     );
@@ -156,6 +162,7 @@ class PlannerStore extends ChangeNotifier {
 
       try {
         user = await api.me();
+        await loadBoards(preferredId: savedBoardId);
         offline = false;
         booting = false;
         notifyListeners();
@@ -192,6 +199,7 @@ class PlannerStore extends ChangeNotifier {
       api.accessToken = result.accessToken;
       api.refreshToken = result.refreshToken;
       user = result.user;
+      await loadBoards();
       await _storeTokens(result.accessToken, result.refreshToken);
       await loadRange();
       return true;
@@ -220,6 +228,8 @@ class PlannerStore extends ChangeNotifier {
     await _clearTokens();
     await Cache.instance.clear();
     user = null;
+    boards = const [];
+    activeBoard = null;
     offline = false;
     pendingWrites = 0;
     _byDay.clear();
@@ -235,6 +245,7 @@ class PlannerStore extends ChangeNotifier {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshTokenKey);
     await _storage.delete(key: _legacyTokenKey);
+    await _storage.delete(key: _boardKey);
     api.accessToken = null;
     api.refreshToken = null;
   }
@@ -244,6 +255,71 @@ class PlannerStore extends ChangeNotifier {
     user = null;
     stopAutoSync();
     notifyListeners();
+  }
+
+  /* ----------------------------------------------------------- panolar */
+
+  Future<void> loadBoards({String? preferredId}) async {
+    final loaded = await api.boards();
+    boards = loaded;
+    final preferred = preferredId ?? api.activeBoardId;
+    activeBoard = loaded.where((board) => board.id == preferred).firstOrNull;
+    activeBoard ??= loaded.where((board) => board.personal).firstOrNull;
+    activeBoard ??= loaded.firstOrNull;
+    api.activeBoardId = activeBoard?.id;
+    if (activeBoard case final board?) {
+      await _storage.write(key: _boardKey, value: board.id);
+    }
+    notifyListeners();
+  }
+
+  Future<bool> switchBoard(PlannerBoard board) async {
+    if (activeBoard?.id == board.id) return true;
+    await _flushQueue();
+    if (pendingWrites > 0) {
+      error =
+          'Bekleyen çevrimdışı değişiklikler gönderilmeden pano değiştirilemez.';
+      notifyListeners();
+      return false;
+    }
+    activeBoard = board;
+    api.activeBoardId = board.id;
+    await _storage.write(key: _boardKey, value: board.id);
+    _byDay.clear();
+    await Cache.instance.clearBoardData();
+    notifyListeners();
+    await syncNow();
+    await loadRange();
+    return true;
+  }
+
+  Future<void> renameBoard(PlannerBoard board, String name) async {
+    await api.updateBoard(board.id, name);
+    await loadBoards(preferredId: board.id);
+  }
+
+  Future<void> deleteBoard(PlannerBoard board) async {
+    await api.deleteBoard(board.id);
+    api.activeBoardId = null;
+    activeBoard = null;
+    _byDay.clear();
+    await Cache.instance.clearBoardData();
+    await loadBoards();
+    await syncNow();
+    await loadRange();
+  }
+
+  Future<void> leaveBoard(PlannerBoard board) async {
+    final currentUser = user;
+    if (currentUser == null) return;
+    await api.removeBoardMember(board.id, currentUser.id);
+    api.activeBoardId = null;
+    activeBoard = null;
+    _byDay.clear();
+    await Cache.instance.clearBoardData();
+    await loadBoards();
+    await syncNow();
+    await loadRange();
   }
 
   /* --------------------------------------------------------- senkron */
@@ -375,6 +451,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> toggleDone(PlannerCard card) async {
+    if (boardReadOnly) return;
     final updated = card.copyWith(done: !card.done, templateId: null);
     await _write(
       optimistic: () => _replaceLocal(updated),
@@ -386,6 +463,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> toggleChecklistItem(PlannerCard card, String itemId) async {
+    if (boardReadOnly) return;
     final checklist = card.checklist
         .map(
           (item) => item.id == itemId ? item.copyWith(done: !item.done) : item,
@@ -412,6 +490,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> deleteCard(PlannerCard card) async {
+    if (boardReadOnly) return;
     await _write(
       optimistic: () => _removeLocal(card.id),
       send: () async {
@@ -424,6 +503,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> archiveCard(PlannerCard card) async {
+    if (boardReadOnly) return;
     await _write(
       optimistic: () => _removeLocal(card.id),
       send: () async {
@@ -436,6 +516,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> duplicateCard(PlannerCard card) async {
+    if (boardReadOnly) return;
     try {
       final duplicate = await api.duplicateCard(card.id);
       _replaceLocal(duplicate);
@@ -453,6 +534,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<bool> saveCardAsTemplate(PlannerCard card, String name) async {
+    if (boardReadOnly) return false;
     try {
       await api.saveCardAsTemplate(card.id, name);
       await loadRange();
@@ -468,12 +550,14 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> restoreCard(PlannerCard card) async {
+    if (boardReadOnly) return;
     final restored = await api.restoreCard(card.id);
     await Cache.instance.saveCards([restored]);
     await loadRange();
   }
 
   Future<void> permanentlyDeleteCard(PlannerCard card) async {
+    if (boardReadOnly) return;
     await api.permanentlyDeleteCard(card.id);
     await Cache.instance.removeCards([card.id]);
   }
@@ -494,6 +578,7 @@ class PlannerStore extends ChangeNotifier {
     String? templateId,
     bool resetOrder = false,
   }) async {
+    if (boardReadOnly) return null;
     final body = <String, dynamic>{
       'day': day,
       'title': title,
@@ -572,6 +657,7 @@ class PlannerStore extends ChangeNotifier {
     String cardId,
     List<({String name, Uint8List bytes})> files,
   ) async {
+    if (boardReadOnly) return false;
     if (files.isEmpty) return true;
     try {
       await api.uploadImages(cardId, files);
@@ -591,6 +677,7 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> deleteImage(String id) async {
+    if (boardReadOnly) return;
     try {
       await api.deleteImage(id);
       await loadRange();
@@ -606,6 +693,7 @@ class PlannerStore extends ChangeNotifier {
     String? beforeId,
     String? afterId,
   }) async {
+    if (boardReadOnly) return;
     await _write(
       optimistic: () =>
           _replaceLocal(card.copyWith(day: day, templateId: null)),

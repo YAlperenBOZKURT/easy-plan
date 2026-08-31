@@ -4,6 +4,7 @@ import { config } from './config.ts';
 import { db, transaction } from './db.ts';
 import { hashToken, newId, newToken, nowIso } from './ids.ts';
 import type { Role, UserRow } from './types.ts';
+import { createPersonalBoard } from './boards.ts';
 
 /* ------------------------------------------------------------------ şifreler */
 
@@ -50,22 +51,25 @@ export function createUser(input: {
 }): UserRow {
   const id = newId();
   const at = nowIso();
-  db()
-    .prepare(
-      `INSERT INTO users (id, email, name, password_hash, role, timezone, daily_summary,
-                          last_summary_day, active, last_login_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, 1, NULL, ?, ?)`,
-    )
-    .run(
-      id,
-      input.email.trim(),
-      input.name?.trim() ?? '',
-      hashPassword(input.password),
-      input.role ?? 'user',
-      input.timezone ?? config.defaultTz,
-      at,
-      at,
-    );
+  transaction(db(), () => {
+    db()
+      .prepare(
+        `INSERT INTO users (id, email, name, password_hash, role, timezone, daily_summary,
+                            last_summary_day, active, last_login_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, NULL, 1, NULL, ?, ?)`,
+      )
+      .run(
+        id,
+        input.email.trim(),
+        input.name?.trim() ?? '',
+        hashPassword(input.password),
+        input.role ?? 'user',
+        input.timezone ?? config.defaultTz,
+        at,
+        at,
+      );
+    createPersonalBoard(db(), id);
+  });
   return findUserById(id)!;
 }
 

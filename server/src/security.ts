@@ -30,7 +30,7 @@ export async function registerSecurity(app: FastifyInstance) {
       origin: [...trustedOrigins],
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['content-type', 'authorization', 'x-request-id'],
+      allowedHeaders: ['content-type', 'authorization', 'x-request-id', 'x-board-id'],
       exposedHeaders: ['x-request-id'],
       maxAge: 600,
     });

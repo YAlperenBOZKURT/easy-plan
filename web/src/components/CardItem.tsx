@@ -26,6 +26,7 @@ export default function CardItem({
   onSaveTemplate,
   onDelete,
   dragDisabled = false,
+  readOnly = false,
 }: {
   card: Card;
   open: boolean;
@@ -39,11 +40,12 @@ export default function CardItem({
   onSaveTemplate: () => void;
   onDelete: () => void;
   dragDisabled?: boolean;
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { day: card.day },
-    disabled: dragDisabled,
+    disabled: dragDisabled || readOnly,
   });
 
   // Tıklamayı, işaretçinin gerçekten hareket edip etmediğine bakarak ayırt ediyoruz.
@@ -122,6 +124,7 @@ export default function CardItem({
               type="button"
               className={`card-checklist-item${item.done ? ' done' : ''}`}
               key={item.id}
+              disabled={readOnly}
               aria-label={`${item.text}: ${item.done ? 'geri al' : 'tamamla'}`}
               onPointerDown={(event) => event.stopPropagation()}
               onPointerUp={(event) => event.stopPropagation()}
@@ -173,27 +176,27 @@ export default function CardItem({
           onPointerUp={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
-          <button className="btn btn-sm btn-blue" onClick={onEdit}>
+          {!readOnly && <button className="btn btn-sm btn-blue" onClick={onEdit}>
             Düzenle
-          </button>
+          </button>}
           <button className="btn btn-sm btn-violet" onClick={onInspect}>
             İncele
           </button>
-          <button className="btn btn-sm btn-green" onClick={onToggleDone}>
+          {!readOnly && <button className="btn btn-sm btn-green" onClick={onToggleDone}>
             {card.done ? 'Geri al' : 'Yapıldı'}
-          </button>
-          <button className="btn btn-sm" onClick={onArchive}>
+          </button>}
+          {!readOnly && <button className="btn btn-sm" onClick={onArchive}>
             Arşivle
-          </button>
-          <button className="btn btn-sm" onClick={onDuplicate}>
+          </button>}
+          {!readOnly && <button className="btn btn-sm" onClick={onDuplicate}>
             Çoğalt
-          </button>
-          <button className="btn btn-sm" onClick={onSaveTemplate}>
+          </button>}
+          {!readOnly && <button className="btn btn-sm" onClick={onSaveTemplate}>
             Şablon yap
-          </button>
-          <button className="btn btn-sm btn-red" onClick={onDelete}>
+          </button>}
+          {!readOnly && <button className="btn btn-sm btn-red" onClick={onDelete}>
             Çöpe at
-          </button>
+          </button>}
         </div>
       )}
     </div>

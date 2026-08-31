@@ -17,7 +17,7 @@ import {
 import { api } from '../lib/api.ts';
 import { addDays, addYears, dayNameShort, dayNumber, rangeLabel, todayKey } from '../lib/dates.ts';
 import { centeredColumnScrollLeft, closestDayToViewportCenter } from '../lib/mobileDayNavigation.ts';
-import { priorityLabel, type Card, type User } from '../lib/types.ts';
+import { priorityLabel, type Board, type Card, type User } from '../lib/types.ts';
 import { navigate } from '../App.tsx';
 import DayColumn from '../components/DayColumn.tsx';
 import CardModal, { type CardDraft } from '../components/CardModal.tsx';
@@ -41,6 +41,7 @@ import CardLifecycleModal from '../components/CardLifecycleModal.tsx';
 import CardTemplateNameModal from '../components/CardTemplateNameModal.tsx';
 import CardTemplatesModal from '../components/CardTemplatesModal.tsx';
 import DataTransferModal from '../components/DataTransferModal.tsx';
+import BoardManagerModal from '../components/BoardManagerModal.tsx';
 import {
   daysBetween,
   monthLabel,
@@ -67,6 +68,8 @@ export default function Planner({ user }: { user: User }) {
   const [showLifecycle, setShowLifecycle] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showBoards, setShowBoards] = useState(false);
+  const [activeBoardId, setActiveBoardId] = useState(() => localStorage.getItem('easy-plan-board') ?? '');
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<PlannerView>('week');
   const [inspect, setInspect] = useState<Card | null>(null);
@@ -81,6 +84,26 @@ export default function Planner({ user }: { user: User }) {
   const draggingRef = useRef(false); // touch işleyicileri anlık durumu görsün
   const [activeDay, setActiveDay] = useState(today);
   const boardRef = useRef<HTMLDivElement>(null);
+
+  api.setActiveBoard(activeBoardId || undefined);
+  const boards = useQuery({ queryKey: ['boards'], queryFn: api.boards });
+  const activeBoard = boards.data?.boards.find((board) => board.id === activeBoardId)
+    ?? boards.data?.boards.find((board) => board.personal)
+    ?? boards.data?.boards[0];
+  const readOnly = activeBoard?.role === 'viewer';
+
+  const selectBoard = (board: Board) => {
+    api.setActiveBoard(board.id);
+    localStorage.setItem('easy-plan-board', board.id);
+    setActiveBoardId(board.id);
+    setOpenCardId(null);
+    setInspect(null);
+    setDraft(null);
+  };
+
+  useEffect(() => {
+    if (activeBoard && activeBoard.id !== activeBoardId) selectBoard(activeBoard);
+  }, [activeBoard?.id]);
 
   /**
    * Ekrana kaç gün sığıyorsa o kadarı gösterilir: kolonlar daralıp okunmaz
@@ -133,15 +156,16 @@ export default function Planner({ user }: { user: User }) {
   };
 
   const cards = useQuery({
-    queryKey: ['cards', from, to],
+    queryKey: ['cards', activeBoard?.id, from, to],
     queryFn: () => api.cards(from, to),
+    enabled: Boolean(activeBoard && activeBoard.id === activeBoardId),
     placeholderData: (previous) => previous,
     // Başka cihazdan (telefon/masaüstü) yapılan değişiklik kendiliğinden gelsin.
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
 
-  const tagsQuery = useQuery({ queryKey: ['tags'], queryFn: api.tags });
+  const tagsQuery = useQuery({ queryKey: ['tags', activeBoard?.id], queryFn: api.tags, enabled: Boolean(activeBoard) });
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
   const filteredCards = useMemo(() => {
@@ -208,7 +232,7 @@ export default function Planner({ user }: { user: User }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (draft || showFilters || showHabits || showSettings || showSearch || showTemplates || showTransfer) return;
+      if (draft || showFilters || showHabits || showSettings || showSearch || showTemplates || showTransfer || showBoards) return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
       if (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
@@ -574,6 +598,24 @@ export default function Planner({ user }: { user: User }) {
         </button>
         <span className="topbar-range">{view === 'week' ? rangeLabel(from, to) : monthLabel(anchor)}</span>
 
+        {activeBoard && (
+          <div className="board-switcher">
+            <select
+              value={activeBoard.id}
+              aria-label="Aktif pano"
+              onChange={(event) => {
+                const board = boards.data?.boards.find((item) => item.id === event.target.value);
+                if (board) selectBoard(board);
+              }}
+            >
+              {boards.data?.boards.map((board) => (
+                <option value={board.id} key={board.id}>{board.name}{board.role === 'viewer' ? ' · görüntüleme' : ''}</option>
+              ))}
+            </select>
+            <button className="btn btn-icon" onClick={() => setShowBoards(true)} aria-label="Pano ve paylaşımı yönet" title="Pano ve paylaşım">♙</button>
+          </div>
+        )}
+
         <div className="spacer" />
 
         <button className="btn search-open" onClick={() => setShowSearch(true)} aria-label="Kartlarda ara">
@@ -602,7 +644,9 @@ export default function Planner({ user }: { user: User }) {
 
         <TopMenu
           actions={[
-            { label: 'Davranış ekle', color: 'var(--c-violet)', onSelect: () => setShowHabits(true) },
+            ...(activeBoard?.personal
+              ? [{ label: 'Davranış ekle', color: 'var(--c-violet)', onSelect: () => setShowHabits(true) }]
+              : []),
             { label: 'Arşiv ve Çöp Kutusu', color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
             { label: 'Şablonlar', color: 'var(--c-teal)', onSelect: () => setShowTemplates(true) },
             { label: 'İçe / Dışa Aktar', color: 'var(--c-violet)', onSelect: () => setShowTransfer(true) },
@@ -615,6 +659,8 @@ export default function Planner({ user }: { user: User }) {
               danger: true,
               onSelect: async () => {
                 await api.logout();
+                api.setActiveBoard(undefined);
+                localStorage.removeItem('easy-plan-board');
                 queryClient.clear();
                 navigate('/');
               },
@@ -804,7 +850,7 @@ export default function Planner({ user }: { user: User }) {
               isPast={day < today}
               openCardId={openCardId}
               onToggleOpen={(id) => setOpenCardId((current) => (current === id ? null : id))}
-              onAdd={(target) => setDraft({ day: target })}
+              onAdd={(target) => !readOnly && setDraft({ day: target })}
               onEdit={(card) => setDraft({ card, day: card.day })}
               onInspect={(card) => setInspect(card)}
               onToggleDone={(card) => toggleDone.mutate(card)}
@@ -813,7 +859,8 @@ export default function Planner({ user }: { user: User }) {
               onDuplicate={(card) => duplicateCard.mutate(card)}
               onSaveTemplate={openTemplateModal}
               onDelete={(card) => removeCard.mutate(card)}
-              dragDisabled={fastNav || hasActiveFilters(filters)}
+              dragDisabled={readOnly || fastNav || hasActiveFilters(filters)}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -836,15 +883,17 @@ export default function Planner({ user }: { user: User }) {
           days={days}
           cards={filteredCards}
           today={today}
-          onAdd={(day) => setDraft({ day })}
+          onAdd={(day) => !readOnly && setDraft({ day })}
           onInspect={setInspect}
           onToggleDone={(card) => toggleDone.mutate(card)}
+          readOnly={readOnly}
         />
       )}
 
       {inspect && (
         <CardViewModal
           card={inspect}
+          readOnly={readOnly}
           onClose={() => setInspect(null)}
           onEdit={() => {
             setDraft({ card: inspect, day: inspect.day });
@@ -869,6 +918,15 @@ export default function Planner({ user }: { user: User }) {
         />
       )}
       {draft && <CardModal draft={draft} onClose={() => setDraft(null)} onSaved={refresh} />}
+      {showBoards && activeBoard && (
+        <BoardManagerModal
+          board={activeBoard}
+          currentUserId={user.id}
+          onClose={() => setShowBoards(false)}
+          onSelect={selectBoard}
+          onChanged={() => queryClient.invalidateQueries({ queryKey: ['boards'] })}
+        />
+      )}
       {templateSource && (
         <CardTemplateNameModal
           card={templateSource}
@@ -881,7 +939,13 @@ export default function Planner({ user }: { user: User }) {
       )}
       {showHabits && <HabitModal onClose={() => setShowHabits(false)} />}
       {showSettings && <SettingsModal user={user} onClose={() => setShowSettings(false)} />}
-      {showLifecycle && <CardLifecycleModal onClose={() => setShowLifecycle(false)} />}
+      {showLifecycle && activeBoard && (
+        <CardLifecycleModal
+          boardId={activeBoard.id}
+          readOnly={readOnly}
+          onClose={() => setShowLifecycle(false)}
+        />
+      )}
       {showTemplates && (
         <CardTemplatesModal
           onClose={() => setShowTemplates(false)}

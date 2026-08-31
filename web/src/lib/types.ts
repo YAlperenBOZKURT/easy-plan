@@ -14,9 +14,29 @@ export interface ChecklistItem {
 }
 
 export type CardPriority = 'none' | 'low' | 'medium' | 'high' | 'urgent';
+export type BoardRole = 'owner' | 'editor' | 'viewer';
+
+export interface Board {
+  id: string;
+  name: string;
+  role: BoardRole;
+  personal: boolean;
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardMember {
+  userId: string;
+  email: string;
+  name: string;
+  role: BoardRole;
+  joinedAt: string;
+}
 
 export interface Card {
   id: string;
+  boardId?: string;
   day: string;
   title: string;
   note: string;

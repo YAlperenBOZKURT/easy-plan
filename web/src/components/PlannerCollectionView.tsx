@@ -12,6 +12,7 @@ interface Props {
   onAdd: (day: string) => void;
   onInspect: (card: Card) => void;
   onToggleDone: (card: Card) => void;
+  readOnly?: boolean;
 }
 
 const cardTitle = (card: Card) => card.title.trim() || 'Başlıksız kart';
@@ -21,7 +22,7 @@ export default function PlannerCollectionView(props: Props) {
   return <AgendaView {...props} completed={props.view === 'completed'} />;
 }
 
-function MonthView({ anchor, days, cards, today, onAdd, onInspect }: Props) {
+function MonthView({ anchor, days, cards, today, onAdd, onInspect, readOnly }: Props) {
   const month = anchor.slice(0, 7);
   const byDay = new Map<string, Card[]>(days.map((day) => [day, []]));
   for (const card of cards) byDay.get(card.day)?.push(card);
@@ -47,7 +48,7 @@ function MonthView({ anchor, days, cards, today, onAdd, onInspect }: Props) {
                   <span>{dayNameShort(day)}</span>
                   <time dateTime={day}>{dayNumber(day)}</time>
                 </div>
-                <button type="button" onClick={() => onAdd(day)} aria-label={`${shortDate(day)} için kart ekle`}>+</button>
+                {!readOnly && <button type="button" onClick={() => onAdd(day)} aria-label={`${shortDate(day)} için kart ekle`}>+</button>}
               </header>
               <div className="month-cards">
                 {dayCards.slice(0, 3).map((card) => (
@@ -74,7 +75,7 @@ function MonthView({ anchor, days, cards, today, onAdd, onInspect }: Props) {
   );
 }
 
-function AgendaView({ cards, today, completed, onInspect, onToggleDone }: Props & { completed: boolean }) {
+function AgendaView({ cards, today, completed, onInspect, onToggleDone, readOnly }: Props & { completed: boolean }) {
   const visible = cards
     .filter((card) => !completed || card.done)
     .sort((a, b) => a.day.localeCompare(b.day) || a.sortIndex - b.sortIndex);
@@ -117,6 +118,7 @@ function AgendaView({ cards, today, completed, onInspect, onToggleDone }: Props 
                   type="button"
                   className="agenda-check"
                   onClick={() => onToggleDone(card)}
+                  disabled={readOnly}
                   aria-label={`${cardTitle(card)}: ${card.done ? 'geri al' : 'tamamla'}`}
                 >
                   {card.done ? '✓' : ''}

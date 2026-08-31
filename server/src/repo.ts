@@ -2,12 +2,14 @@ import type { Db } from './db.ts';
 import { newId, nowIso } from './ids.ts';
 import { defaultSortIndex } from './sorting.ts';
 import { parseTags, uniqueTags } from './tags.ts';
+import { createPersonalBoard } from './boards.ts';
 import type {
   CardImageRow,
   CardPriority,
   CardRow,
   CardTemplateRow,
   CardTemplateImageRow,
+  BoardRole,
   ChecklistItem,
   HabitRow,
   ReminderRow,
@@ -21,12 +23,26 @@ import type {
  * "WHERE user_id = ?" yazmayı unutmak mümkün değildir — çok kullanıcılı bir
  * kurulumda en kolay yapılan hata budur.
  */
-export function repo(db: Db, userId: string) {
+export function repo(
+  db: Db,
+  userId: string,
+  selectedBoardId?: string,
+  boardRole: BoardRole = 'owner',
+) {
+  const boardId = selectedBoardId ?? createPersonalBoard(db, userId).id;
+  const assertBoardWrite = () => {
+    if (boardRole === 'viewer') {
+      const error = new Error('board_forbidden') as Error & { statusCode: number; code: string };
+      error.statusCode = 403;
+      error.code = 'board_forbidden';
+      throw error;
+    }
+  };
   const touch = (cardId: string, at = nowIso(), detachTemplate = true) =>
     db.prepare(
       `UPDATE cards SET updated_at = ?${detachTemplate ? ', template_id = NULL' : ''}
-       WHERE id = ? AND user_id = ?`,
-    ).run(at, cardId, userId);
+       WHERE id = ? AND board_id = ?`,
+    ).run(at, cardId, boardId);
 
   const tombstone = (entity: 'card' | 'habit', id: string, at = nowIso()) =>
     db
@@ -40,11 +56,11 @@ export function repo(db: Db, userId: string) {
     range(from: string, to: string): CardRow[] {
       return db
         .prepare(
-          `SELECT * FROM cards WHERE user_id = ? AND archived_at IS NULL AND trashed_at IS NULL
+          `SELECT * FROM cards WHERE board_id = ? AND archived_at IS NULL AND trashed_at IS NULL
            AND day >= ? AND day <= ?
            ORDER BY day, sort_index, created_at`,
         )
-        .all(userId, from, to) as unknown as CardRow[];
+        .all(boardId, from, to) as unknown as CardRow[];
     },
 
     search(match: string, limit: number): CardRow[] {
@@ -52,26 +68,26 @@ export function repo(db: Db, userId: string) {
         .prepare(
           `SELECT c.* FROM card_search
            JOIN cards c ON c.id = card_search.card_id
-           WHERE card_search.user_id = ? AND card_search MATCH ?
+           WHERE c.board_id = ? AND card_search MATCH ?
              AND c.archived_at IS NULL AND c.trashed_at IS NULL
            ORDER BY bm25(card_search), c.day DESC, c.sort_index, c.created_at
            LIMIT ?`,
         )
-        .all(userId, match, limit) as unknown as CardRow[];
+        .all(boardId, match, limit) as unknown as CardRow[];
     },
 
     get(id: string): CardRow | undefined {
       return db
         .prepare(
-          'SELECT * FROM cards WHERE id = ? AND user_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
+          'SELECT * FROM cards WHERE id = ? AND board_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
         )
-        .get(id, userId) as
+        .get(id, boardId) as
         | CardRow
         | undefined;
     },
 
     getAny(id: string): CardRow | undefined {
-      return db.prepare('SELECT * FROM cards WHERE id = ? AND user_id = ?').get(id, userId) as
+      return db.prepare('SELECT * FROM cards WHERE id = ? AND board_id = ?').get(id, boardId) as
         | CardRow
         | undefined;
     },
@@ -80,19 +96,19 @@ export function repo(db: Db, userId: string) {
       const column = state === 'archived' ? 'archived_at' : 'trashed_at';
       return db
         .prepare(
-          `SELECT * FROM cards WHERE user_id = ? AND ${column} IS NOT NULL
+          `SELECT * FROM cards WHERE board_id = ? AND ${column} IS NOT NULL
            ORDER BY ${column} DESC, day DESC, sort_index`,
         )
-        .all(userId) as unknown as CardRow[];
+        .all(boardId) as unknown as CardRow[];
     },
 
     /** O güne ait mevcut sort_index'ler — yeni kartın nereye gireceğini hesaplamak için. */
     dayIndexes(day: string): number[] {
       const rows = db
         .prepare(
-          'SELECT sort_index FROM cards WHERE user_id = ? AND day = ? AND archived_at IS NULL AND trashed_at IS NULL',
+          'SELECT sort_index FROM cards WHERE board_id = ? AND day = ? AND archived_at IS NULL AND trashed_at IS NULL',
         )
-        .all(userId, day) as { sort_index: number }[];
+        .all(boardId, day) as { sort_index: number }[];
       return rows.map((r) => r.sort_index);
     },
 
@@ -114,18 +130,20 @@ export function repo(db: Db, userId: string) {
       sortIndex?: number;
       createdAt?: string;
     }): CardRow {
+      assertBoardWrite();
       const at = input.createdAt ?? nowIso();
       const id = input.id ?? newId();
       const sortIndex =
         input.sortIndex ?? defaultSortIndex(input.startTime ?? null, cards.dayIndexes(input.day));
       db.prepare(
-        `INSERT INTO cards (id, user_id, day, title, note, start_time, end_time, color, done,
+        `INSERT INTO cards (id, user_id, board_id, day, title, note, start_time, end_time, color, done,
                             sort_index, manual_sort, habit_id, template_id, checklist_json, priority, deadline_at,
                             tags_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         userId,
+        boardId,
         input.day,
         input.title ?? '',
         input.note ?? '',
@@ -165,6 +183,7 @@ export function repo(db: Db, userId: string) {
       }>,
       options: { preserveTemplate?: boolean } = {},
     ): CardRow | undefined {
+      assertBoardWrite();
       const current = cards.get(id);
       if (!current) return undefined;
 
@@ -209,50 +228,54 @@ export function repo(db: Db, userId: string) {
       if (sets.length === 0) return current;
       if (!options.preserveTemplate && current.template_id) sets.push('template_id = NULL');
       sets.push('updated_at = ?');
-      values.push(nowIso(), id, userId);
-      db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...values);
+      values.push(nowIso(), id, boardId);
+      db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ? AND board_id = ?`).run(...values);
       return cards.get(id);
     },
 
     /** Silinen kartın resim satırlarını döner — dosyaları çağıran taraf temizler. */
     remove(id: string): CardImageRow[] {
+      assertBoardWrite();
       const card = cards.getAny(id);
       if (!card) return [];
       const files = images.forCard(id);
-      db.prepare('DELETE FROM cards WHERE id = ? AND user_id = ?').run(id, userId);
+      db.prepare('DELETE FROM cards WHERE id = ? AND board_id = ?').run(id, boardId);
       tombstone('card', id);
       return files;
     },
 
     archive(id: string): CardRow | undefined {
+      assertBoardWrite();
       const card = cards.get(id);
       if (!card) return undefined;
       const at = nowIso();
       db.prepare(
-        'UPDATE cards SET archived_at = ?, trashed_at = NULL, template_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?',
-      ).run(at, at, id, userId);
+        'UPDATE cards SET archived_at = ?, trashed_at = NULL, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
+      ).run(at, at, id, boardId);
       tombstone('card', id, at);
       return cards.getAny(id);
     },
 
     trash(id: string): CardRow | undefined {
+      assertBoardWrite();
       const card = cards.getAny(id);
       if (!card || card.trashed_at) return undefined;
       const at = nowIso();
       db.prepare(
-        'UPDATE cards SET archived_at = NULL, trashed_at = ?, template_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?',
-      ).run(at, at, id, userId);
+        'UPDATE cards SET archived_at = NULL, trashed_at = ?, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
+      ).run(at, at, id, boardId);
       tombstone('card', id, at);
       return cards.getAny(id);
     },
 
     restore(id: string): CardRow | undefined {
+      assertBoardWrite();
       const card = cards.getAny(id);
       if (!card || (!card.archived_at && !card.trashed_at)) return undefined;
       const at = nowIso();
       db.prepare(
-        'UPDATE cards SET archived_at = NULL, trashed_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?',
-      ).run(at, id, userId);
+        'UPDATE cards SET archived_at = NULL, trashed_at = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
+      ).run(at, id, boardId);
       db.prepare("DELETE FROM deletions WHERE entity = 'card' AND id = ? AND user_id = ?").run(id, userId);
       return cards.get(id);
     },
@@ -260,10 +283,10 @@ export function repo(db: Db, userId: string) {
     changedSince(since: string): CardRow[] {
       return db
         .prepare(
-          `SELECT * FROM cards WHERE user_id = ? AND updated_at > ?
+          `SELECT * FROM cards WHERE board_id = ? AND updated_at > ?
            AND archived_at IS NULL AND trashed_at IS NULL ORDER BY updated_at`,
         )
-        .all(userId, since) as unknown as CardRow[];
+        .all(boardId, since) as unknown as CardRow[];
     },
 
     linkedToTemplate(templateId: string): CardRow[] {
@@ -276,19 +299,20 @@ export function repo(db: Db, userId: string) {
     },
 
     linkTemplate(id: string, templateId: string): CardRow | undefined {
+      assertBoardWrite();
       if (!cards.get(id)) return undefined;
       db.prepare(
-        'UPDATE cards SET template_id = ?, updated_at = ? WHERE id = ? AND user_id = ?',
-      ).run(templateId, nowIso(), id, userId);
+        'UPDATE cards SET template_id = ?, updated_at = ? WHERE id = ? AND board_id = ?',
+      ).run(templateId, nowIso(), id, boardId);
       return cards.get(id);
     },
 
     count(): number {
       const row = db
         .prepare(
-          'SELECT COUNT(*) AS n FROM cards WHERE user_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
+          'SELECT COUNT(*) AS n FROM cards WHERE board_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
         )
-        .get(userId) as {
+        .get(boardId) as {
         n: number;
       };
       return row.n;
@@ -297,9 +321,9 @@ export function repo(db: Db, userId: string) {
     allTags(): string[] {
       const rows = db
         .prepare(
-          'SELECT tags_json FROM cards WHERE user_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
+          'SELECT tags_json FROM cards WHERE board_id = ? AND archived_at IS NULL AND trashed_at IS NULL',
         )
-        .all(userId) as { tags_json: string }[];
+        .all(boardId) as { tags_json: string }[];
       return uniqueTags(rows.map((row) => parseTags(row.tags_json)));
     },
 
@@ -310,9 +334,10 @@ export function repo(db: Db, userId: string) {
     forCard(cardId: string): CardImageRow[] {
       return db
         .prepare(
-          'SELECT * FROM card_images WHERE card_id = ? AND user_id = ? ORDER BY position, created_at',
+          `SELECT i.* FROM card_images i JOIN cards c ON c.id = i.card_id
+           WHERE i.card_id = ? AND c.board_id = ? ORDER BY i.position, i.created_at`,
         )
-        .all(cardId, userId) as unknown as CardImageRow[];
+        .all(cardId, boardId) as unknown as CardImageRow[];
     },
 
     forCards(cardIds: string[]): CardImageRow[] {
@@ -320,14 +345,17 @@ export function repo(db: Db, userId: string) {
       const holes = cardIds.map(() => '?').join(',');
       return db
         .prepare(
-          `SELECT * FROM card_images WHERE user_id = ? AND card_id IN (${holes})
-           ORDER BY position, created_at`,
+          `SELECT i.* FROM card_images i JOIN cards c ON c.id = i.card_id
+           WHERE c.board_id = ? AND i.card_id IN (${holes}) ORDER BY i.position, i.created_at`,
         )
-        .all(userId, ...cardIds) as unknown as CardImageRow[];
+        .all(boardId, ...cardIds) as unknown as CardImageRow[];
     },
 
     get(id: string): CardImageRow | undefined {
-      return db.prepare('SELECT * FROM card_images WHERE id = ? AND user_id = ?').get(id, userId) as
+      return db.prepare(
+        `SELECT i.* FROM card_images i JOIN cards c ON c.id = i.card_id
+         WHERE i.id = ? AND c.board_id = ?`,
+      ).get(id, boardId) as
         | CardImageRow
         | undefined;
     },
@@ -340,11 +368,12 @@ export function repo(db: Db, userId: string) {
       width: number;
       height: number;
     }): CardImageRow {
+      assertBoardWrite();
       const id = newId();
       const at = nowIso();
       const maxRow = db
-        .prepare('SELECT MAX(position) AS max FROM card_images WHERE card_id = ? AND user_id = ?')
-        .get(input.cardId, userId) as { max: number | null };
+        .prepare('SELECT MAX(position) AS max FROM card_images WHERE card_id = ?')
+        .get(input.cardId) as { max: number | null };
       db.prepare(
         `INSERT INTO card_images (id, card_id, user_id, file, thumb, bytes, width, height, position, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -369,6 +398,7 @@ export function repo(db: Db, userId: string) {
       cardId: string,
       sources: Array<Pick<CardImageRow | CardTemplateImageRow, 'file' | 'thumb' | 'bytes' | 'width' | 'height' | 'position'>>,
     ): CardImageRow[] {
+      assertBoardWrite();
       const seen = new Set<string>();
       for (const source of sources) {
         if (seen.has(source.file)) continue;
@@ -392,8 +422,9 @@ export function repo(db: Db, userId: string) {
       cardId: string,
       sources: Array<Pick<CardImageRow | CardTemplateImageRow, 'file' | 'thumb' | 'bytes' | 'width' | 'height' | 'position'>>,
     ): CardImageRow[] {
+      assertBoardWrite();
       const removed = images.forCard(cardId);
-      db.prepare('DELETE FROM card_images WHERE card_id = ? AND user_id = ?').run(cardId, userId);
+      db.prepare('DELETE FROM card_images WHERE card_id = ?').run(cardId);
       images.cloneForCard(cardId, sources);
       if (sources.length === 0) touch(cardId, nowIso(), false);
       return removed;
@@ -404,8 +435,8 @@ export function repo(db: Db, userId: string) {
       const unique = new Map(rows.map((row) => [row.file, row]));
       return [...unique.values()].filter((row) => {
         const usedByCard = db
-          .prepare('SELECT 1 FROM card_images WHERE user_id = ? AND file = ? LIMIT 1')
-          .get(userId, row.file);
+          .prepare('SELECT 1 FROM card_images WHERE file = ? LIMIT 1')
+          .get(row.file);
         const usedByTemplate = db
           .prepare('SELECT 1 FROM card_template_images WHERE user_id = ? AND file = ? LIMIT 1')
           .get(userId, row.file);
@@ -414,9 +445,10 @@ export function repo(db: Db, userId: string) {
     },
 
     remove(id: string): CardImageRow | undefined {
+      assertBoardWrite();
       const image = images.get(id);
       if (!image) return undefined;
-      db.prepare('DELETE FROM card_images WHERE id = ? AND user_id = ?').run(id, userId);
+      db.prepare('DELETE FROM card_images WHERE id = ?').run(id);
       touch(image.card_id);
       return image;
     },
@@ -542,16 +574,20 @@ export function repo(db: Db, userId: string) {
       if (cardIds.length === 0) return [];
       const holes = cardIds.map(() => '?').join(',');
       return db
-        .prepare(`SELECT * FROM card_reminders WHERE user_id = ? AND card_id IN (${holes})`)
-        .all(userId, ...cardIds) as unknown as ReminderRow[];
+        .prepare(
+          `SELECT r.* FROM card_reminders r JOIN cards c ON c.id = r.card_id
+           WHERE c.board_id = ? AND r.card_id IN (${holes})`,
+        )
+        .all(boardId, ...cardIds) as unknown as ReminderRow[];
     },
 
     forCard(cardId: string): ReminderRow[] {
       return db
         .prepare(
-          'SELECT * FROM card_reminders WHERE user_id = ? AND card_id = ? ORDER BY offset_minutes DESC',
+          `SELECT r.* FROM card_reminders r JOIN cards c ON c.id = r.card_id
+           WHERE c.board_id = ? AND r.card_id = ? ORDER BY r.offset_minutes DESC`,
         )
-        .all(userId, cardId) as unknown as ReminderRow[];
+        .all(boardId, cardId) as unknown as ReminderRow[];
     },
 
     /**
@@ -559,12 +595,14 @@ export function repo(db: Db, userId: string) {
      * zamanı güncellenmez — aynı hatırlatma ikinci kez gitmesin diye.
      */
     replace(cardId: string, wanted: { offset: number; fireAt: string }[]) {
+      assertBoardWrite();
       const existing = reminders.forCard(cardId);
+      const reminderOwner = cards.getAny(cardId)?.user_id ?? userId;
       const wantedOffsets = new Set(wanted.map((w) => w.offset));
 
       for (const row of existing) {
         if (!wantedOffsets.has(row.offset_minutes)) {
-          db.prepare('DELETE FROM card_reminders WHERE id = ? AND user_id = ?').run(row.id, userId);
+          db.prepare('DELETE FROM card_reminders WHERE id = ?').run(row.id);
         }
       }
       for (const item of wanted) {
@@ -573,12 +611,11 @@ export function repo(db: Db, userId: string) {
           db.prepare(
             `INSERT INTO card_reminders (id, card_id, user_id, offset_minutes, fire_at, sent_at, status)
              VALUES (?, ?, ?, ?, ?, NULL, NULL)`,
-          ).run(newId(), cardId, userId, item.offset, item.fireAt);
+          ).run(newId(), cardId, reminderOwner, item.offset, item.fireAt);
         } else if (found.fire_at !== item.fireAt && found.sent_at === null) {
-          db.prepare('UPDATE card_reminders SET fire_at = ? WHERE id = ? AND user_id = ?').run(
+          db.prepare('UPDATE card_reminders SET fire_at = ? WHERE id = ?').run(
             item.fireAt,
             found.id,
-            userId,
           );
         }
       }

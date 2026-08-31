@@ -17,6 +17,7 @@ class ApiClient {
     required this.baseUrl,
     this.accessToken,
     this.refreshToken,
+    this.activeBoardId,
     this.onTokensChanged,
     this.onAuthenticationFailed,
     http.Client? client,
@@ -27,6 +28,7 @@ class ApiClient {
   String baseUrl;
   String? accessToken;
   String? refreshToken;
+  String? activeBoardId;
   final FutureOr<void> Function(String accessToken, String refreshToken)?
   onTokensChanged;
   final FutureOr<void> Function()? onAuthenticationFailed;
@@ -46,6 +48,7 @@ class ApiClient {
     if (accessToken case final token?) {
       headers['authorization'] = 'Bearer $token';
     }
+    if (activeBoardId case final board?) headers['x-board-id'] = board;
     if (requestId case final requestId?) headers['x-request-id'] = requestId;
     return headers;
   }
@@ -198,6 +201,72 @@ class ApiClient {
     body: {if (refreshToken != null) 'refreshToken': refreshToken},
     allowRefresh: false,
   );
+
+  /* ------------------------------------------------------------ panolar */
+
+  Future<List<PlannerBoard>> boards() async {
+    final json = await _send('GET', '/boards') as Map<String, dynamic>;
+    return (json['boards'] as List)
+        .map((item) => PlannerBoard.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<PlannerBoard> createBoard(String name) async {
+    final json =
+        await _send('POST', '/boards', body: {'name': name})
+            as Map<String, dynamic>;
+    return PlannerBoard.fromJson(json['board'] as Map<String, dynamic>);
+  }
+
+  Future<void> updateBoard(String id, String name) =>
+      _send('PATCH', '/boards/$id', body: {'name': name});
+
+  Future<void> deleteBoard(String id) => _send('DELETE', '/boards/$id');
+
+  Future<List<BoardMember>> boardMembers(String id) async {
+    final json =
+        await _send('GET', '/boards/$id/members') as Map<String, dynamic>;
+    return (json['members'] as List)
+        .map((item) => BoardMember.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<BoardMember>> addBoardMember(
+    String id,
+    String email,
+    String role,
+  ) async {
+    final json =
+        await _send(
+              'POST',
+              '/boards/$id/members',
+              body: {'email': email, 'role': role},
+            )
+            as Map<String, dynamic>;
+    return (json['members'] as List)
+        .map((item) => BoardMember.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<BoardMember>> updateBoardMember(
+    String id,
+    String userId,
+    String role,
+  ) async {
+    final json =
+        await _send(
+              'PATCH',
+              '/boards/$id/members/$userId',
+              body: {'role': role},
+            )
+            as Map<String, dynamic>;
+    return (json['members'] as List)
+        .map((item) => BoardMember.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> removeBoardMember(String id, String userId) =>
+      _send('DELETE', '/boards/$id/members/$userId');
 
   /* ----------------------------------------------------------- kartlar */
 

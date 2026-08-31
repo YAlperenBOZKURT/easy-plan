@@ -43,6 +43,10 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
   const app = await buildServer({ logger: false, docs: true });
   await app.ready();
   createUser({ email: 'jwt-user@example.com', password: 'correct horse battery staple' });
+  const collaborator = createUser({
+    email: 'collaborator@example.com',
+    password: 'another correct horse battery staple',
+  });
 
   t.after(async () => {
     await app.close();
@@ -115,6 +119,61 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
     });
     assert.equal(invalid.statusCode, 400);
     assert.equal(invalid.json().error, 'validation_error');
+  });
+
+  await t.test('paylaşılan pano owner, editor ve viewer yetkilerini sunucuda uygular', async () => {
+    const ownerLogin = await app.inject({
+      method: 'POST', url: '/api/v1/auth/token',
+      payload: { email: 'jwt-user@example.com', password: 'correct horse battery staple' },
+    });
+    const ownerAuthorization = `Bearer ${ownerLogin.json().accessToken as string}`;
+    const collaboratorLogin = await app.inject({
+      method: 'POST', url: '/api/v1/auth/token',
+      payload: { email: 'collaborator@example.com', password: 'another correct horse battery staple' },
+    });
+    const collaboratorAuthorization = `Bearer ${collaboratorLogin.json().accessToken as string}`;
+
+    const created = await app.inject({
+      method: 'POST', url: '/api/v1/boards',
+      headers: { authorization: ownerAuthorization }, payload: { name: 'Ürün ekibi' },
+    });
+    assert.equal(created.statusCode, 201);
+    const boardId = created.json().board.id as string;
+
+    const shared = await app.inject({
+      method: 'POST', url: `/api/v1/boards/${boardId}/members`,
+      headers: { authorization: ownerAuthorization },
+      payload: { email: 'collaborator@example.com', role: 'viewer' },
+    });
+    assert.equal(shared.statusCode, 201);
+
+    const viewerWrite = await app.inject({
+      method: 'POST', url: '/api/v1/cards',
+      headers: { authorization: collaboratorAuthorization, 'x-board-id': boardId },
+      payload: { day: '2026-08-30', title: 'Yazılamaz' },
+    });
+    assert.equal(viewerWrite.statusCode, 403);
+    assert.equal(viewerWrite.json().error, 'board_forbidden');
+
+    const promoted = await app.inject({
+      method: 'PATCH', url: `/api/v1/boards/${boardId}/members/${collaborator.id}`,
+      headers: { authorization: ownerAuthorization }, payload: { role: 'editor' },
+    });
+    assert.equal(promoted.statusCode, 200);
+
+    const editorWrite = await app.inject({
+      method: 'POST', url: '/api/v1/cards',
+      headers: { authorization: collaboratorAuthorization, 'x-board-id': boardId },
+      payload: { day: '2026-08-30', title: 'Ortak kart' },
+    });
+    assert.equal(editorWrite.statusCode, 201);
+
+    const ownerRead = await app.inject({
+      method: 'GET', url: '/api/v1/cards?from=2026-08-30&to=2026-08-30',
+      headers: { authorization: ownerAuthorization, 'x-board-id': boardId },
+    });
+    assert.equal(ownerRead.statusCode, 200);
+    assert.equal(ownerRead.json().cards[0].title, 'Ortak kart');
   });
 
   await t.test('şablona multipart görsel yüklenir ve şablon cevabında görünür', async () => {

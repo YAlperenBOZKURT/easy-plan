@@ -21,6 +21,7 @@ import 'card_search.dart';
 import 'card_view.dart';
 import 'card_templates.dart';
 import 'data_transfer.dart';
+import 'boards.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
 /// Telefonda tek gün + kaydırma, geniş ekranda kolonlar yan yana.
@@ -78,6 +79,14 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
   }
 
   Future<void> _openEditor({PlannerCard? card, required String day}) async {
+    if (store.boardReadOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bu panoda yalnızca görüntüleme yetkin var.'),
+        ),
+      );
+      return;
+    }
     final saved = await showCardEditor(
       context,
       store: store,
@@ -209,6 +218,10 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
   }
 
   void _cardActions(PlannerCard card) {
+    if (store.boardReadOnly) {
+      showCardView(context, store: store, card: card);
+      return;
+    }
     final t = context.tokens;
     showModalBottomSheet<void>(
       context: context,
@@ -339,6 +352,11 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                 IconButton(
                   onPressed: () => _navigatePeriod(-1),
                   icon: const Icon(Icons.chevron_left),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
                   tooltip: _view == PlannerViewMode.week
                       ? 'Önceki gün'
                       : 'Önceki ay',
@@ -346,11 +364,24 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                 IconButton(
                   onPressed: () => _navigatePeriod(1),
                   icon: const Icon(Icons.chevron_right),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
                   tooltip: _view == PlannerViewMode.week
                       ? 'Sonraki gün'
                       : 'Sonraki ay',
                 ),
-                OutlinedButton(onPressed: _goToday, child: const Text('Bugün')),
+                OutlinedButton(
+                  onPressed: _goToday,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(62, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text('Bugün'),
+                ),
                 if (wide) ...[
                   const SizedBox(width: 10),
                   Flexible(
@@ -366,6 +397,56 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               ],
             ),
             actions: [
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.dashboard_outlined),
+                tooltip: store.activeBoard?.name ?? 'Panolar',
+                onSelected: (value) async {
+                  if (value == '__manage') {
+                    await showBoardManager(context, store: store);
+                    return;
+                  }
+                  final board = store.boards
+                      .where((item) => item.id == value)
+                      .firstOrNull;
+                  if (board != null) await store.switchBoard(board);
+                },
+                itemBuilder: (_) => [
+                  for (final board in store.boards)
+                    PopupMenuItem(
+                      value: board.id,
+                      child: Row(
+                        children: [
+                          Icon(
+                            board.id == store.activeBoard?.id
+                                ? Icons.check_circle
+                                : Icons.circle_outlined,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(child: Text(board.name)),
+                          if (board.role == 'viewer') ...[
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Salt okunur',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: '__manage',
+                    child: Row(
+                      children: [
+                        Icon(Icons.group_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text('Pano ve paylaşım'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               IconButton(
                 onPressed: _openSearch,
                 icon: const Icon(Icons.search),
@@ -585,6 +666,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                                           onCard: _cardActions,
                                           onMove: _move,
                                           dragEnabled:
+                                              !store.boardReadOnly &&
                                               !_fastNav &&
                                               !_filters.hasActiveFilters,
                                           onDragState: (active) =>
@@ -641,7 +723,9 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                               onAdd: _openEditor,
                               onCard: _cardActions,
                               onMove: _move,
-                              dragEnabled: !_filters.hasActiveFilters,
+                              dragEnabled:
+                                  !store.boardReadOnly &&
+                                  !_filters.hasActiveFilters,
                             ),
                           ),
                           // Sürüklenen kart kenarda beklerse gün değişir.
@@ -670,17 +754,19 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _openEditor(
-              day: _view == PlannerViewMode.week
-                  ? days[_index.clamp(0, days.length - 1)]
-                  : store.anchor,
-            ),
-            tooltip: 'Bu güne kart ekle',
-            backgroundColor: t.accent,
-            foregroundColor: t.accentFg,
-            child: const Icon(Icons.add),
-          ),
+          floatingActionButton: store.boardReadOnly
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _openEditor(
+                    day: _view == PlannerViewMode.week
+                        ? days[_index.clamp(0, days.length - 1)]
+                        : store.anchor,
+                  ),
+                  tooltip: 'Bu güne kart ekle',
+                  backgroundColor: t.accent,
+                  foregroundColor: t.accentFg,
+                  child: const Icon(Icons.add),
+                ),
         );
       },
     );
@@ -761,6 +847,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
   }
 
   void _move(PlannerCard card, String day, String? beforeId, String? afterId) {
+    if (store.boardReadOnly) return;
     // Aynı yere bırakıldıysa sunucuyu meşgul etme.
     if (card.id == beforeId || card.id == afterId) return;
     store.moveCard(card, day: day, beforeId: beforeId, afterId: afterId);

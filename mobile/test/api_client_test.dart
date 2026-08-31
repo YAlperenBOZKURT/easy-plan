@@ -54,6 +54,39 @@ void main() {
     api.close();
   });
 
+  test('aktif pano başlığını gönderir ve pano listesini ayrıştırır', () async {
+    late http.Request captured;
+    final api = ApiClient(
+      baseUrl: 'https://planner.example',
+      accessToken: 'access-jwt',
+      activeBoardId: 'board-42',
+      client: MockClient((request) async {
+        captured = request;
+        return http.Response(
+          jsonEncode({
+            'boards': [
+              {
+                'id': 'board-42',
+                'name': 'Ürün ekibi',
+                'role': 'editor',
+                'personal': false,
+                'memberCount': 3,
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    final boards = await api.boards();
+
+    expect(captured.headers['x-board-id'], 'board-42');
+    expect(boards.single.name, 'Ürün ekibi');
+    expect(boards.single.canEdit, isTrue);
+    api.close();
+  });
+
   test('API hatası kod ve sunucu request id değeriyle taşınır', () async {
     final api = ApiClient(
       baseUrl: 'https://planner.example',

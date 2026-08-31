@@ -1,4 +1,4 @@
-import type { AdminStats, AdminUser, Card, CardTemplate, Habit, User } from './types.ts';
+import type { AdminStats, AdminUser, Board, BoardMember, BoardRole, Card, CardTemplate, Habit, User } from './types.ts';
 import { logger } from './logger.ts';
 
 const BASE = '/api/v1';
@@ -23,6 +23,7 @@ function safePath(path: string): string {
 }
 
 let refreshPromise: Promise<void> | undefined;
+let activeBoardId: string | undefined;
 
 const isPublicAuthRequest = (path: string) =>
   /^\/auth\/(login|token|refresh|invite\/|forgot|reset\/)/.test(path);
@@ -47,6 +48,7 @@ async function request<T>(path: string, init: RequestInit = {}, allowRefresh = t
   const headers = new Headers(init.headers);
   const clientRequestId = requestId();
   headers.set('x-request-id', clientRequestId);
+  if (activeBoardId) headers.set('x-board-id', activeBoardId);
   if (init.body !== undefined && init.body !== null && !(init.body instanceof FormData)) {
     headers.set('content-type', 'application/json');
   }
@@ -91,9 +93,11 @@ async function request<T>(path: string, init: RequestInit = {}, allowRefresh = t
 
 async function download(path: string, allowRefresh = true): Promise<{ blob: Blob; filename: string }> {
   const clientRequestId = requestId();
+  const headers: Record<string, string> = { 'x-request-id': clientRequestId };
+  if (activeBoardId) headers['x-board-id'] = activeBoardId;
   const response = await fetch(BASE + path, {
     credentials: 'same-origin',
-    headers: { 'x-request-id': clientRequestId },
+    headers,
   });
   if (response.status === 401 && allowRefresh) {
     refreshPromise ??= refreshWebSession().finally(() => { refreshPromise = undefined; });
@@ -115,6 +119,8 @@ async function download(path: string, allowRefresh = true): Promise<{ blob: Blob
 }
 
 export const api = {
+  setActiveBoard: (id?: string) => { activeBoardId = id; },
+
   /* kimlik */
   me: () => request<{ user: User }>('/auth/me'),
   login: (email: string, password: string) =>
@@ -132,6 +138,25 @@ export const api = {
     request<{ ok: true }>(`/auth/reset/${token}`, { method: 'POST', body: JSON.stringify({ password }) }),
   updateMe: (patch: Record<string, unknown>) =>
     request<{ user: User }>('/me', { method: 'PATCH', body: JSON.stringify(patch) }),
+
+  /* panolar ve paylaşım */
+  boards: () => request<{ boards: Board[] }>('/boards'),
+  createBoard: (name: string) =>
+    request<{ board: Board }>('/boards', { method: 'POST', body: JSON.stringify({ name }) }),
+  updateBoard: (id: string, name: string) =>
+    request<{ ok: true }>(`/boards/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  deleteBoard: (id: string) => request<{ ok: true }>(`/boards/${id}`, { method: 'DELETE' }),
+  boardMembers: (id: string) => request<{ members: BoardMember[] }>(`/boards/${id}/members`),
+  addBoardMember: (id: string, email: string, role: Exclude<BoardRole, 'owner'>) =>
+    request<{ members: BoardMember[] }>(`/boards/${id}/members`, {
+      method: 'POST', body: JSON.stringify({ email, role }),
+    }),
+  updateBoardMember: (id: string, userId: string, role: Exclude<BoardRole, 'owner'>) =>
+    request<{ members: BoardMember[] }>(`/boards/${id}/members/${userId}`, {
+      method: 'PATCH', body: JSON.stringify({ role }),
+    }),
+  removeBoardMember: (id: string, userId: string) =>
+    request<{ ok: true }>(`/boards/${id}/members/${userId}`, { method: 'DELETE' }),
 
   /* kartlar */
   cards: (from: string, to: string) => request<{ cards: Card[] }>(`/cards?from=${from}&to=${to}`),
