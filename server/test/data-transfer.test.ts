@@ -5,6 +5,7 @@ import type { CardDto } from '../src/dto.ts';
 
 const sample: CardDto = {
   id: 'card-1',
+  boardId: 'board-1',
   day: '2026-08-28',
   title: 'Plan, toplantı',
   note: 'İlk satır\nİkinci satır',

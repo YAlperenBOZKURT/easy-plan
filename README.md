@@ -14,10 +14,11 @@ The project is designed for individuals, families, and small teams that want to 
 - **Safe card lifecycle** — archive cards, move deletions to a recycle bin, restore them, or permanently remove them after a configurable retention period.
 - **Card duplication and linked templates** — manage reusable templates from dedicated React and Flutter views. Template edits propagate to linked cards; any individual card change detaches that card. Image files are reference-counted and reused instead of being duplicated on disk.
 - **Portable planning data** — export a selected date range as JSON, CSV, or iCalendar and import any of those formats from the web or Flutter clients. Imports are validated and never overwrite existing cards.
+- **Shared boards** — create optional team boards, add existing Easy Plan users by email, and enforce owner, editor, or read-only viewer permissions consistently across the API, web, mobile, and desktop clients.
 - **Drag and drop** — reorder cards within a day or move them across days on web, mobile, and desktop.
 - **Mobile day navigation** — edge controls move one day at a time, keep the visible column synchronized with the day strip, and clearly highlight today.
 - **Recurring habits** — generate independent cards for selected weekdays across a one-year planning window.
-- **Multi-user isolation** — every query and uploaded file is scoped to its owner.
+- **Multi-user isolation** — personal data stays isolated, while shared-board cards and private images are exposed only to explicitly authorized members.
 - **Invitation-based access** — administrators invite users; public registration is not exposed.
 - **Email reminders** — schedule card reminders and daily summaries through any SMTP provider.
 - **Offline-first native client** — Flutter keeps a local SQLite cache and replays queued writes when connectivity returns.
@@ -33,6 +34,7 @@ flowchart LR
     API --> DB[(SQLite)]
     API --> Files[Private image storage]
     API --> SMTP[SMTP provider]
+    API --> Permissions[Board memberships and roles]
     Native --> Cache[(Local SQLite cache)]
 ```
 
@@ -219,6 +221,10 @@ Important native-client endpoints include:
 - `GET|POST /api/v1/card-templates` — lists or creates reusable, user-scoped card templates.
 - `POST /api/v1/cards/:id/template` — saves an existing card as a reusable template.
 - `GET /api/v1/data/export` — downloads a date range as JSON, CSV, or iCalendar.
+- `GET /api/v1/boards` — lists personal and shared boards available to the current user.
+- `POST /api/v1/boards/{id}/members` — adds an existing active user as an editor or viewer; only the board owner can manage membership.
+
+Card, image, lifecycle, search, sync, and data-transfer requests use the optional `X-Board-Id` header to select a shared board. Omitting it selects the authenticated user's personal board. Supplying a board without membership returns `403`; viewer memberships cannot mutate board cards.
 - `POST /api/v1/data/import` — validates and imports up to 1,000 cards from a JSON, CSV, or iCalendar file.
 
 Exports contain card fields, checklists, tags, priorities, deadlines, and reminders. Image binaries are intentionally excluded; back up the `data/` directory when a complete disaster-recovery copy including uploads is required.

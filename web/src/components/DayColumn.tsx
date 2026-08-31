@@ -21,6 +21,7 @@ export default function DayColumn({
   onSaveTemplate,
   onDelete,
   dragDisabled = false,
+  readOnly = false,
 }: {
   day: string;
   cards: Card[];
@@ -38,6 +39,7 @@ export default function DayColumn({
   onSaveTemplate: (card: Card) => void;
   onDelete: (card: Card) => void;
   dragDisabled?: boolean;
+  readOnly?: boolean;
 }) {
   // Kolonun kendisi de bırakma hedefi: boş güne ya da kartların altına bırakılabilsin.
   const { setNodeRef, isOver } = useDroppable({ id: `col:${day}`, data: { day } });
@@ -58,7 +60,7 @@ export default function DayColumn({
 
       <div className="col-body">
         {/* Boş günde "Ekle" en üstte durur ve kolon kısacık kalır */}
-        {cards.length === 0 && (
+        {cards.length === 0 && !readOnly && (
           <button className="add-btn" onClick={() => onAdd(day)}>
             + Ekle
           </button>
@@ -81,11 +83,12 @@ export default function DayColumn({
               onSaveTemplate={() => onSaveTemplate(card)}
               onDelete={() => onDelete(card)}
               dragDisabled={dragDisabled}
+              readOnly={readOnly}
             />
           ))}
         </SortableContext>
 
-        {cards.length > 0 && (
+        {cards.length > 0 && !readOnly && (
           <button className="add-btn" onClick={() => onAdd(day)}>
             + Ekle
           </button>

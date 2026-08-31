@@ -16,6 +16,7 @@ export default function CardViewModal({
   onDuplicate,
   onSaveTemplate,
   onDelete,
+  readOnly = false,
 }: {
   card: Card;
   onClose: () => void;
@@ -24,6 +25,7 @@ export default function CardViewModal({
   onDuplicate: () => void;
   onSaveTemplate: () => void;
   onDelete: () => void;
+  readOnly?: boolean;
 }) {
   const [zoom, setZoom] = useState<string | null>(null);
 
@@ -159,21 +161,21 @@ export default function CardViewModal({
           <button className="btn" onClick={onClose}>
             Kapat
           </button>
-          <button className="btn" onClick={onArchive}>
+          {!readOnly && <button className="btn" onClick={onArchive}>
             Arşivle
-          </button>
-          <button className="btn" onClick={onDuplicate}>
+          </button>}
+          {!readOnly && <button className="btn" onClick={onDuplicate}>
             Çoğalt
-          </button>
-          <button className="btn" onClick={onSaveTemplate}>
+          </button>}
+          {!readOnly && <button className="btn" onClick={onSaveTemplate}>
             Şablon yap
-          </button>
-          <button className="btn btn-red" onClick={onDelete}>
+          </button>}
+          {!readOnly && <button className="btn btn-red" onClick={onDelete}>
             Çöpe at
-          </button>
-          <button className="btn btn-primary" onClick={onEdit}>
+          </button>}
+          {!readOnly && <button className="btn btn-primary" onClick={onEdit}>
             Düzenle
-          </button>
+          </button>}
         </div>
       </div>
 

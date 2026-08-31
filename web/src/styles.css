@@ -72,6 +72,19 @@ button:focus-visible, [role='button']:focus-visible {
 .app { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
 .topbar { display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
 .topbar-range { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13.5px; margin-left: 6px; white-space: nowrap; }
+.board-switcher { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.board-switcher select { width: min(210px, 24vw); padding: 8px 30px 8px 10px; background: var(--surface-2); }
+.board-manager-modal { max-width: 680px; }
+.board-create-row, .board-invite-row { display: flex; align-items: end; gap: 8px; }
+.board-role-field { max-width: 150px; }
+.board-role-note { padding: 10px 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); }
+.board-members { display: flex; flex-direction: column; gap: 8px; }
+.board-members h3 { margin: 2px 0; font-size: 13px; color: var(--text-muted); }
+.board-member { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.board-member > div { display: flex; flex-direction: column; min-width: 0; }
+.board-member > div span { color: var(--text-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.board-member select { padding: 7px 28px 7px 9px; }
+.board-member-role { color: var(--text-muted); font-size: 12px; }
 .board { display: flex; align-items: flex-start; gap: 14px; padding: 18px; overflow-x: auto; flex: 1; min-height: 0; }
 
 /* ===================== GÜN KOLONU ===================== */
@@ -439,6 +452,12 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 
 /* Telefon: tek gün tam ekran, parmakla gün geçişi. */
 @media (max-width: 767px) {
+  .board-switcher { order: 20; width: 100%; }
+  .board-switcher select { width: auto; flex: 1; }
+  .board-create-row, .board-invite-row { flex-direction: column; align-items: stretch; }
+  .board-role-field { max-width: none; }
+  .board-member { grid-template-columns: minmax(0, 1fr) auto; }
+  .board-member .btn { grid-column: 1 / -1; }
   .board { padding: 12px; gap: 12px; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .board::-webkit-scrollbar { display: none; }
   .col { flex: 0 0 100%; min-width: 100%; scroll-snap-align: center; scroll-snap-stop: always; border: 0; background: transparent; box-shadow: none; padding: 0; }

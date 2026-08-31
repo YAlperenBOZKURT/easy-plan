@@ -2,7 +2,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError } from './api.ts';
 
 describe('API client', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    api.setActiveBoard(undefined);
+    vi.unstubAllGlobals();
+  });
+
+  it('seçilen panoyu kart isteklerinde güvenli başlıkla taşır', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ cards: [] }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    api.setActiveBoard('board-42');
+
+    await api.cards('2026-08-30', '2026-08-31');
+
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect(new Headers(init.headers).get('x-board-id')).toBe('board-42');
+  });
 
   it('JSON isteğine içerik tipi ve izleme kimliği ekler', async () => {
     const fetchMock = vi.fn().mockResolvedValue(

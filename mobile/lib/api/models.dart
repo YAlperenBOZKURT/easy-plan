@@ -74,6 +74,7 @@ String cardPriorityLabel(String priority) => switch (priority) {
 class PlannerCard {
   PlannerCard({
     required this.id,
+    this.boardId,
     required this.day,
     required this.title,
     required this.note,
@@ -97,6 +98,7 @@ class PlannerCard {
   });
 
   final String id;
+  final String? boardId;
   final String day; // 'YYYY-MM-DD'
   final String title;
   final String note;
@@ -130,6 +132,7 @@ class PlannerCard {
   /// Yerel önbelleğe olduğu gibi yazılır (bkz. cache.dart).
   Map<String, dynamic> toJson() => {
     'id': id,
+    'boardId': boardId,
     'day': day,
     'title': title,
     'note': note,
@@ -171,6 +174,7 @@ class PlannerCard {
     String? updatedAt,
   }) => PlannerCard(
     id: id,
+    boardId: boardId,
     day: day ?? this.day,
     title: title ?? this.title,
     note: note ?? this.note,
@@ -199,6 +203,7 @@ class PlannerCard {
 
   factory PlannerCard.fromJson(Map<String, dynamic> json) => PlannerCard(
     id: json['id'] as String,
+    boardId: json['boardId'] as String?,
     day: json['day'] as String,
     title: (json['title'] as String?) ?? '',
     note: (json['note'] as String?) ?? '',
@@ -227,6 +232,54 @@ class PlannerCard {
         .map((e) => CardImage.fromJson(e as Map<String, dynamic>))
         .toList(),
     updatedAt: (json['updatedAt'] as String?) ?? '',
+  );
+}
+
+class PlannerBoard {
+  const PlannerBoard({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.personal,
+    required this.memberCount,
+  });
+
+  final String id;
+  final String name;
+  final String role;
+  final bool personal;
+  final int memberCount;
+
+  bool get canEdit => role == 'owner' || role == 'editor';
+  bool get isOwner => role == 'owner';
+
+  factory PlannerBoard.fromJson(Map<String, dynamic> json) => PlannerBoard(
+    id: json['id'] as String,
+    name: (json['name'] as String?) ?? '',
+    role: (json['role'] as String?) ?? 'viewer',
+    personal: json['personal'] == true,
+    memberCount: (json['memberCount'] as num?)?.toInt() ?? 1,
+  );
+}
+
+class BoardMember {
+  const BoardMember({
+    required this.userId,
+    required this.email,
+    required this.name,
+    required this.role,
+  });
+
+  final String userId;
+  final String email;
+  final String name;
+  final String role;
+
+  factory BoardMember.fromJson(Map<String, dynamic> json) => BoardMember(
+    userId: json['userId'] as String,
+    email: json['email'] as String,
+    name: (json['name'] as String?) ?? '',
+    role: (json['role'] as String?) ?? 'viewer',
   );
 }
 

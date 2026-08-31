@@ -13,8 +13,12 @@ import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
 import { sanitizeTags } from '../tags.ts';
 import { MAX_SEARCH_RESULTS, readSearchQuery } from '../search.ts';
 import { newId } from '../ids.ts';
+import { requestBoardAccess } from '../boards.ts';
 
-export const storeFor = (req: FastifyRequest): Repo => repo(db(), req.user!.id);
+export const storeFor = (req: FastifyRequest): Repo => {
+  const access = requestBoardAccess(db(), req);
+  return repo(db(), req.user!.id, access.board.id, access.membership.role);
+};
 
 /** Gezinme ve veri penceresi: bugünden ±1 yıl. */
 export function withinWindow(day: string, tz: string): boolean {

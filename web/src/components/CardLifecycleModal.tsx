@@ -6,11 +6,15 @@ import type { Card } from '../lib/types.ts';
 
 type LifecycleView = 'archived' | 'trash';
 
-export default function CardLifecycleModal({ onClose }: { onClose: () => void }) {
+export default function CardLifecycleModal({ onClose, boardId, readOnly = false }: {
+  onClose: () => void;
+  boardId?: string;
+  readOnly?: boolean;
+}) {
   const client = useQueryClient();
   const [view, setView] = useState<LifecycleView>('archived');
   const query = useQuery({
-    queryKey: ['card-lifecycle', view],
+    queryKey: ['card-lifecycle', boardId, view],
     queryFn: () => view === 'archived' ? api.archivedCards() : api.trashedCards(),
   });
 
@@ -62,14 +66,14 @@ export default function CardLifecycleModal({ onClose }: { onClose: () => void })
                   <strong>{card.title || '(başlıksız)'}</strong>
                   {card.note && <p>{card.note}</p>}
                 </div>
-                <div className="lifecycle-actions">
+                {!readOnly && <div className="lifecycle-actions">
                   <button className="btn btn-sm btn-green" disabled={busy} onClick={() => restore.mutate(card.id)}>Geri yükle</button>
                   {view === 'archived' ? (
                     <button className="btn btn-sm btn-red" disabled={busy} onClick={() => moveToTrash.mutate(card.id)}>Çöpe at</button>
                   ) : (
                     <button className="btn btn-sm btn-red" disabled={busy} onClick={() => permanentlyDelete(card)}>Kalıcı sil</button>
                   )}
-                </div>
+                </div>}
               </article>
             ))}
           </div>

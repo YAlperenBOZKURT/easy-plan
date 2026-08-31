@@ -1,4 +1,22 @@
 export type Role = 'admin' | 'user';
+export type BoardRole = 'owner' | 'editor' | 'viewer';
+
+export interface BoardRow {
+  id: string;
+  owner_id: string;
+  name: string;
+  is_personal: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BoardMemberRow {
+  board_id: string;
+  user_id: string;
+  role: BoardRole;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface ChecklistItem {
   id: string;
@@ -24,6 +42,7 @@ export interface UserRow {
 export interface CardRow {
   id: string;
   user_id: string;
+  board_id: string;
   day: string;
   title: string;
   note: string;

@@ -134,6 +134,26 @@ const operations: Record<string, OperationDoc> = {
     body: object({ name: string(), timezone: string(), dailySummary: boolean(), currentPassword: password(), newPassword: password(12) }),
   },
   'POST /api/v1/me/logout-all': { summary: 'Tüm cihazlardaki oturumları kapatır', tag: 'Profile' },
+  'GET /api/v1/boards': { summary: 'Erişilebilen panoları listeler', tag: 'Boards' },
+  'POST /api/v1/boards': {
+    summary: 'Paylaşılabilir pano oluşturur', tag: 'Boards',
+    body: object({ name: string({ minLength: 1, maxLength: 80 }) }, ['name']),
+  },
+  'PATCH /api/v1/boards/:id': {
+    summary: 'Pano adını değiştirir', tag: 'Boards',
+    body: object({ name: string({ minLength: 1, maxLength: 80 }) }, ['name']),
+  },
+  'DELETE /api/v1/boards/:id': { summary: 'Paylaşılan panoyu siler', tag: 'Boards' },
+  'GET /api/v1/boards/:id/members': { summary: 'Pano üyelerini listeler', tag: 'Boards' },
+  'POST /api/v1/boards/:id/members': {
+    summary: 'Mevcut kullanıcıyı panoya ekler', tag: 'Boards',
+    body: object({ email: string({ format: 'email', maxLength: 320 }), role: string({ enum: ['editor', 'viewer'] }) }, ['email', 'role']),
+  },
+  'PATCH /api/v1/boards/:id/members/:userId': {
+    summary: 'Pano üyesinin yetkisini değiştirir', tag: 'Boards',
+    body: object({ role: string({ enum: ['editor', 'viewer'] }) }, ['role']),
+  },
+  'DELETE /api/v1/boards/:id/members/:userId': { summary: 'Üyeyi çıkarır veya panodan ayrılır', tag: 'Boards' },
   'GET /api/v1/cards': {
     summary: 'Tarih aralığındaki kartları listeler', tag: 'Cards',
     querystring: object({ from: string({ format: 'date' }), to: string({ format: 'date' }) }, ['from', 'to']),
@@ -280,6 +300,7 @@ export async function registerOpenApi(app: FastifyInstance, uiEnabled: boolean) 
         { name: 'System', description: 'Sağlık ve bakım uçları' },
         { name: 'Authentication', description: 'Kimlik doğrulama ve oturumlar' },
         { name: 'Profile', description: 'Kullanıcı profili' },
+        { name: 'Boards', description: 'Paylaşılan panolar ve üye yetkileri' },
         { name: 'Cards', description: 'Plan kartları' },
         { name: 'Templates', description: 'Tekrar kullanılabilir kart şablonları' },
         { name: 'Data Transfer', description: 'JSON, CSV ve iCalendar içe/dışa aktarma' },

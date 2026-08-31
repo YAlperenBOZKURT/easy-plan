@@ -68,4 +68,12 @@ export function resolveOwnedUpload(userId: string, relative: string): string | u
   return target;
 }
 
+/** İstenen yolun uploads kökünden dışarı çıkmadığını doğrular. Yetki ayrıca DB'den kontrol edilir. */
+export function resolveUpload(relative: string): string | undefined {
+  const base = resolve(config.uploadsDir);
+  const target = resolve(config.uploadsDir, relative);
+  if (target !== base && !target.startsWith(base + sep)) return undefined;
+  return target;
+}
+
 export const uploadDirOf = (relative: string) => dirname(resolve(config.uploadsDir, relative));

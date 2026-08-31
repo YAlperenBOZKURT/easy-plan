@@ -120,18 +120,19 @@ class Cache {
     final db = await _open();
     if (db == null) return const [];
     final rows = await db.query('cards');
-    final cards = rows
-        .map(
-          (row) => PlannerCard.fromJson(
-            jsonDecode(row['json']! as String) as Map<String, dynamic>,
-          ),
-        )
-        .where((card) => cardTextMatches(card.title, card.note, query))
-        .toList()
-      ..sort((a, b) {
-        final day = b.day.compareTo(a.day);
-        return day != 0 ? day : a.sortIndex.compareTo(b.sortIndex);
-      });
+    final cards =
+        rows
+            .map(
+              (row) => PlannerCard.fromJson(
+                jsonDecode(row['json']! as String) as Map<String, dynamic>,
+              ),
+            )
+            .where((card) => cardTextMatches(card.title, card.note, query))
+            .toList()
+          ..sort((a, b) {
+            final day = b.day.compareTo(a.day);
+            return day != 0 ? day : a.sortIndex.compareTo(b.sortIndex);
+          });
     return cards.take(maxSearchResults).toList();
   }
 
@@ -185,6 +186,14 @@ class Cache {
     await db.delete('cards');
     await db.delete('queue');
     await db.delete('meta');
+  }
+
+  /// Pano değişirken başka panonun kartları ve delta imleci taşınmaz.
+  Future<void> clearBoardData() async {
+    final db = await _open();
+    if (db == null) return;
+    await db.delete('cards');
+    await db.delete('meta', where: 'key = ?', whereArgs: ['last_sync']);
   }
 
   /* --------------------------------------------------------------- kuyruk */
