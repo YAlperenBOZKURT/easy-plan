@@ -1,4 +1,4 @@
-import type { AdminStats, AdminUser, Board, BoardMember, BoardRole, Card, CardTemplate, Habit, User } from './types.ts';
+import type { AdminStats, AdminUser, Board, BoardMember, BoardRole, Card, CardActivity, CardTemplate, Habit, User } from './types.ts';
 import { logger } from './logger.ts';
 
 const BASE = '/api/v1';
@@ -157,6 +157,13 @@ export const api = {
     }),
   removeBoardMember: (id: string, userId: string) =>
     request<{ ok: true }>(`/boards/${id}/members/${userId}`, { method: 'DELETE' }),
+  cardActivity: (options: { limit?: number; before?: string; cardId?: string } = {}) => {
+    const query = new URLSearchParams();
+    query.set('limit', String(options.limit ?? 50));
+    if (options.before) query.set('before', options.before);
+    if (options.cardId) query.set('cardId', options.cardId);
+    return request<{ activities: CardActivity[]; nextCursor: string | null }>(`/activity?${query}`);
+  },
 
   /* kartlar */
   cards: (from: string, to: string) => request<{ cards: Card[] }>(`/cards?from=${from}&to=${to}`),

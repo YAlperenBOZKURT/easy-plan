@@ -283,6 +283,42 @@ class BoardMember {
   );
 }
 
+class CardActivity {
+  const CardActivity({
+    required this.id,
+    required this.cardId,
+    required this.action,
+    required this.cardTitle,
+    required this.actorName,
+    required this.actorEmail,
+    required this.details,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String cardId;
+  final String action;
+  final String cardTitle;
+  final String? actorName;
+  final String? actorEmail;
+  final Map<String, dynamic> details;
+  final DateTime createdAt;
+
+  factory CardActivity.fromJson(Map<String, dynamic> json) {
+    final actor = json['actor'] as Map<String, dynamic>?;
+    return CardActivity(
+      id: json['id'] as String,
+      cardId: json['cardId'] as String,
+      action: json['action'] as String,
+      cardTitle: (json['cardTitle'] as String?) ?? '',
+      actorName: actor?['name'] as String?,
+      actorEmail: actor?['email'] as String?,
+      details: Map<String, dynamic>.from((json['details'] as Map?) ?? const {}),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+    );
+  }
+}
+
 class CardTemplate {
   CardTemplate({
     required this.id,

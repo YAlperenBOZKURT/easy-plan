@@ -16,6 +16,7 @@ export default function CardViewModal({
   onDuplicate,
   onSaveTemplate,
   onDelete,
+  onHistory,
   readOnly = false,
 }: {
   card: Card;
@@ -25,6 +26,7 @@ export default function CardViewModal({
   onDuplicate: () => void;
   onSaveTemplate: () => void;
   onDelete: () => void;
+  onHistory?: () => void;
   readOnly?: boolean;
 }) {
   const [zoom, setZoom] = useState<string | null>(null);
@@ -161,6 +163,7 @@ export default function CardViewModal({
           <button className="btn" onClick={onClose}>
             Kapat
           </button>
+          {onHistory && <button className="btn" onClick={onHistory}>Geçmiş</button>}
           {!readOnly && <button className="btn" onClick={onArchive}>
             Arşivle
           </button>}

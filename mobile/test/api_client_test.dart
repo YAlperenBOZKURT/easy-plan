@@ -75,6 +75,7 @@ void main() {
             ],
           }),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         );
       }),
     );
@@ -86,6 +87,51 @@ void main() {
     expect(boards.single.canEdit, isTrue);
     api.close();
   });
+
+  test(
+    'kart etkinlik geçmişini kullanıcı ve ayrıntılarıyla ayrıştırır',
+    () async {
+      late http.Request captured;
+      final api = ApiClient(
+        baseUrl: 'https://planner.example',
+        activeBoardId: 'board-42',
+        client: MockClient((request) async {
+          captured = request;
+          return http.Response(
+            jsonEncode({
+              'activities': [
+                {
+                  'id': 'activity-1',
+                  'boardId': 'board-42',
+                  'cardId': 'card-1',
+                  'actor': {
+                    'id': 'u1',
+                    'name': 'User',
+                    'email': 'user@example.com',
+                  },
+                  'action': 'moved',
+                  'cardTitle': 'Toplantı',
+                  'details': {'fromDay': '2026-09-01', 'toDay': '2026-09-02'},
+                  'createdAt': '2026-09-02T10:00:00.000Z',
+                },
+              ],
+              'nextCursor': null,
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+
+      final result = await api.cardActivity(cardId: 'card-1');
+
+      expect(captured.url.path, '/api/v1/activity');
+      expect(captured.url.queryParameters['cardId'], 'card-1');
+      expect(result.activities.single.action, 'moved');
+      expect(result.activities.single.actorEmail, 'user@example.com');
+      api.close();
+    },
+  );
 
   test('API hatası kod ve sunucu request id değeriyle taşınır', () async {
     final api = ApiClient(

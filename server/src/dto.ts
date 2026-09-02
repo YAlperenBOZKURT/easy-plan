@@ -1,4 +1,4 @@
-import type { BoardMemberRow, BoardRole, BoardRow, CardImageRow, CardRow, CardTemplateImageRow, CardTemplateRow, HabitRow, ReminderRow, UserRow } from './types.ts';
+import type { BoardMemberRow, BoardRole, BoardRow, CardActivityRow, CardImageRow, CardRow, CardTemplateImageRow, CardTemplateRow, HabitRow, ReminderRow, UserRow } from './types.ts';
 import { parseChecklist } from './checklist.ts';
 import { parseTags } from './tags.ts';
 
@@ -63,6 +63,30 @@ export const boardMemberDto = (
   role: row.role,
   joinedAt: row.created_at,
 });
+
+export const cardActivityDto = (
+  row: CardActivityRow & Pick<UserRow, 'name' | 'email'>,
+) => {
+  let details: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(row.details_json) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      details = parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Eski/bozuk ayrıntı geçmiş listesini tamamen bozmamalı.
+  }
+  return {
+    id: row.id,
+    boardId: row.board_id,
+    cardId: row.card_id,
+    actor: row.actor_user_id ? { id: row.actor_user_id, name: row.name, email: row.email } : null,
+    action: row.action,
+    cardTitle: row.card_title,
+    details,
+    createdAt: row.created_at,
+  };
+};
 
 export const habitDto = (row: HabitRow) => ({
   id: row.id,

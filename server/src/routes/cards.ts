@@ -14,6 +14,7 @@ import { sanitizeTags } from '../tags.ts';
 import { MAX_SEARCH_RESULTS, readSearchQuery } from '../search.ts';
 import { newId } from '../ids.ts';
 import { requestBoardAccess } from '../boards.ts';
+import { changedCardFields, recordCardActivity } from '../activity.ts';
 
 export const storeFor = (req: FastifyRequest): Repo => {
   const access = requestBoardAccess(db(), req);
@@ -196,6 +197,13 @@ export async function cardRoutes(app: FastifyInstance) {
     });
     if (template) store.images.cloneForCard(card.id, store.templates.images(template.id));
     if (offsets.length > 0) applyReminders(store, card, req.user!, offsets);
+    recordCardActivity(db(), {
+      boardId: card.board_id,
+      cardId: card.id,
+      actorUserId: req.user!.id,
+      action: 'created',
+      cardTitle: card.title,
+    });
 
     return reply.code(201).send({
       card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)),
@@ -228,6 +236,14 @@ export async function cardRoutes(app: FastifyInstance) {
       const offsets = store.reminders.forCard(source.id).map((row) => row.offset_minutes);
       const images = store.images.cloneForCard(card.id, store.images.forCard(source.id));
       applyReminders(store, card, req.user!, offsets);
+      recordCardActivity(db(), {
+        boardId: card.board_id,
+        cardId: card.id,
+        actorUserId: req.user!.id,
+        action: 'duplicated',
+        cardTitle: card.title,
+        details: { sourceCardId: source.id },
+      });
       return reply.code(201).send({ card: cardDto(card, images, store.reminders.forCard(card.id)) });
     },
   );
@@ -263,6 +279,23 @@ export async function cardRoutes(app: FastifyInstance) {
           : store.reminders.forCard(card.id).map((r) => r.offset_minutes);
       applyReminders(store, card, req.user!, offsets);
 
+      const fields = changedCardFields(
+        current as unknown as Record<string, unknown>,
+        card as unknown as Record<string, unknown>,
+        req.body ?? {},
+      );
+      if (fields.length > 0) {
+        const doneChanged = current.done !== card.done;
+        recordCardActivity(db(), {
+          boardId: card.board_id,
+          cardId: card.id,
+          actorUserId: req.user!.id,
+          action: doneChanged ? (card.done ? 'completed' : 'reopened') : 'updated',
+          cardTitle: card.title,
+          details: { fields },
+        });
+      }
+
       return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
     },
   );
@@ -271,7 +304,16 @@ export async function cardRoutes(app: FastifyInstance) {
     const store = storeFor(req);
     const card = store.cards.getAny(req.params.id);
     if (!card) return reply.code(404).send({ error: 'not_found' });
-    if (!card.trashed_at) store.cards.trash(req.params.id);
+    if (!card.trashed_at) {
+      store.cards.trash(req.params.id);
+      recordCardActivity(db(), {
+        boardId: card.board_id,
+        cardId: card.id,
+        actorUserId: req.user!.id,
+        action: 'trashed',
+        cardTitle: card.title,
+      });
+    }
     return { ok: true };
   });
 
@@ -279,6 +321,13 @@ export async function cardRoutes(app: FastifyInstance) {
     const store = storeFor(req);
     const card = store.cards.archive(req.params.id);
     if (!card) return reply.code(404).send({ error: 'not_found' });
+    recordCardActivity(db(), {
+      boardId: card.board_id,
+      cardId: card.id,
+      actorUserId: req.user!.id,
+      action: 'archived',
+      cardTitle: card.title,
+    });
     return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
   });
 
@@ -286,6 +335,13 @@ export async function cardRoutes(app: FastifyInstance) {
     const store = storeFor(req);
     const card = store.cards.restore(req.params.id);
     if (!card) return reply.code(404).send({ error: 'not_found' });
+    recordCardActivity(db(), {
+      boardId: card.board_id,
+      cardId: card.id,
+      actorUserId: req.user!.id,
+      action: 'restored',
+      cardTitle: card.title,
+    });
     return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
   });
 
@@ -293,6 +349,13 @@ export async function cardRoutes(app: FastifyInstance) {
     const store = storeFor(req);
     const card = store.cards.getAny(req.params.id);
     if (!card || !card.trashed_at) return reply.code(404).send({ error: 'not_found' });
+    recordCardActivity(db(), {
+      boardId: card.board_id,
+      cardId: card.id,
+      actorUserId: req.user!.id,
+      action: 'deleted',
+      cardTitle: card.title,
+    });
     const images = store.cards.remove(req.params.id);
     await removeImageFiles(store.images.unreferenced(images));
     return { ok: true };
@@ -327,6 +390,14 @@ export async function cardRoutes(app: FastifyInstance) {
         store.reminders.forCard(moved.id).map((r) => r.offset_minutes),
       );
     }
+    recordCardActivity(db(), {
+      boardId: moved.board_id,
+      cardId: moved.id,
+      actorUserId: req.user!.id,
+      action: 'moved',
+      cardTitle: moved.title,
+      details: { fromDay: card.day, toDay: moved.day },
+    });
     return { card: cardDto(moved, store.images.forCard(moved.id), store.reminders.forCard(moved.id)) };
   });
 }

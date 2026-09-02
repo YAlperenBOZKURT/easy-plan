@@ -20,6 +20,20 @@ describe('API client', () => {
     expect(new Headers(init.headers).get('x-board-id')).toBe('board-42');
   });
 
+  it('kart etkinlik geçmişi sorgusunu pano başlığı ve filtreyle gönderir', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ activities: [], nextCursor: null }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    api.setActiveBoard('board-42');
+
+    await api.cardActivity({ cardId: 'card-1', limit: 25 });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/v1/activity?limit=25&cardId=card-1');
+    expect(new Headers(init.headers).get('x-board-id')).toBe('board-42');
+  });
+
   it('JSON isteğine içerik tipi ve izleme kimliği ekler', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ user: { id: 'u1' } }), {

@@ -1,5 +1,27 @@
 export type Role = 'admin' | 'user';
 export type BoardRole = 'owner' | 'editor' | 'viewer';
+export type CardActivityAction =
+  | 'created'
+  | 'updated'
+  | 'moved'
+  | 'completed'
+  | 'reopened'
+  | 'archived'
+  | 'trashed'
+  | 'restored'
+  | 'deleted'
+  | 'duplicated';
+
+export interface CardActivityRow {
+  id: string;
+  board_id: string;
+  card_id: string;
+  actor_user_id: string | null;
+  action: CardActivityAction;
+  card_title: string;
+  details_json: string;
+  created_at: string;
+}
 
 export interface BoardRow {
   id: string;

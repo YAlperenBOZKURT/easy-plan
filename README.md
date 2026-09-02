@@ -15,6 +15,7 @@ The project is designed for individuals, families, and small teams that want to 
 - **Card duplication and linked templates** — manage reusable templates from dedicated React and Flutter views. Template edits propagate to linked cards; any individual card change detaches that card. Image files are reference-counted and reused instead of being duplicated on disk.
 - **Portable planning data** — export a selected date range as JSON, CSV, or iCalendar and import any of those formats from the web or Flutter clients. Imports are validated and never overwrite existing cards.
 - **Shared boards** — create optional team boards, add existing Easy Plan users by email, and enforce owner, editor, or read-only viewer permissions consistently across the API, web, mobile, and desktop clients.
+- **Activity history** — review who created, edited, moved, completed, archived, restored, trashed, duplicated, or permanently deleted cards from a board-wide or card-specific timeline.
 - **Drag and drop** — reorder cards within a day or move them across days on web, mobile, and desktop.
 - **Mobile day navigation** — edge controls move one day at a time, keep the visible column synchronized with the day strip, and clearly highlight today.
 - **Recurring habits** — generate independent cards for selected weekdays across a one-year planning window.
@@ -223,6 +224,7 @@ Important native-client endpoints include:
 - `GET /api/v1/data/export` — downloads a date range as JSON, CSV, or iCalendar.
 - `GET /api/v1/boards` — lists personal and shared boards available to the current user.
 - `POST /api/v1/boards/{id}/members` — adds an existing active user as an editor or viewer; only the board owner can manage membership.
+- `GET /api/v1/activity` — returns the selected board's paginated card activity timeline; `cardId` narrows it to one card.
 
 Card, image, lifecycle, search, sync, and data-transfer requests use the optional `X-Board-Id` header to select a shared board. Omitting it selects the authenticated user's personal board. Supplying a board without membership returns `403`; viewer memberships cannot mutate board cards.
 - `POST /api/v1/data/import` — validates and imports up to 1,000 cards from a JSON, CSV, or iCalendar file.
