@@ -6,6 +6,7 @@ import '../deadline.dart';
 import '../store.dart';
 import '../tags.dart';
 import '../theme.dart';
+import 'activity.dart';
 
 /// Kartı rahatça incelemek için okuma penceresi (web'deki "İncele" ile aynı).
 /// Metin kırpılmaz, görseller büyük; görsele dokununca tam ekran açılır.
@@ -391,14 +392,21 @@ class CardView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
+                  onPressed: () =>
+                      showActivityHistory(context, store: store, card: card),
+                  child: const Text('Geçmiş'),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Kapat'),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop('edit'),
-                  child: const Text('Düzenle'),
-                ),
+                if (!store.boardReadOnly)
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop('edit'),
+                    child: const Text('Düzenle'),
+                  ),
               ],
             ),
           ),

@@ -154,6 +154,14 @@ const operations: Record<string, OperationDoc> = {
     body: object({ role: string({ enum: ['editor', 'viewer'] }) }, ['role']),
   },
   'DELETE /api/v1/boards/:id/members/:userId': { summary: 'Üyeyi çıkarır veya panodan ayrılır', tag: 'Boards' },
+  'GET /api/v1/activity': {
+    summary: 'Seçili panonun kart etkinlik geçmişini listeler', tag: 'Activity',
+    querystring: object({
+      limit: string({ pattern: '^[0-9]+$' }),
+      before: string({ format: 'date-time' }),
+      cardId: string({ format: 'uuid' }),
+    }),
+  },
   'GET /api/v1/cards': {
     summary: 'Tarih aralığındaki kartları listeler', tag: 'Cards',
     querystring: object({ from: string({ format: 'date' }), to: string({ format: 'date' }) }, ['from', 'to']),
@@ -301,6 +309,7 @@ export async function registerOpenApi(app: FastifyInstance, uiEnabled: boolean) 
         { name: 'Authentication', description: 'Kimlik doğrulama ve oturumlar' },
         { name: 'Profile', description: 'Kullanıcı profili' },
         { name: 'Boards', description: 'Paylaşılan panolar ve üye yetkileri' },
+        { name: 'Activity', description: 'Pano ve kart etkinlik geçmişi' },
         { name: 'Cards', description: 'Plan kartları' },
         { name: 'Templates', description: 'Tekrar kullanılabilir kart şablonları' },
         { name: 'Data Transfer', description: 'JSON, CSV ve iCalendar içe/dışa aktarma' },

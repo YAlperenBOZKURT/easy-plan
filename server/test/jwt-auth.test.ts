@@ -167,13 +167,42 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
       payload: { day: '2026-08-30', title: 'Ortak kart' },
     });
     assert.equal(editorWrite.statusCode, 201);
+    const sharedCardId = editorWrite.json().card.id as string;
+
+    const completed = await app.inject({
+      method: 'PATCH', url: `/api/v1/cards/${sharedCardId}`,
+      headers: { authorization: collaboratorAuthorization, 'x-board-id': boardId },
+      payload: { done: true },
+    });
+    assert.equal(completed.statusCode, 200);
+
+    const moved = await app.inject({
+      method: 'PATCH', url: `/api/v1/cards/${sharedCardId}/move`,
+      headers: { authorization: collaboratorAuthorization, 'x-board-id': boardId },
+      payload: { day: '2026-08-31' },
+    });
+    assert.equal(moved.statusCode, 200);
 
     const ownerRead = await app.inject({
-      method: 'GET', url: '/api/v1/cards?from=2026-08-30&to=2026-08-30',
+      method: 'GET', url: '/api/v1/cards?from=2026-08-30&to=2026-08-31',
       headers: { authorization: ownerAuthorization, 'x-board-id': boardId },
     });
     assert.equal(ownerRead.statusCode, 200);
     assert.equal(ownerRead.json().cards[0].title, 'Ortak kart');
+
+    const activity = await app.inject({
+      method: 'GET', url: '/api/v1/activity?limit=20',
+      headers: { authorization: collaboratorAuthorization, 'x-board-id': boardId },
+    });
+    assert.equal(activity.statusCode, 200);
+    const actions = new Set(
+      activity.json().activities.map((item: { action: string }) => item.action),
+    );
+    assert.ok(actions.has('moved'));
+    assert.ok(actions.has('completed'));
+    assert.ok(actions.has('created'));
+    assert.equal(activity.json().activities[0].actor.email, 'collaborator@example.com');
+    assert.equal(activity.json().activities[0].cardTitle, 'Ortak kart');
   });
 
   await t.test('şablona multipart görsel yüklenir ve şablon cevabında görünür', async () => {

@@ -268,6 +268,26 @@ class ApiClient {
   Future<void> removeBoardMember(String id, String userId) =>
       _send('DELETE', '/boards/$id/members/$userId');
 
+  Future<({List<CardActivity> activities, String? nextCursor})> cardActivity({
+    int limit = 50,
+    String? before,
+    String? cardId,
+  }) async {
+    final json =
+        await _send(
+              'GET',
+              '/activity',
+              query: {'limit': '$limit', 'before': ?before, 'cardId': ?cardId},
+            )
+            as Map<String, dynamic>;
+    return (
+      activities: (json['activities'] as List)
+          .map((item) => CardActivity.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      nextCursor: json['nextCursor'] as String?,
+    );
+  }
+
   /* ----------------------------------------------------------- kartlar */
 
   Future<List<PlannerCard>> cards(String from, String to) async {

@@ -42,6 +42,7 @@ import CardTemplateNameModal from '../components/CardTemplateNameModal.tsx';
 import CardTemplatesModal from '../components/CardTemplatesModal.tsx';
 import DataTransferModal from '../components/DataTransferModal.tsx';
 import BoardManagerModal from '../components/BoardManagerModal.tsx';
+import ActivityModal from '../components/ActivityModal.tsx';
 import {
   daysBetween,
   monthLabel,
@@ -69,6 +70,7 @@ export default function Planner({ user }: { user: User }) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showBoards, setShowBoards] = useState(false);
+  const [activityCard, setActivityCard] = useState<Card | null | undefined>(undefined);
   const [activeBoardId, setActiveBoardId] = useState(() => localStorage.getItem('easy-plan-board') ?? '');
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<PlannerView>('week');
@@ -650,6 +652,7 @@ export default function Planner({ user }: { user: User }) {
             { label: 'Arşiv ve Çöp Kutusu', color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
             { label: 'Şablonlar', color: 'var(--c-teal)', onSelect: () => setShowTemplates(true) },
             { label: 'İçe / Dışa Aktar', color: 'var(--c-violet)', onSelect: () => setShowTransfer(true) },
+            { label: 'Etkinlik geçmişi', color: 'var(--c-blue)', onSelect: () => setActivityCard(null) },
             { label: 'Ayarlar', color: 'var(--c-blue)', onSelect: () => setShowSettings(true) },
             ...(user.role === 'admin'
               ? [{ label: 'Yönetim', color: 'var(--c-teal)', onSelect: () => navigate('/admin') }]
@@ -895,6 +898,10 @@ export default function Planner({ user }: { user: User }) {
           card={inspect}
           readOnly={readOnly}
           onClose={() => setInspect(null)}
+          onHistory={() => {
+            setActivityCard(inspect);
+            setInspect(null);
+          }}
           onEdit={() => {
             setDraft({ card: inspect, day: inspect.day });
             setInspect(null);
@@ -925,6 +932,14 @@ export default function Planner({ user }: { user: User }) {
           onClose={() => setShowBoards(false)}
           onSelect={selectBoard}
           onChanged={() => queryClient.invalidateQueries({ queryKey: ['boards'] })}
+        />
+      )}
+      {activityCard !== undefined && activeBoard && (
+        <ActivityModal
+          boardId={activeBoard.id}
+          cardId={activityCard?.id}
+          cardTitle={activityCard?.title}
+          onClose={() => setActivityCard(undefined)}
         />
       )}
       {templateSource && (

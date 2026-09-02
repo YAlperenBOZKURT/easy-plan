@@ -22,6 +22,7 @@ import 'card_view.dart';
 import 'card_templates.dart';
 import 'data_transfer.dart';
 import 'boards.dart';
+import 'activity.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
 /// Telefonda tek gün + kaydırma, geniş ekranda kolonlar yan yana.
@@ -507,6 +508,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       await showCardTemplates(context, store: store);
                     case 'transfer':
                       await showDataTransfer(context, store: store);
+                    case 'activity':
+                      await showActivityHistory(context, store: store);
                     case 'logout':
                       await store.logout();
                   }
@@ -522,6 +525,10 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   PopupMenuItem(
                     value: 'transfer',
                     child: Text('İçe / Dışa Aktar'),
+                  ),
+                  PopupMenuItem(
+                    value: 'activity',
+                    child: Text('Etkinlik geçmişi'),
                   ),
                   PopupMenuItem(value: 'logout', child: Text('Çıkış')),
                 ],

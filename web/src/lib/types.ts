@@ -34,6 +34,29 @@ export interface BoardMember {
   joinedAt: string;
 }
 
+export type CardActivityAction =
+  | 'created'
+  | 'updated'
+  | 'moved'
+  | 'completed'
+  | 'reopened'
+  | 'archived'
+  | 'trashed'
+  | 'restored'
+  | 'deleted'
+  | 'duplicated';
+
+export interface CardActivity {
+  id: string;
+  boardId: string;
+  cardId: string;
+  actor: { id: string; name: string; email: string } | null;
+  action: CardActivityAction;
+  cardTitle: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface Card {
   id: string;
   boardId?: string;
