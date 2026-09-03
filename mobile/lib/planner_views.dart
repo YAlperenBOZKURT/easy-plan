@@ -2,11 +2,11 @@ import 'dates.dart';
 
 enum PlannerViewMode { week, month, agenda, completed }
 
-String plannerViewLabel(PlannerViewMode view) => switch (view) {
-  PlannerViewMode.week => 'Hafta',
-  PlannerViewMode.month => 'Ay',
-  PlannerViewMode.agenda => 'Ajanda',
-  PlannerViewMode.completed => 'Tamamlananlar',
+String plannerViewLabel(PlannerViewMode view, {String languageCode = 'tr'}) => switch (view) {
+  PlannerViewMode.week => languageCode == 'en' ? 'Week' : 'Hafta',
+  PlannerViewMode.month => languageCode == 'en' ? 'Month' : 'Ay',
+  PlannerViewMode.agenda => languageCode == 'en' ? 'Agenda' : 'Ajanda',
+  PlannerViewMode.completed => languageCode == 'en' ? 'Completed' : 'Tamamlananlar',
 };
 
 String addMonths(String day, int amount) {
@@ -81,7 +81,14 @@ const _monthNames = [
   'Aralık',
 ];
 
-String monthLabel(String day) {
+String monthLabel(String day, {String languageCode = 'tr'}) {
   final date = parseDay(day);
+  if (languageCode == 'en') {
+    const englishMonths = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${englishMonths[date.month - 1]} ${date.year}';
+  }
   return '${_monthNames[date.month - 1]} ${date.year}';
 }

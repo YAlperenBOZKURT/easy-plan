@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../store.dart';
 import '../theme.dart';
+import '../localization.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.store});
@@ -35,6 +36,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final store = widget.store;
+    final strings = context.strings;
 
     return Scaffold(
       body: SafeArea(
@@ -55,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Planner',
+                      'Easy Plan',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
@@ -65,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Devam etmek için giriş yap.',
+                      strings.text('login.subtitle'),
                       style: TextStyle(fontSize: 13, color: t.textMuted),
                     ),
                     const SizedBox(height: 18),
@@ -75,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.username],
-                      decoration: const InputDecoration(labelText: 'E-posta'),
+                      decoration: InputDecoration(labelText: strings.text('login.email')),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -84,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
                       autofillHints: const [AutofillHints.password],
                       onSubmitted: (_) => _submit(),
                       decoration: InputDecoration(
-                        labelText: 'Şifre',
+                        labelText: strings.text('login.password'),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscure
@@ -118,7 +120,17 @@ class _LoginPageState extends State<LoginPage> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Giriş yap'),
+                          : Text(strings.text('login.submit')),
+                    ),
+                    const SizedBox(height: 14),
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(value: 'tr', label: Text(strings.text('language.turkish'))),
+                        ButtonSegment(value: 'en', label: Text(strings.text('language.english'))),
+                      ],
+                      selected: {store.appLocale.languageCode},
+                      onSelectionChanged: (selection) => store.setLanguage(selection.first),
+                      showSelectedIcon: false,
                     ),
                   ],
                 ),

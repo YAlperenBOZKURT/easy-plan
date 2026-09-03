@@ -8,6 +8,7 @@ import '../search.dart';
 import '../store.dart';
 import '../tags.dart';
 import '../theme.dart';
+import '../localization.dart';
 
 Future<PlannerCard?> showCardSearch(
   BuildContext context, {
@@ -247,7 +248,7 @@ class _SearchResult extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  '${dayName(card.day)} · ${shortDate(card.day)}',
+                  '${dayName(card.day, languageCode: context.strings.locale.languageCode)} · ${shortDate(card.day, languageCode: context.strings.locale.languageCode)}',
                   style: TextStyle(fontSize: 11, color: t.textFaint),
                 ),
               ],

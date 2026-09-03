@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { dayName, shortDate } from '../lib/dates.ts';
-import { priorityLabel, REMINDER_OPTIONS, type Card } from '../lib/types.ts';
-import { deadlineLabel, deadlineState } from '../lib/deadline.ts';
+import type { Card } from '../lib/types.ts';
+import { deadlineState } from '../lib/deadline.ts';
 import { tagColorIndex } from '../lib/tags.ts';
+import { useI18n } from '../lib/i18n.tsx';
 
 /**
  * Kartı rahatça incelemek için okuma penceresi: metnin tamamı kırpılmadan,
@@ -29,6 +30,7 @@ export default function CardViewModal({
   onHistory?: () => void;
   readOnly?: boolean;
 }) {
+  const { locale, t } = useI18n();
   const [zoom, setZoom] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,9 +50,16 @@ export default function CardViewModal({
     : null;
 
   const reminderLabels = card.reminders
-    .map((minutes) => REMINDER_OPTIONS.find((o) => o.minutes === minutes)?.label ?? `${minutes} dk`)
+    .map((minutes) => minutes === 1440 ? t('reminder.day')
+      : minutes === 720 ? t('reminder.hours12')
+        : minutes === 360 ? t('reminder.hours6')
+          : minutes === 180 ? t('reminder.hours3')
+            : minutes === 60 ? t('reminder.hour')
+              : t('reminder.minutes', { minutes }))
     .join(' · ');
   const dueState = deadlineState(card.deadlineAt, card.done);
+  const localizedPriority = t(`priority.${card.priority}` as
+    'priority.none' | 'priority.low' | 'priority.medium' | 'priority.high' | 'priority.urgent');
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -63,12 +72,12 @@ export default function CardViewModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h2 className="modal-title" id="card-view-title">İncele</h2>
+          <h2 className="modal-title" id="card-view-title">{t('card.inspect')}</h2>
           <span className="topbar-range">
-            {dayName(card.day)} · {shortDate(card.day)}
+            {dayName(card.day, locale)} · {shortDate(card.day, locale)}
           </span>
           <div className="spacer" />
-          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Kapat">
+          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </div>
@@ -80,12 +89,12 @@ export default function CardViewModal({
             </div>
           )}
 
-          <h3 className={`view-title${card.done ? ' done' : ''}`}>{card.title || '(başlıksız)'}</h3>
+          <h3 className={`view-title${card.done ? ' done' : ''}`}>{card.title || t('card.untitled')}</h3>
 
           {card.note && <p className="view-note">{card.note}</p>}
 
           {card.tags.length > 0 && (
-            <div className="view-tags" aria-label="Etiketler">
+            <div className="view-tags" aria-label={t('card.tags')}>
               {card.tags.map((tag) => (
                 <span className={`tag-chip tag-color-${tagColorIndex(tag)}`} key={tag}>{tag}</span>
               ))}
@@ -121,39 +130,39 @@ export default function CardViewModal({
 
           <dl className="view-meta">
             <div>
-              <dt>Durum</dt>
-              <dd>{card.done ? 'Yapıldı' : 'Bekliyor'}</dd>
+              <dt>{t('card.status')}</dt>
+              <dd>{card.done ? t('card.done') : t('card.pending')}</dd>
             </div>
             <div>
-              <dt>Öncelik</dt>
-              <dd>{priorityLabel(card.priority)}</dd>
+              <dt>{t('card.priority')}</dt>
+              <dd>{localizedPriority}</dd>
             </div>
             <div>
-              <dt>Son tarih</dt>
+              <dt>{t('card.deadline')}</dt>
               <dd className={dueState === 'overdue' ? 'deadline-overdue-text' : undefined}>
                 {card.deadlineAt
-                  ? `${dueState === 'overdue' ? 'Gecikti · ' : ''}${deadlineLabel(card.deadlineAt)}`
-                  : 'Yok'}
+                  ? `${dueState === 'overdue' ? `${t('card.overdue')} · ` : ''}${new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(card.deadlineAt))}`
+                  : t('card.none')}
               </dd>
             </div>
             <div>
-              <dt>Hatırlatma</dt>
-              <dd>{card.reminders.length > 0 ? reminderLabels : 'Yok'}</dd>
+              <dt>{t('card.reminder')}</dt>
+              <dd>{card.reminders.length > 0 ? reminderLabels : t('card.none')}</dd>
             </div>
             {card.habitId && (
               <div>
-                <dt>Kaynak</dt>
-                <dd>Davranıştan üretildi</dd>
+                <dt>{t('card.source')}</dt>
+                <dd>{t('card.habitGenerated')}</dd>
               </div>
             )}
             {card.templateId && (
               <div>
-                <dt>Şablon</dt>
-                <dd>Bağlı · değiştirilirse ayrılır</dd>
+                <dt>{t('card.template')}</dt>
+                <dd>{t('card.templateLinked')}</dd>
               </div>
             )}
             <div>
-              <dt>Görsel</dt>
+              <dt>{t('card.image')}</dt>
               <dd>{card.images.length}</dd>
             </div>
           </dl>
@@ -161,23 +170,23 @@ export default function CardViewModal({
 
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>
-            Kapat
+            {t('common.close')}
           </button>
-          {onHistory && <button className="btn" onClick={onHistory}>Geçmiş</button>}
+          {onHistory && <button className="btn" onClick={onHistory}>{t('card.history')}</button>}
           {!readOnly && <button className="btn" onClick={onArchive}>
-            Arşivle
+            {t('card.archive')}
           </button>}
           {!readOnly && <button className="btn" onClick={onDuplicate}>
-            Çoğalt
+            {t('card.duplicate')}
           </button>}
           {!readOnly && <button className="btn" onClick={onSaveTemplate}>
-            Şablon yap
+            {t('card.makeTemplate')}
           </button>}
           {!readOnly && <button className="btn btn-red" onClick={onDelete}>
-            Çöpe at
+            {t('card.trash')}
           </button>}
           {!readOnly && <button className="btn btn-primary" onClick={onEdit}>
-            Düzenle
+            {t('card.edit')}
           </button>}
         </div>
       </div>

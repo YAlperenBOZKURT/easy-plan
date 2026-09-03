@@ -25,6 +25,13 @@ describe('date helpers', () => {
     expect(rangeLabel('2026-08-15', '2026-08-21')).toBe('15 Ağu – 21 Ağu 2026');
   });
 
+  it('English day and date labels are localized', () => {
+    expect(dayName('2026-08-15', 'en')).toBe('Saturday');
+    expect(dayNameShort('2026-08-15', 'en')).toBe('Sat');
+    expect(shortDate('2026-08-15', 'en')).toBe('Aug 15');
+    expect(rangeLabel('2026-08-15', '2026-08-21', 'en')).toBe('Aug 15 – Aug 21 2026');
+  });
+
   it('dosya boyutlarını okunabilir biçime çevirir', () => {
     expect(formatBytes(900)).toBe('900 B');
     expect(formatBytes(2048)).toBe('2 KB');

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../store.dart';
+import '../localization.dart';
 
 Future<void> showActivityHistory(
   BuildContext context, {
@@ -26,33 +27,6 @@ class _ActivityDialogState extends State<_ActivityDialog> {
   String? _cursor;
   bool _loading = true;
   bool _failed = false;
-
-  static const _actions = <String, String>{
-    'created': 'kartı oluşturdu',
-    'updated': 'kartı düzenledi',
-    'moved': 'kartı taşıdı',
-    'completed': 'kartı tamamladı',
-    'reopened': 'kartı yeniden açtı',
-    'archived': 'kartı arşivledi',
-    'trashed': 'kartı çöpe attı',
-    'restored': 'kartı geri yükledi',
-    'deleted': 'kartı kalıcı olarak sildi',
-    'duplicated': 'kartı çoğalttı',
-  };
-
-  static const _fields = <String, String>{
-    'day': 'gün',
-    'title': 'başlık',
-    'note': 'not',
-    'startTime': 'başlangıç',
-    'endTime': 'bitiş',
-    'color': 'renk',
-    'done': 'durum',
-    'checklist': 'checklist',
-    'priority': 'öncelik',
-    'deadlineAt': 'son tarih',
-    'tags': 'etiketler',
-  };
 
   @override
   void initState() {
@@ -84,28 +58,35 @@ class _ActivityDialogState extends State<_ActivityDialog> {
   }
 
   String? _detail(CardActivity item) {
+    final strings = context.strings;
     if (item.action == 'moved') {
       final from = item.details['fromDay'];
       final to = item.details['toDay'];
       if (from is String && to is String && from != to) return '$from → $to';
-      return 'Kart sırası değiştirildi';
+      return strings.text('activity.orderChanged');
     }
     final fields = item.details['fields'];
     if (fields is List && fields.isNotEmpty) {
-      return fields.map((field) => _fields['$field'] ?? '$field').join(', ');
+      return fields
+          .map((field) => strings.text('field.$field'))
+          .join(', ');
     }
     return null;
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    return AlertDialog(
     title: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Etkinlik geçmişi'),
+        Text(strings.text('activity.title')),
         if (widget.card != null)
           Text(
-            widget.card!.title.isEmpty ? 'Başlıksız kart' : widget.card!.title,
+            widget.card!.title.isEmpty
+                ? strings.text('activity.untitled')
+                : widget.card!.title,
             style: Theme.of(context).textTheme.bodySmall,
           ),
       ],
@@ -116,7 +97,7 @@ class _ActivityDialogState extends State<_ActivityDialog> {
       child: _items.isEmpty && _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty && !_failed
-          ? const Center(child: Text('Henüz etkinlik yok.'))
+          ? Center(child: Text(strings.text('activity.empty')))
           : ListView(
               children: [
                 for (final item in _items)
@@ -124,32 +105,32 @@ class _ActivityDialogState extends State<_ActivityDialog> {
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(_icon(item.action), size: 20),
                     title: Text(
-                      '${_actor(item)} ${_actions[item.action] ?? item.action}',
+                      '${_actor(item, strings)} ${_actionLabel(item.action, strings)}',
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           item.cardTitle.isEmpty
-                              ? 'Başlıksız kart'
+                              ? strings.text('activity.untitled')
                               : item.cardTitle,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         if (_detail(item) case final detail?) Text(detail),
-                        Text(_dateLabel(item.createdAt)),
+                        Text(_dateLabel(context, item.createdAt)),
                       ],
                     ),
                   ),
                 if (_failed)
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text('Etkinlik geçmişi yüklenemedi.'),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(strings.text('activity.failed')),
                   ),
                 if (_loading) const Center(child: CircularProgressIndicator()),
                 if (!_loading && _cursor != null)
                   OutlinedButton(
                     onPressed: () => _load(more: true),
-                    child: const Text('Daha eski etkinlikleri yükle'),
+                    child: Text(strings.text('activity.loadOlder')),
                   ),
               ],
             ),
@@ -157,36 +138,29 @@ class _ActivityDialogState extends State<_ActivityDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Kapat'),
+        child: Text(strings.text('common.close')),
       ),
     ],
-  );
+    );
+  }
 
-  static String _actor(CardActivity item) {
+  static String _actor(CardActivity item, AppStrings strings) {
     final name = item.actorName?.trim() ?? '';
     if (name.isNotEmpty) return name;
     final email = item.actorEmail?.trim() ?? '';
-    return email.isNotEmpty ? email : 'Silinmiş kullanıcı';
+    return email.isNotEmpty ? email : strings.text('activity.deletedUser');
   }
 
-  static String _dateLabel(DateTime value) {
-    const months = [
-      'Oca',
-      'Şub',
-      'Mar',
-      'Nis',
-      'May',
-      'Haz',
-      'Tem',
-      'Ağu',
-      'Eyl',
-      'Eki',
-      'Kas',
-      'Ara',
-    ];
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '${value.day} ${months[value.month - 1]} ${value.year} $hour:$minute';
+  static String _dateLabel(BuildContext context, DateTime value) =>
+      '${MaterialLocalizations.of(context).formatMediumDate(value)} '
+      '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
+
+  static String _actionLabel(String action, AppStrings strings) {
+    const supported = {
+      'created', 'updated', 'moved', 'completed', 'reopened',
+      'archived', 'trashed', 'restored', 'deleted', 'duplicated',
+    };
+    return supported.contains(action) ? strings.text('activity.$action') : action;
   }
 
   static IconData _icon(String action) => switch (action) {

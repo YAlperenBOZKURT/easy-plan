@@ -24,25 +24,38 @@ const asDate = (day: string): Date => {
   return new Date(y, m - 1, d);
 };
 
-const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-const monthsShort = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+import type { AppLocale } from './i18n.tsx';
+
+const dayNames = {
+  tr: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+};
+const monthsShort = {
+  tr: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
 
 // Kısaltmalar elle yazılır: ilk üç harf alınırsa Cuma/Cumartesi ve Pazar/Pazartesi karışır.
-const dayNamesShort = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+const dayNamesShort = {
+  tr: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+};
 
-export const dayName = (day: string): string => dayNames[asDate(day).getDay()]!;
-export const dayNameShort = (day: string): string => dayNamesShort[asDate(day).getDay()]!;
+export const dayName = (day: string, locale: AppLocale = 'tr'): string => dayNames[locale][asDate(day).getDay()]!;
+export const dayNameShort = (day: string, locale: AppLocale = 'tr'): string => dayNamesShort[locale][asDate(day).getDay()]!;
 export const dayNumber = (day: string): number => asDate(day).getDate();
 
 /** '13 Ağu' */
-export const shortDate = (day: string): string => {
+export const shortDate = (day: string, locale: AppLocale = 'tr'): string => {
   const date = asDate(day);
-  return `${date.getDate()} ${monthsShort[date.getMonth()]}`;
+  return locale === 'tr'
+    ? `${date.getDate()} ${monthsShort.tr[date.getMonth()]}`
+    : `${monthsShort.en[date.getMonth()]} ${date.getDate()}`;
 };
 
 /** '13 Ağu – 19 Ağu 2026' */
-export const rangeLabel = (from: string, to: string): string =>
-  `${shortDate(from)} – ${shortDate(to)} ${asDate(to).getFullYear()}`;
+export const rangeLabel = (from: string, to: string, locale: AppLocale = 'tr'): string =>
+  `${shortDate(from, locale)} – ${shortDate(to, locale)} ${asDate(to).getFullYear()}`;
 
 /** Haftanın günü: 1 = Pazartesi … 7 = Pazar */
 export const weekdayOf = (day: string): number => {
@@ -67,8 +80,11 @@ export const formatBytes = (bytes: number): string => {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 };
 
-export const formatDateTime = (iso: string | null): string => {
+export const formatDateTime = (iso: string | null, locale: AppLocale = 'tr'): string => {
   if (!iso) return '—';
   const date = new Date(iso);
-  return `${date.getDate()} ${monthsShort[date.getMonth()]} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 };

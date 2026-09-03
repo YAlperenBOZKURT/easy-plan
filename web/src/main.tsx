@@ -4,6 +4,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import { installGlobalErrorHandlers, logger } from './lib/logger.ts';
+import { I18nProvider } from './lib/i18n.tsx';
 import './styles.css';
 
 installGlobalErrorHandlers();
@@ -23,10 +24,12 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <I18nProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </I18nProvider>
   </StrictMode>,
 );

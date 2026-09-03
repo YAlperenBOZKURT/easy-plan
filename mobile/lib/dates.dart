@@ -10,7 +10,17 @@ const _dayNames = [
   'Cumartesi',
   'Pazar',
 ];
+const _dayNamesEn = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
 const _dayShort = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const _dayShortEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _months = [
   'Oca',
   'Şub',
@@ -24,6 +34,20 @@ const _months = [
   'Eki',
   'Kas',
   'Ara',
+];
+const _monthsEn = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 String two(int n) => n.toString().padLeft(2, '0');
@@ -47,22 +71,26 @@ String addYears(String day, int n) {
 String todayKey() => dayKey(DateTime.now());
 
 /// 'Perşembe'
-String dayName(String day) => _dayNames[parseDay(day).weekday - 1];
+String dayName(String day, {String languageCode = 'tr'}) =>
+    (languageCode == 'en' ? _dayNamesEn : _dayNames)[parseDay(day).weekday - 1];
 
 /// 'PER'
-String dayNameShort(String day) => _dayShort[parseDay(day).weekday - 1];
+String dayNameShort(String day, {String languageCode = 'tr'}) =>
+    (languageCode == 'en' ? _dayShortEn : _dayShort)[parseDay(day).weekday - 1];
 
 int dayNumber(String day) => parseDay(day).day;
 
 /// '14 Ağu'
-String shortDate(String day) {
+String shortDate(String day, {String languageCode = 'tr'}) {
   final d = parseDay(day);
-  return '${d.day} ${_months[d.month - 1]}';
+  return languageCode == 'en'
+      ? '${_monthsEn[d.month - 1]} ${d.day}'
+      : '${d.day} ${_months[d.month - 1]}';
 }
 
 /// '14 Ağu – 20 Ağu 2026'
-String rangeLabel(String from, String to) =>
-    '${shortDate(from)} – ${shortDate(to)} ${parseDay(to).year}';
+String rangeLabel(String from, String to, {String languageCode = 'tr'}) =>
+    '${shortDate(from, languageCode: languageCode)} – ${shortDate(to, languageCode: languageCode)} ${parseDay(to).year}';
 
 const weekdayLabels = <({int value, String label})>[
   (value: 1, label: 'Pzt'),

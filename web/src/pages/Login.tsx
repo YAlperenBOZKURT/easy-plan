@@ -1,13 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, api } from '../lib/api.ts';
-
-const MESSAGES: Record<string, string> = {
-  invalid_credentials: 'E-posta veya şifre hatalı.',
-  http_429: 'Çok fazla deneme yapıldı, birkaç dakika sonra tekrar dene.',
-};
+import { useI18n } from '../lib/i18n.tsx';
 
 export default function Login() {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -30,7 +27,11 @@ export default function Login() {
       }
     } catch (err) {
       const code = err instanceof ApiError ? err.code : 'unknown';
-      setError(MESSAGES[code] ?? 'Bir şeyler ters gitti, tekrar dene.');
+      setError(code === 'invalid_credentials'
+        ? t('error.invalidCredentials')
+        : code === 'http_429'
+          ? t('error.tooManyAttempts')
+          : t('error.generic'));
     } finally {
       setBusy(false);
     }
@@ -40,21 +41,21 @@ export default function Login() {
     <div className="center-page">
       <form className="auth-card" onSubmit={submit} aria-busy={busy}>
         <div>
-          <h1 className="auth-title">Planner</h1>
+          <h1 className="auth-title">Easy Plan</h1>
           <p className="auth-sub">
-            {mode === 'login' ? 'Devam etmek için giriş yap.' : 'Kayıtlı adresine sıfırlama bağlantısı gönderelim.'}
+            {mode === 'login' ? t('login.subtitle') : t('login.forgotSubtitle')}
           </p>
         </div>
 
         {sent ? (
           <p className="auth-sub">
-            Adres kayıtlıysa sıfırlama bağlantısı gönderildi. Gelen kutunu kontrol et — bağlantı 1 saat geçerli.
+            {t('login.sent')}
           </p>
         ) : (
           <>
             <div className="field">
               <label className="label" htmlFor="email">
-                E-posta
+                {t('login.email')}
               </label>
               <input
                 id="email"
@@ -70,7 +71,7 @@ export default function Login() {
             {mode === 'login' && (
               <div className="field">
                 <label className="label" htmlFor="password">
-                  Şifre
+                  {t('login.password')}
                 </label>
                 <input
                   id="password"
@@ -86,7 +87,7 @@ export default function Login() {
             {error && <p className="error-text" role="alert">{error}</p>}
 
             <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy ? 'Bekle…' : mode === 'login' ? 'Giriş yap' : 'Bağlantı gönder'}
+              {busy ? t('login.wait') : mode === 'login' ? t('login.submit') : t('login.sendLink')}
             </button>
           </>
         )}
@@ -100,7 +101,7 @@ export default function Login() {
             setSent(false);
           }}
         >
-          {mode === 'login' ? 'Şifremi unuttum' : 'Girişe dön'}
+          {mode === 'login' ? t('login.forgot') : t('login.back')}
         </button>
       </form>
     </div>

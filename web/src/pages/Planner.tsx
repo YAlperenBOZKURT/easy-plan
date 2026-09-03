@@ -46,15 +46,17 @@ import ActivityModal from '../components/ActivityModal.tsx';
 import {
   daysBetween,
   monthLabel,
-  PLANNER_VIEWS,
+  plannerViewOptions,
   plannerRange,
   shiftPlannerAnchor,
   type PlannerView,
 } from '../lib/plannerViews.ts';
+import { useI18n } from '../lib/i18n.tsx';
 
 const VISIBLE_DAYS = 7;
 
 export default function Planner({ user }: { user: User }) {
+  const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const today = todayKey();
 
@@ -578,10 +580,10 @@ export default function Planner({ user }: { user: User }) {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="btn btn-icon" onClick={() => navigateDay(-1)} disabled={!canGoBack} aria-label={view === 'week' ? 'Önceki gün' : 'Önceki ay'}>
+        <button className="btn btn-icon" onClick={() => navigateDay(-1)} disabled={!canGoBack} aria-label={view === 'week' ? t('planner.previousDay') : t('planner.previousMonth')}>
           ‹
         </button>
-        <button className="btn btn-icon" onClick={() => navigateDay(1)} disabled={!canGoForward} aria-label={view === 'week' ? 'Sonraki gün' : 'Sonraki ay'}>
+        <button className="btn btn-icon" onClick={() => navigateDay(1)} disabled={!canGoForward} aria-label={view === 'week' ? t('planner.nextDay') : t('planner.nextMonth')}>
           ›
         </button>
         <button
@@ -596,42 +598,42 @@ export default function Planner({ user }: { user: User }) {
             }
           }}
         >
-          Bugün
+          {t('planner.today')}
         </button>
-        <span className="topbar-range">{view === 'week' ? rangeLabel(from, to) : monthLabel(anchor)}</span>
+        <span className="topbar-range">{view === 'week' ? rangeLabel(from, to, locale) : monthLabel(anchor, locale)}</span>
 
         {activeBoard && (
           <div className="board-switcher">
             <select
               value={activeBoard.id}
-              aria-label="Aktif pano"
+              aria-label={t('planner.activeBoard')}
               onChange={(event) => {
                 const board = boards.data?.boards.find((item) => item.id === event.target.value);
                 if (board) selectBoard(board);
               }}
             >
               {boards.data?.boards.map((board) => (
-                <option value={board.id} key={board.id}>{board.name}{board.role === 'viewer' ? ' · görüntüleme' : ''}</option>
+                <option value={board.id} key={board.id}>{board.name}{board.role === 'viewer' ? ` · ${t('planner.readOnly')}` : ''}</option>
               ))}
             </select>
-            <button className="btn btn-icon" onClick={() => setShowBoards(true)} aria-label="Pano ve paylaşımı yönet" title="Pano ve paylaşım">♙</button>
+            <button className="btn btn-icon" onClick={() => setShowBoards(true)} aria-label={t('planner.manageBoards')} title={t('planner.boards')}>♙</button>
           </div>
         )}
 
         <div className="spacer" />
 
-        <button className="btn search-open" onClick={() => setShowSearch(true)} aria-label="Kartlarda ara">
+        <button className="btn search-open" onClick={() => setShowSearch(true)} aria-label={t('planner.searchCards')}>
           <span aria-hidden="true">⌕</span>
-          <span className="desktop-only">Ara</span>
+          <span className="desktop-only">{t('planner.search')}</span>
         </button>
 
         <button
           className={`btn filter-open-btn${activeFilterCount > 0 ? ' active' : ''}`}
           onClick={() => setShowFilters(true)}
-          aria-label="Kartları filtrele"
+          aria-label={t('planner.filterCards')}
         >
           <span aria-hidden="true">⚲</span>
-          <span className="desktop-only">Filtre</span>
+          <span className="desktop-only">{t('planner.filter')}</span>
           {activeFilterCount > 0 && <span className="filter-badge">{activeFilterCount}</span>}
         </button>
 
@@ -639,26 +641,26 @@ export default function Planner({ user }: { user: User }) {
         {view === 'week' && <button
           className={`btn desktop-only${fastNav ? ' fast-on' : ''}`}
           onClick={() => setFastNav((v) => !v)}
-          title="Açıkken fare tekerleği gün geçirir; orta tuşla sürüklemek de hızlanır"
+          title={t('planner.fastNavigationHelp')}
         >
-          ⚡ Hızlı gezme
+          ⚡ {t('planner.fastNavigation')}
         </button>}
 
         <TopMenu
           actions={[
             ...(activeBoard?.personal
-              ? [{ label: 'Davranış ekle', color: 'var(--c-violet)', onSelect: () => setShowHabits(true) }]
+              ? [{ label: t('planner.addHabit'), color: 'var(--c-violet)', onSelect: () => setShowHabits(true) }]
               : []),
-            { label: 'Arşiv ve Çöp Kutusu', color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
-            { label: 'Şablonlar', color: 'var(--c-teal)', onSelect: () => setShowTemplates(true) },
-            { label: 'İçe / Dışa Aktar', color: 'var(--c-violet)', onSelect: () => setShowTransfer(true) },
-            { label: 'Etkinlik geçmişi', color: 'var(--c-blue)', onSelect: () => setActivityCard(null) },
-            { label: 'Ayarlar', color: 'var(--c-blue)', onSelect: () => setShowSettings(true) },
+            { label: t('planner.archiveTrash'), color: 'var(--c-amber)', onSelect: () => setShowLifecycle(true) },
+            { label: t('planner.templates'), color: 'var(--c-teal)', onSelect: () => setShowTemplates(true) },
+            { label: t('planner.transfer'), color: 'var(--c-violet)', onSelect: () => setShowTransfer(true) },
+            { label: t('planner.activity'), color: 'var(--c-blue)', onSelect: () => setActivityCard(null) },
+            { label: t('planner.settings'), color: 'var(--c-blue)', onSelect: () => setShowSettings(true) },
             ...(user.role === 'admin'
-              ? [{ label: 'Yönetim', color: 'var(--c-teal)', onSelect: () => navigate('/admin') }]
+              ? [{ label: t('planner.admin'), color: 'var(--c-teal)', onSelect: () => navigate('/admin') }]
               : []),
             {
-              label: 'Çıkış',
+              label: t('planner.logout'),
               danger: true,
               onSelect: async () => {
                 await api.logout();
@@ -672,8 +674,8 @@ export default function Planner({ user }: { user: User }) {
         />
       </header>
 
-      <nav className="view-switcher" aria-label="Plan görünümü">
-        {PLANNER_VIEWS.map((option) => (
+      <nav className="view-switcher" aria-label={t('planner.viewLabel')}>
+        {plannerViewOptions(locale).map((option) => (
           <button
             type="button"
             className={view === option.value ? 'active' : ''}
@@ -693,7 +695,7 @@ export default function Planner({ user }: { user: User }) {
         ))}
       </nav>
 
-      {view === 'week' && <nav className="day-strip" aria-label="Gün seçimi">
+      {view === 'week' && <nav className="day-strip" aria-label={t('planner.daySelection')}>
         {days.map((day) => (
           <button
             key={day}
@@ -702,7 +704,7 @@ export default function Planner({ user }: { user: User }) {
             aria-current={day === today ? 'date' : undefined}
             aria-pressed={day === activeDay}
           >
-            <em>{dayNameShort(day)}</em>
+            <em>{dayNameShort(day, locale)}</em>
             <b>{dayNumber(day)}</b>
           </button>
         ))}

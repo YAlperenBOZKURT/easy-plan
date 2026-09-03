@@ -28,6 +28,7 @@ PlannerCard _card({
 );
 
 Widget _app(Widget child) => MaterialApp(
+  locale: const Locale('tr'),
   theme: buildTheme(Brightness.light),
   home: Scaffold(body: child),
 );

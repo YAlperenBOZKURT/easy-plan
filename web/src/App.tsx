@@ -6,6 +6,7 @@ import Invite from './pages/Invite.tsx';
 import ResetPassword from './pages/ResetPassword.tsx';
 import Admin from './pages/Admin.tsx';
 import Planner from './pages/Planner.tsx';
+import { useI18n } from './lib/i18n.tsx';
 
 /** Küçük yönlendirici — tek sayfalık uygulama için harici kütüphaneye gerek yok. */
 export function navigate(path: string) {
@@ -14,6 +15,7 @@ export function navigate(path: string) {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [path, setPath] = useState(window.location.pathname);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export default function App() {
     return (
       <div className="center-page loading-screen" role="status" aria-live="polite">
         <span className="spinner" aria-hidden="true" />
-        <span>Planner hazırlanıyor…</span>
+        <span>{t('app.loading')}</span>
       </div>
     );
   }

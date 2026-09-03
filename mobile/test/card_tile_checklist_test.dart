@@ -38,6 +38,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
         theme: buildTheme(Brightness.light),
         home: Scaffold(
           body: CardTile(

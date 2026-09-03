@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '../lib/i18n.tsx';
 
 export interface MenuAction {
   label: string;
@@ -9,6 +10,7 @@ export interface MenuAction {
 
 /** Sağ üstteki üç nokta düğmesi ve açılan seçenek listesi. */
 export default function TopMenu({ actions }: { actions: MenuAction[] }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -30,7 +32,7 @@ export default function TopMenu({ actions }: { actions: MenuAction[] }) {
     <div className="menu-wrap" ref={wrap}>
       <button
         className="btn btn-icon btn-blue"
-        aria-label="Menü"
+        aria-label={t('menu.label')}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls="planner-menu"
