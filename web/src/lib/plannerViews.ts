@@ -1,4 +1,5 @@
 import { addDays } from './dates.ts';
+import type { AppLocale } from './i18n.tsx';
 
 export type PlannerView = 'week' | 'month' | 'agenda' | 'completed';
 
@@ -7,6 +8,13 @@ export const PLANNER_VIEWS: ReadonlyArray<{ value: PlannerView; label: string }>
   { value: 'month', label: 'Ay' },
   { value: 'agenda', label: 'Ajanda' },
   { value: 'completed', label: 'Tamamlananlar' },
+];
+
+export const plannerViewOptions = (locale: AppLocale): ReadonlyArray<{ value: PlannerView; label: string }> => [
+  { value: 'week', label: locale === 'tr' ? 'Hafta' : 'Week' },
+  { value: 'month', label: locale === 'tr' ? 'Ay' : 'Month' },
+  { value: 'agenda', label: locale === 'tr' ? 'Ajanda' : 'Agenda' },
+  { value: 'completed', label: locale === 'tr' ? 'Tamamlananlar' : 'Completed' },
 ];
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -78,7 +86,8 @@ const months = [
   'Aralık',
 ];
 
-export function monthLabel(day: string): string {
+export function monthLabel(day: string, locale: AppLocale = 'tr'): string {
   const date = parseDay(day);
-  return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  if (locale === 'tr') return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
 }

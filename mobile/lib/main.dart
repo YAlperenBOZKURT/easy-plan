@@ -10,6 +10,7 @@ import 'pages/planner_page.dart';
 import 'notifications.dart';
 import 'store.dart';
 import 'theme.dart';
+import 'localization.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -52,22 +53,26 @@ class PlannerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Planner',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
-      locale: const Locale('tr'),
-      supportedLocales: const [Locale('tr'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: ListenableBuilder(
-        listenable: store,
-        builder: (context, _) {
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) => MaterialApp(
+        title: 'Easy Plan',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(Brightness.light),
+        darkTheme: buildTheme(Brightness.dark),
+        themeMode: ThemeMode.system,
+        locale: store.appLocale,
+        supportedLocales: supportedAppLocales,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        builder: (context, child) => AppLanguageScope(
+          locale: store.appLocale,
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: Builder(builder: (context) {
           if (store.booting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
@@ -76,7 +81,7 @@ class PlannerApp extends StatelessWidget {
           return store.user == null
               ? LoginPage(store: store)
               : PlannerPage(store: store);
-        },
+        }),
       ),
     );
   }

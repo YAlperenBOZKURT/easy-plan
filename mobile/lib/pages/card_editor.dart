@@ -12,6 +12,7 @@ import '../deadline.dart';
 import '../store.dart';
 import '../tags.dart';
 import '../theme.dart';
+import '../localization.dart';
 
 /// Kart düzenleyiciyi açar.
 ///
@@ -342,7 +343,7 @@ class _CardEditorState extends State<CardEditor> {
               ),
               const SizedBox(width: 10),
               Text(
-                '${dayName(_day)} · ${shortDate(_day)}',
+                '${dayName(_day, languageCode: context.strings.locale.languageCode)} · ${shortDate(_day, languageCode: context.strings.locale.languageCode)}',
                 style: TextStyle(fontSize: 12.5, color: t.textFaint),
               ),
               const Spacer(),
@@ -421,7 +422,9 @@ class _CardEditorState extends State<CardEditor> {
                 icon: const Icon(Icons.calendar_today_outlined, size: 17),
                 label: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('${dayName(_day)} · ${shortDate(_day)}'),
+                  child: Text(
+                    '${dayName(_day, languageCode: context.strings.locale.languageCode)} · ${shortDate(_day, languageCode: context.strings.locale.languageCode)}',
+                  ),
                 ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),

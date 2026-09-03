@@ -10,6 +10,7 @@ import '../api/models.dart';
 import '../dates.dart';
 import '../filters.dart';
 import '../planner_views.dart';
+import '../localization.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets/draggable_card.dart';
@@ -56,6 +57,38 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
       defaultTargetPlatform == TargetPlatform.macOS;
 
   PlannerStore get store => widget.store;
+
+  Future<void> _selectLanguage() async {
+    final strings = context.strings;
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(strings.text('common.language')),
+        children: [
+          for (final option in const [('tr', 'language.turkish'), ('en', 'language.english')])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext, option.$1),
+              child: Row(
+                children: [
+                  Icon(
+                    store.appLocale.languageCode == option.$1
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(strings.text(option.$2)),
+                ],
+              ),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(strings.text('common.close')),
+          ),
+        ],
+      ),
+    );
+    if (selected != null) await store.setLanguage(selected);
+  }
 
   @override
   void initState() {
@@ -329,6 +362,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final strings = context.strings;
 
     return ListenableBuilder(
       listenable: store,
@@ -359,8 +393,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     height: 40,
                   ),
                   tooltip: _view == PlannerViewMode.week
-                      ? 'Önceki gün'
-                      : 'Önceki ay',
+                      ? strings.text('planner.previousDay')
+                      : strings.text('planner.previousMonth'),
                 ),
                 IconButton(
                   onPressed: () => _navigatePeriod(1),
@@ -371,8 +405,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     height: 40,
                   ),
                   tooltip: _view == PlannerViewMode.week
-                      ? 'Sonraki gün'
-                      : 'Sonraki ay',
+                      ? strings.text('planner.nextDay')
+                      : strings.text('planner.nextMonth'),
                 ),
                 OutlinedButton(
                   onPressed: _goToday,
@@ -381,15 +415,15 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     visualDensity: VisualDensity.compact,
                   ),
-                  child: const Text('Bugün'),
+                  child: Text(strings.text('planner.today')),
                 ),
                 if (wide) ...[
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
                       _view == PlannerViewMode.week
-                          ? rangeLabel(store.from, store.to)
-                          : monthLabel(store.anchor),
+                          ? rangeLabel(store.from, store.to, languageCode: strings.locale.languageCode)
+                          : monthLabel(store.anchor, languageCode: strings.locale.languageCode),
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13.5, color: t.textMuted),
                     ),
@@ -400,7 +434,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
             actions: [
               PopupMenuButton<String>(
                 icon: const Icon(Icons.dashboard_outlined),
-                tooltip: store.activeBoard?.name ?? 'Panolar',
+                tooltip: store.activeBoard?.name ?? strings.text('planner.boards'),
                 onSelected: (value) async {
                   if (value == '__manage') {
                     await showBoardManager(context, store: store);
@@ -427,22 +461,22 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                           Flexible(child: Text(board.name)),
                           if (board.role == 'viewer') ...[
                             const SizedBox(width: 8),
-                            const Text(
-                              'Salt okunur',
-                              style: TextStyle(fontSize: 11),
+                            Text(
+                              strings.text('planner.readOnly'),
+                              style: const TextStyle(fontSize: 11),
                             ),
                           ],
                         ],
                       ),
                     ),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: '__manage',
                     child: Row(
                       children: [
-                        Icon(Icons.group_outlined, size: 18),
-                        SizedBox(width: 8),
-                        Text('Pano ve paylaşım'),
+                        const Icon(Icons.group_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Text(strings.text('planner.manageBoards')),
                       ],
                     ),
                   ),
@@ -451,7 +485,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
               IconButton(
                 onPressed: _openSearch,
                 icon: const Icon(Icons.search),
-                tooltip: 'Kartlarda ara',
+                tooltip: strings.text('planner.searchCards'),
               ),
               IconButton(
                 onPressed: _openFilters,
@@ -467,7 +501,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     color: _filters.hasActiveFilters ? t.accent : null,
                   ),
                 ),
-                tooltip: 'Kartları filtrele',
+                tooltip: strings.text('planner.filterCards'),
               ),
               if (_view == PlannerViewMode.week && _isDesktopLayout && wide)
                 Padding(
@@ -479,7 +513,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       size: 17,
                       color: _fastNav ? t.accent : t.textMuted,
                     ),
-                    label: const Text('Hızlı gezme'),
+                    label: Text(strings.text('planner.fastNavigation')),
                     // Açıkken tekerlek gün geçirir, sürükleme eşiği kısalır.
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _fastNav ? t.accent : t.text,
@@ -510,27 +544,31 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       await showDataTransfer(context, store: store);
                     case 'activity':
                       await showActivityHistory(context, store: store);
+                    case 'language':
+                      await _selectLanguage();
                     case 'logout':
                       await store.logout();
                   }
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'refresh', child: Text('Yenile')),
-                  PopupMenuItem(value: 'sync', child: Text('Senkronize et')),
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'refresh', child: Text(strings.text('planner.refresh'))),
+                  PopupMenuItem(value: 'sync', child: Text(strings.text('planner.sync'))),
                   PopupMenuItem(
                     value: 'lifecycle',
-                    child: Text('Arşiv ve Çöp Kutusu'),
+                    child: Text(strings.text('planner.archiveTrash')),
                   ),
-                  PopupMenuItem(value: 'templates', child: Text('Şablonlar')),
+                  PopupMenuItem(value: 'templates', child: Text(strings.text('planner.templates'))),
                   PopupMenuItem(
                     value: 'transfer',
-                    child: Text('İçe / Dışa Aktar'),
+                    child: Text(strings.text('planner.transfer')),
                   ),
                   PopupMenuItem(
                     value: 'activity',
-                    child: Text('Etkinlik geçmişi'),
+                    child: Text(strings.text('planner.activity')),
                   ),
-                  PopupMenuItem(value: 'logout', child: Text('Çıkış')),
+                  PopupMenuItem(value: 'language', child: Text(strings.text('common.language'))),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(value: 'logout', child: Text(strings.text('planner.logout'))),
                 ],
               ),
               const SizedBox(width: 6),
@@ -876,6 +914,7 @@ class _ViewSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final strings = context.strings;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -889,7 +928,12 @@ class _ViewSwitcher extends StatelessWidget {
           children: [
             for (final view in PlannerViewMode.values) ...[
               ChoiceChip(
-                label: Text(plannerViewLabel(view)),
+                label: Text(
+                  plannerViewLabel(
+                    view,
+                    languageCode: strings.locale.languageCode,
+                  ),
+                ),
                 selected: selected == view,
                 onSelected: (_) => onSelected(view),
                 visualDensity: VisualDensity.compact,
@@ -978,7 +1022,10 @@ class _DayColumn extends StatelessWidget {
               children: [
                 Flexible(
                   child: Text(
-                    dayName(day),
+                    dayName(
+                      day,
+                      languageCode: context.strings.locale.languageCode,
+                    ),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13.5,
@@ -995,7 +1042,10 @@ class _DayColumn extends StatelessWidget {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    shortDate(day),
+                    shortDate(
+                      day,
+                      languageCode: context.strings.locale.languageCode,
+                    ),
                     overflow: TextOverflow.ellipsis,
                     softWrap: false,
                     style: TextStyle(fontSize: 12.5, color: t.textFaint),
@@ -1147,7 +1197,7 @@ class _DayStrip extends StatelessWidget {
                   return Semantics(
                     button: true,
                     selected: i == activeIndex,
-                    label: '${dayNameShort(days[i])}, ${dayNumber(days[i])}',
+                    label: '${dayNameShort(days[i], languageCode: context.strings.locale.languageCode)}, ${dayNumber(days[i])}',
                     child: InkWell(
                       onTap: () => onSelect(i),
                       borderRadius: BorderRadius.circular(R.md),
@@ -1177,7 +1227,10 @@ class _DayStrip extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              dayNameShort(days[i]).toUpperCase(),
+                              dayNameShort(
+                                days[i],
+                                languageCode: context.strings.locale.languageCode,
+                              ).toUpperCase(),
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,

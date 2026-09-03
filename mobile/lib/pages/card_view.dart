@@ -6,6 +6,7 @@ import '../deadline.dart';
 import '../store.dart';
 import '../tags.dart';
 import '../theme.dart';
+import '../localization.dart';
 import 'activity.dart';
 
 /// Kartı rahatça incelemek için okuma penceresi (web'deki "İncele" ile aynı).
@@ -60,7 +61,12 @@ class CardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final strings = context.strings;
     final c = t.cardColor(card.color);
+    final priority = strings.text('priority.${card.priority}');
+    final deadline = card.deadlineAt == null
+        ? null
+        : DateTime.tryParse(card.deadlineAt!)?.toLocal();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -76,7 +82,7 @@ class CardView extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      'İncele',
+                      strings.text('card.inspect'),
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
@@ -86,7 +92,7 @@ class CardView extends StatelessWidget {
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
-                        '${dayName(card.day)} · ${shortDate(card.day)}',
+                        '${dayName(card.day, languageCode: context.strings.locale.languageCode)} · ${shortDate(card.day, languageCode: context.strings.locale.languageCode)}',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 12.5, color: t.textFaint),
                       ),
@@ -99,7 +105,7 @@ class CardView extends StatelessWidget {
                 width: 36,
                 height: 36,
                 child: IconButton(
-                  tooltip: 'Kapat',
+                  tooltip: strings.text('common.close'),
                   padding: EdgeInsets.zero,
                   iconSize: 19,
                   icon: Icon(Icons.close, color: t.textMuted),
@@ -146,7 +152,7 @@ class CardView extends StatelessWidget {
               if (card.hasTime) const SizedBox(height: 14),
 
               Text(
-                card.title.isEmpty ? '(başlıksız)' : card.title,
+                card.title.isEmpty ? strings.text('card.untitled') : card.title,
                 style: TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w600,
@@ -307,7 +313,7 @@ class CardView extends StatelessWidget {
                             color: t.surface2,
                             alignment: Alignment.center,
                             child: Text(
-                              'Görsel yüklenemedi',
+                              strings.text('card.imageFailed'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: t.textFaint,
@@ -333,46 +339,61 @@ class CardView extends StatelessWidget {
                   runSpacing: 12,
                   children: [
                     _Meta(
-                      label: 'Durum',
-                      value: card.done ? 'Yapıldı' : 'Bekliyor',
+                      label: strings.text('card.status'),
+                      value: card.done
+                          ? strings.text('card.done')
+                          : strings.text('card.pending'),
                     ),
                     _Meta(
-                      label: 'Öncelik',
-                      value: cardPriorityLabel(card.priority),
+                      label: strings.text('card.priority'),
+                      value: priority,
                     ),
                     _Meta(
-                      label: 'Son tarih',
+                      label: strings.text('card.deadline'),
                       value: card.deadlineAt == null
-                          ? 'Yok'
-                          : '${deadlineState(card.deadlineAt, card.done) == DeadlineState.overdue ? 'Gecikti · ' : ''}${deadlineLabel(card.deadlineAt!)}',
+                          ? strings.text('card.none')
+                          : '${deadlineState(card.deadlineAt, card.done) == DeadlineState.overdue ? '${strings.text('card.overdue')} · ' : ''}${deadline == null ? card.deadlineAt : '${MaterialLocalizations.of(context).formatMediumDate(deadline)} ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(deadline))}'}',
                     ),
                     _Meta(
-                      label: 'Hatırlatma',
+                      label: strings.text('card.reminder'),
                       value: card.reminders.isEmpty
-                          ? 'Yok'
+                          ? strings.text('card.none')
                           : card.reminders
                                 .map(
-                                  (m) => reminderOptions
-                                      .firstWhere(
-                                        (o) => o.minutes == m,
-                                        orElse: () =>
-                                            (minutes: m, label: '$m dk'),
-                                      )
-                                      .label,
+                                  (m) => strings.isTurkish
+                                      ? reminderOptions
+                                            .firstWhere(
+                                              (o) => o.minutes == m,
+                                              orElse: () => (
+                                                minutes: m,
+                                                label: '$m dk',
+                                              ),
+                                            )
+                                            .label
+                                      : m == 1440
+                                      ? '1 day'
+                                      : m == 60
+                                      ? '1 hour'
+                                      : m % 60 == 0
+                                      ? '${m ~/ 60} hours'
+                                      : '$m min',
                                 )
                                 .join(' · '),
                     ),
                     if (card.habitId != null)
-                      const _Meta(
-                        label: 'Kaynak',
-                        value: 'Davranıştan üretildi',
+                      _Meta(
+                        label: strings.text('card.source'),
+                        value: strings.text('card.habitGenerated'),
                       ),
                     if (card.templateId != null)
-                      const _Meta(
-                        label: 'Şablon',
-                        value: 'Bağlı · değiştirilirse ayrılır',
+                      _Meta(
+                        label: strings.text('card.template'),
+                        value: strings.text('card.templateLinked'),
                       ),
-                    _Meta(label: 'Görsel', value: '${card.images.length}'),
+                    _Meta(
+                      label: strings.text('card.image'),
+                      value: '${card.images.length}',
+                    ),
                   ],
                 ),
               ),
@@ -394,18 +415,18 @@ class CardView extends StatelessWidget {
                 TextButton(
                   onPressed: () =>
                       showActivityHistory(context, store: store, card: card),
-                  child: const Text('Geçmiş'),
+                  child: Text(strings.text('card.history')),
                 ),
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Kapat'),
+                  child: Text(strings.text('common.close')),
                 ),
                 const SizedBox(width: 8),
                 if (!store.boardReadOnly)
                   FilledButton(
                     onPressed: () => Navigator.of(context).pop('edit'),
-                    child: const Text('Düzenle'),
+                    child: Text(strings.text('card.edit')),
                   ),
               ],
             ),

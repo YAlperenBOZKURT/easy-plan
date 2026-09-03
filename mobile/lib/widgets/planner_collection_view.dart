@@ -5,6 +5,7 @@ import '../dates.dart';
 import '../planner_views.dart';
 import '../store.dart';
 import '../theme.dart';
+import '../localization.dart';
 import 'card_tile.dart';
 
 class PlannerCollectionView extends StatelessWidget {
@@ -192,7 +193,10 @@ class _MonthDay extends StatelessWidget {
                   children: [
                     if (compact) ...[
                       Text(
-                        dayNameShort(day),
+                        dayNameShort(
+                          day,
+                          languageCode: context.strings.locale.languageCode,
+                        ),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -223,7 +227,9 @@ class _MonthDay extends StatelessWidget {
                 const Spacer(),
                 _MonthAddButton(
                   compact: compact,
-                  label: '${shortDate(day)} için kart ekle',
+                  label: context.strings.isTurkish
+                      ? '${shortDate(day, languageCode: 'tr')} için kart ekle'
+                      : 'Add a card for ${shortDate(day, languageCode: 'en')}',
                   onTap: onAdd,
                 ),
               ],
@@ -433,11 +439,17 @@ class _AgendaHeader extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            dayName(day),
+            dayName(
+              day,
+              languageCode: context.strings.locale.languageCode,
+            ),
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: t.text),
           ),
           const SizedBox(width: 8),
-          Text(shortDate(day), style: TextStyle(fontSize: 12, color: t.textFaint)),
+          Text(
+            shortDate(day, languageCode: context.strings.locale.languageCode),
+            style: TextStyle(fontSize: 12, color: t.textFaint),
+          ),
           const Spacer(),
           if (day == todayKey())
             Text('Bugün', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.accent)),

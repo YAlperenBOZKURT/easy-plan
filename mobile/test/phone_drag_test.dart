@@ -65,6 +65,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
         theme: buildTheme(Brightness.dark),
         home: PlannerPage(store: store),
       ),
@@ -105,6 +106,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
         theme: buildTheme(Brightness.dark),
         home: PlannerPage(store: store),
       ),

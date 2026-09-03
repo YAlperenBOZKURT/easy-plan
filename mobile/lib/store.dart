@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -19,6 +20,18 @@ class PlannerStore extends ChangeNotifier {
   static const _accessTokenKey = 'planner_access_token';
   static const _refreshTokenKey = 'planner_refresh_token';
   static const _boardKey = 'planner_active_board';
+  static const _languageKey = 'easy_plan_language';
+
+  Locale appLocale = const Locale('tr');
+
+  Future<void> setLanguage(String languageCode) async {
+    if (languageCode != 'tr' && languageCode != 'en') return;
+    final next = Locale(languageCode);
+    if (appLocale == next) return;
+    appLocale = next;
+    notifyListeners();
+    await _storage.write(key: _languageKey, value: languageCode);
+  }
 
   /// Emülatörde makinenin localhost'u 10.0.2.2'dir; masaüstünde doğrudan localhost.
   static const defaultBaseUrl = String.fromEnvironment(
@@ -139,6 +152,15 @@ class PlannerStore extends ChangeNotifier {
   /* --------------------------------------------------------- açılış */
 
   Future<void> bootstrap() async {
+    final savedLanguage = await _storage.read(key: _languageKey);
+    final systemLanguage = PlatformDispatcher.instance.locale.languageCode;
+    appLocale = Locale(
+      savedLanguage == 'tr' || savedLanguage == 'en'
+          ? savedLanguage!
+          : systemLanguage == 'tr'
+          ? 'tr'
+          : 'en',
+    );
     final savedAccessToken = await _storage.read(key: _accessTokenKey);
     final savedRefreshToken = await _storage.read(key: _refreshTokenKey);
     final savedBoardId = await _storage.read(key: _boardKey);

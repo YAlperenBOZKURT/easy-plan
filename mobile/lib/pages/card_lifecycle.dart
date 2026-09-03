@@ -4,6 +4,7 @@ import '../api/models.dart';
 import '../dates.dart';
 import '../store.dart';
 import '../theme.dart';
+import '../localization.dart';
 
 Future<void> showCardLifecycle(
   BuildContext context, {
@@ -238,7 +239,7 @@ class _LifecycleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${dayName(card.day)} · ${shortDate(card.day)}',
+                  '${dayName(card.day, languageCode: context.strings.locale.languageCode)} · ${shortDate(card.day, languageCode: context.strings.locale.languageCode)}',
                   style: TextStyle(fontSize: 11, color: t.textFaint),
                 ),
                 const SizedBox(height: 3),

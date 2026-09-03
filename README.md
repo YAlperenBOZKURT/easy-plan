@@ -16,6 +16,7 @@ The project is designed for individuals, families, and small teams that want to 
 - **Portable planning data** — export a selected date range as JSON, CSV, or iCalendar and import any of those formats from the web or Flutter clients. Imports are validated and never overwrite existing cards.
 - **Shared boards** — create optional team boards, add existing Easy Plan users by email, and enforce owner, editor, or read-only viewer permissions consistently across the API, web, mobile, and desktop clients.
 - **Activity history** — review who created, edited, moved, completed, archived, restored, trashed, duplicated, or permanently deleted cards from a board-wide or card-specific timeline.
+- **English and Turkish localization** — web and Flutter clients detect the device language on first launch, persist explicit language choices, and update core navigation, dates, settings, card details, and activity views without restarting.
 - **Drag and drop** — reorder cards within a day or move them across days on web, mobile, and desktop.
 - **Mobile day navigation** — edge controls move one day at a time, keep the visible column synchronized with the day strip, and clearly highlight today.
 - **Recurring habits** — generate independent cards for selected weekdays across a one-year planning window.
