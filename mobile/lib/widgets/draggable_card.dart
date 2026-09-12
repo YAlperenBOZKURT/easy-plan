@@ -124,7 +124,9 @@ class DropSlot extends StatelessWidget {
       builder: (context, candidate, _) {
         final active = candidate.isNotEmpty;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+              ? Duration.zero
+              : const Duration(milliseconds: 120),
           height: active ? 34 : (tall ? 48 : 10),
           margin: EdgeInsets.symmetric(vertical: active ? 4 : 0),
           decoration: active

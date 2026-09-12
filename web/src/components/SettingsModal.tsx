@@ -4,9 +4,11 @@ import { ApiError, api } from '../lib/api.ts';
 import { formatDateTime } from '../lib/dates.ts';
 import type { User } from '../lib/types.ts';
 import { useI18n } from '../lib/i18n.tsx';
+import { useAccessibility } from '../lib/accessibility.tsx';
 
 export default function SettingsModal({ user, onClose }: { user: User; onClose: () => void }) {
   const { locale, setLocale, t } = useI18n();
+  const { motion, textDensity, setMotion, setTextDensity } = useAccessibility();
   const queryClient = useQueryClient();
   const [name, setName] = useState(user.name);
   const [dailySummary, setDailySummary] = useState(user.dailySummary);
@@ -117,6 +119,37 @@ export default function SettingsModal({ user, onClose }: { user: User; onClose: 
               <option value="en">{t('language.english')}</option>
             </select>
           </div>
+
+          <fieldset className="settings-section">
+            <legend>{t('settings.accessibility')}</legend>
+            <div className="row settings-preferences">
+              <div className="field">
+                <label className="label" htmlFor="motion-preference">{t('settings.motion')}</label>
+                <select
+                  id="motion-preference"
+                  value={motion}
+                  onChange={(event) => setMotion(event.target.value as typeof motion)}
+                >
+                  <option value="system">{t('settings.motionSystem')}</option>
+                  <option value="reduce">{t('settings.motionReduce')}</option>
+                  <option value="full">{t('settings.motionFull')}</option>
+                </select>
+              </div>
+              <div className="field">
+                <label className="label" htmlFor="text-density">{t('settings.textDensity')}</label>
+                <select
+                  id="text-density"
+                  value={textDensity}
+                  onChange={(event) => setTextDensity(event.target.value as typeof textDensity)}
+                >
+                  <option value="compact">{t('settings.densityCompact')}</option>
+                  <option value="standard">{t('settings.densityStandard')}</option>
+                  <option value="comfortable">{t('settings.densityComfortable')}</option>
+                </select>
+              </div>
+            </div>
+            <small>{t('settings.accessibilityHint')}</small>
+          </fieldset>
 
           <div className="row">
             <div className="field" style={{ flex: 1 }}>

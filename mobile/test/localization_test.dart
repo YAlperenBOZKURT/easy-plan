@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:planner/dates.dart';
+import 'package:planner/accessibility.dart';
 import 'package:planner/localization.dart';
 import 'package:planner/main.dart';
 import 'package:planner/planner_views.dart';
@@ -29,6 +30,34 @@ void main() {
 
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('Devam etmek için giriş yap.'), findsNothing);
+  });
+
+  test('erişilebilirlik tercihleri güvenli ayrıştırılır ve çözülür', () {
+    expect(motionPreferenceFromStorage('invalid'), MotionPreference.system);
+    expect(motionPreferenceFromStorage('reduce'), MotionPreference.reduce);
+    expect(textDensityFromStorage('comfortable'), TextDensity.comfortable);
+    expect(TextDensity.compact.scaleFactor, .9);
+    expect(
+      MotionPreference.system.resolve(systemReducedMotion: true),
+      isTrue,
+    );
+    expect(MotionPreference.full.resolve(systemReducedMotion: true), isFalse);
+  });
+
+  testWidgets('uygulama hareket ve metin yoğunluğu tercihini MediaQuery ile uygular', (
+    tester,
+  ) async {
+    final store = PlannerStore()
+      ..booting = false
+      ..motionPreference = MotionPreference.reduce
+      ..textDensity = TextDensity.comfortable;
+
+    await tester.pumpWidget(PlannerApp(store: store));
+
+    final context = tester.element(find.text('Giriş yap'));
+    final media = MediaQuery.of(context);
+    expect(media.disableAnimations, isTrue);
+    expect(media.textScaler.scale(1), closeTo(1.15, .001));
   });
 }
 

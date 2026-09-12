@@ -5,6 +5,8 @@
    ============================================================ */
 
 :root {
+  --density-body-font:14px; --density-control-height:38px;
+  --density-gap-sm:8px; --density-gap-md:12px; --density-gap-lg:18px;
   --bg:#f5f7f9; --surface:#ffffff; --surface-2:#eef1f5; --surface-hover:#e7ebf1;
   --border:#e2e7ee; --border-strong:#c8d1db;
   --text:#161d26; --text-muted:#5b6673; --text-faint:#8f9aa6;
@@ -42,7 +44,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-  font-size: 14px;
+  font-size: var(--density-body-font);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
@@ -70,7 +72,7 @@ button:focus-visible, [role='button']:focus-visible {
 /* ===================== UYGULAMA KABUĞU ===================== */
 
 .app { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-.topbar { display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.topbar { display: flex; align-items: center; gap: var(--density-gap-sm); padding: var(--density-gap-md) var(--density-gap-lg); border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
 .topbar-range { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13.5px; margin-left: 6px; white-space: nowrap; }
 .board-switcher { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .board-switcher select { width: min(210px, 24vw); padding: 8px 30px 8px 10px; background: var(--surface-2); }
@@ -98,14 +100,14 @@ button:focus-visible, [role='button']:focus-visible {
 .activity-item h3 { margin-top: 3px; font-size: 14px; }
 .activity-item small, .activity-item time { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11.5px; }
 .activity-empty, .activity-loading { padding: 24px; text-align: center; color: var(--text-muted); }
-.board { display: flex; align-items: flex-start; gap: 14px; padding: 18px; overflow-x: auto; flex: 1; min-height: 0; }
+.board { display: flex; align-items: flex-start; gap: var(--density-gap-md); padding: var(--density-gap-lg); overflow-x: auto; flex: 1; min-height: 0; }
 
 /* ===================== GÜN KOLONU ===================== */
 
 .col {
   flex: 1 1 0; min-width: 0; align-self: flex-start; max-height: 100%;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 10px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-sm);
+  padding: var(--density-gap-sm); display: flex; flex-direction: column; gap: var(--density-gap-sm); box-shadow: var(--shadow-sm);
 }
 .col-head { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px; flex-shrink: 0; }
 .col-day { font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
@@ -507,14 +509,47 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
   .auth-card { padding: 22px; }
 }
 
+html[data-motion='reduce'] *,
+html[data-motion='reduce'] *::before,
+html[data-motion='reduce'] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  html:not([data-motion='full']) *,
+  html:not([data-motion='full']) *::before,
+  html:not([data-motion='full']) *::after {
     scroll-behavior: auto !important;
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
 }
+
+html[data-text-density='compact'] {
+  --density-body-font:13px; --density-control-height:34px;
+  --density-gap-sm:6px; --density-gap-md:9px; --density-gap-lg:14px;
+}
+
+html[data-text-density='comfortable'] {
+  --density-body-font:15.5px; --density-control-height:44px;
+  --density-gap-sm:10px; --density-gap-md:14px; --density-gap-lg:22px;
+}
+
+html[data-text-density='compact'] :is(.btn, input, textarea, select) { min-height: var(--density-control-height); }
+html[data-text-density='comfortable'] :is(.btn, input, textarea, select) {
+  min-height: var(--density-control-height);
+  font-size: 1em;
+}
+
+.settings-section { margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-lg); }
+.settings-section legend { padding: 0 6px; color: var(--text-muted); font-size: 12px; font-weight: 650; }
+.settings-section small { display: block; margin-top: 8px; color: var(--text-faint); }
+.settings-preferences { align-items: flex-start; }
+.settings-preferences > .field { flex: 1; min-width: 0; }
 
 /* ===================== HIZLI GEZME / SÜRÜKLEYEREK GEZİNME ===================== */
 
