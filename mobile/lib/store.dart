@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api/api_client.dart';
 import 'api/models.dart';
+import 'accessibility.dart';
 import 'cache.dart';
 import 'dates.dart';
 import 'notifications.dart';
@@ -21,8 +22,12 @@ class PlannerStore extends ChangeNotifier {
   static const _refreshTokenKey = 'planner_refresh_token';
   static const _boardKey = 'planner_active_board';
   static const _languageKey = 'easy_plan_language';
+  static const _motionPreferenceKey = 'easy_plan_motion_preference';
+  static const _textDensityKey = 'easy_plan_text_density';
 
   Locale appLocale = const Locale('tr');
+  MotionPreference motionPreference = MotionPreference.system;
+  TextDensity textDensity = TextDensity.standard;
 
   Future<void> setLanguage(String languageCode) async {
     if (languageCode != 'tr' && languageCode != 'en') return;
@@ -31,6 +36,23 @@ class PlannerStore extends ChangeNotifier {
     appLocale = next;
     notifyListeners();
     await _storage.write(key: _languageKey, value: languageCode);
+  }
+
+  Future<void> setMotionPreference(MotionPreference value) async {
+    if (motionPreference == value) return;
+    motionPreference = value;
+    notifyListeners();
+    await _storage.write(
+      key: _motionPreferenceKey,
+      value: value.storageValue,
+    );
+  }
+
+  Future<void> setTextDensity(TextDensity value) async {
+    if (textDensity == value) return;
+    textDensity = value;
+    notifyListeners();
+    await _storage.write(key: _textDensityKey, value: value.storageValue);
   }
 
   /// Emülatörde makinenin localhost'u 10.0.2.2'dir; masaüstünde doğrudan localhost.
@@ -153,6 +175,12 @@ class PlannerStore extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     final savedLanguage = await _storage.read(key: _languageKey);
+    motionPreference = motionPreferenceFromStorage(
+      await _storage.read(key: _motionPreferenceKey),
+    );
+    textDensity = textDensityFromStorage(
+      await _storage.read(key: _textDensityKey),
+    );
     final systemLanguage = PlatformDispatcher.instance.locale.languageCode;
     appLocale = Locale(
       savedLanguage == 'tr' || savedLanguage == 'en'

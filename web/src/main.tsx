@@ -5,6 +5,7 @@ import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import { installGlobalErrorHandlers, logger } from './lib/logger.ts';
 import { I18nProvider } from './lib/i18n.tsx';
+import { AccessibilityProvider } from './lib/accessibility.tsx';
 import './styles.css';
 
 installGlobalErrorHandlers();
@@ -25,11 +26,13 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <App />
-        </QueryClientProvider>
-      </ErrorBoundary>
+      <AccessibilityProvider>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <App />
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </AccessibilityProvider>
     </I18nProvider>
   </StrictMode>,
 );

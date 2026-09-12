@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app_logger.dart';
+import 'accessibility.dart';
 import 'pages/login_page.dart';
 import 'pages/planner_page.dart';
 import 'notifications.dart';
@@ -68,10 +69,25 @@ class PlannerApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        builder: (context, child) => AppLanguageScope(
-          locale: store.appLocale,
-          child: child ?? const SizedBox.shrink(),
-        ),
+        builder: (context, child) {
+          final media = MediaQuery.of(context);
+          final systemTextScale = media.textScaler.scale(1);
+          final effectiveTextScale =
+              (systemTextScale * store.textDensity.scaleFactor).clamp(.8, 3.2);
+          final disableAnimations = store.motionPreference.resolve(
+            systemReducedMotion: media.disableAnimations,
+          );
+          return AppLanguageScope(
+            locale: store.appLocale,
+            child: MediaQuery(
+              data: media.copyWith(
+                disableAnimations: disableAnimations,
+                textScaler: TextScaler.linear(effectiveTextScale),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
         home: Builder(builder: (context) {
           if (store.booting) {
             return const Scaffold(

@@ -24,6 +24,7 @@ import 'card_templates.dart';
 import 'data_transfer.dart';
 import 'boards.dart';
 import 'activity.dart';
+import 'accessibility_settings.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
 /// Telefonda tek gün + kaydırma, geniş ekranda kolonlar yan yana.
@@ -546,6 +547,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       await showActivityHistory(context, store: store);
                     case 'language':
                       await _selectLanguage();
+                    case 'accessibility':
+                      await showAccessibilitySettings(context, store: store);
                     case 'logout':
                       await store.logout();
                   }
@@ -567,6 +570,10 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     child: Text(strings.text('planner.activity')),
                   ),
                   PopupMenuItem(value: 'language', child: Text(strings.text('common.language'))),
+                  PopupMenuItem(
+                    value: 'accessibility',
+                    child: Text(strings.text('planner.accessibility')),
+                  ),
                   const PopupMenuDivider(),
                   PopupMenuItem(value: 'logout', child: Text(strings.text('planner.logout'))),
                 ],
@@ -585,11 +592,15 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   onSelect: (i) {
                     setState(() => _index = i);
                     if (!wide) {
-                      _pages.animateToPage(
-                        i,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOut,
-                      );
+                      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+                        _pages.jumpToPage(i);
+                      } else {
+                        _pages.animateToPage(
+                          i,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOut,
+                        );
+                      }
                     }
                   },
                   // Kartı şeritteki bir güne bırakmak onu o güne taşır.
@@ -852,11 +863,15 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
     final next = (_index + direction).clamp(0, store.days.length - 1);
     if (next == _index) return;
     setState(() => _index = next);
-    _pages.animateToPage(
-      next,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOut,
-    );
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _pages.jumpToPage(next);
+    } else {
+      _pages.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   /// "Hızlı gezme" açıkken fare tekerleği gün geçirir (bir tık = bir gün).
