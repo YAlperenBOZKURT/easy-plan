@@ -10,6 +10,7 @@ import { repo } from './repo.ts';
 import { parseTags } from './tags.ts';
 import { today } from './time.ts';
 import type { CardImageRow, CardRow, UserRow } from './types.ts';
+import { reminderPushPayload, sendPushToUser } from './push.ts';
 
 /**
  * Dakikada bir çalışan zamanlayıcı:
@@ -119,8 +120,10 @@ const attachmentsFor = (images: CardImageRow[]) =>
 /* ------------------------------------------------------------- hatırlatmalar */
 
 export async function processReminders(database: Db = db(), now = new Date()) {
-  // SMTP kapalıyken hatırlatmalar tüketilmez: kayıtlar bekler, mail günlüğü şişmez.
-  if (!config.mailEnabled) return { sent: 0, skipped: 0, missed: 0, due: 0, disabled: true };
+  // Hiçbir teslimat kanalı yoksa kayıtlar bekler; sonradan yapılandırma yapılabilir.
+  if (!config.mailEnabled && !config.webPushEnabled) {
+    return { sent: 0, pushed: 0, skipped: 0, missed: 0, due: 0, disabled: true };
+  }
 
   const due = database
     .prepare(
@@ -136,6 +139,7 @@ export async function processReminders(database: Db = db(), now = new Date()) {
       .run(nowIso(), status, id);
 
   let sent = 0;
+  let pushed = 0;
   let skipped = 0;
   let missed = 0;
 
@@ -164,22 +168,30 @@ export async function processReminders(database: Db = db(), now = new Date()) {
       continue;
     }
 
-    const images = store!.images.forCard(card.id);
     const label = offsetLabel(row.offset_minutes);
-    const result = await sendMail({
-      to: user.email,
-      subject: `⏰ ${label} kaldı · ${card.title || 'Planner'}`,
-      kind: 'reminder',
-      userId: user.id,
-      cardId: card.id,
-      html: layout(`${label} kaldı`, cardHtml(card, images, user.timezone)),
-      attachments: attachmentsFor(images),
-    });
-    mark(row.id, result.sent ? 'sent' : 'error');
-    if (result.sent) sent += 1;
+    let mailSent = false;
+    if (config.mailEnabled) {
+      const images = store!.images.forCard(card.id);
+      const result = await sendMail({
+        to: user.email,
+        subject: `⏰ ${label} kaldı · ${card.title || 'Easy Plan'}`,
+        kind: 'reminder',
+        userId: user.id,
+        cardId: card.id,
+        html: layout(`${label} kaldı`, cardHtml(card, images, user.timezone)),
+        attachments: attachmentsFor(images),
+      });
+      mailSent = result.sent;
+      if (mailSent) sent += 1;
+    }
+    const push = await sendPushToUser(database, user.id, reminderPushPayload(card, `${label} kaldı`));
+    pushed += push.sent;
+    const delivered = mailSent || push.sent > 0;
+    const unavailable = !config.mailEnabled && push.subscriptions === 0;
+    if (!unavailable) mark(row.id, delivered ? 'sent' : 'error');
   }
 
-  return { sent, skipped, missed, due: due.length };
+  return { sent, pushed, skipped, missed, due: due.length };
 }
 
 /* -------------------------------------------------------------- günlük özet */

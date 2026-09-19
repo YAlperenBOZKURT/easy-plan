@@ -1,0 +1,9 @@
+{
+  "name": "Easy Plan",
+  "short_name": "Easy Plan",
+  "description": "Self-hosted planning and reminders",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}

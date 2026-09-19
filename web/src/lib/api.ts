@@ -3,6 +3,12 @@ import { logger } from './logger.ts';
 
 const BASE = '/api/v1';
 
+export interface PushConfig {
+  enabled: boolean;
+  publicKey: string | null;
+  subscriptions: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -250,6 +256,17 @@ export const api = {
       entries: { id: string; kind: string; subject: string; status: string; error: string | null; created_at: string }[];
       mailEnabled: boolean;
     }>('/mail/log'),
+
+  /* web push */
+  pushConfig: () => request<PushConfig>('/push/config'),
+  subscribePush: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request<{ ok: true }>('/push/subscriptions', {
+      method: 'POST', body: JSON.stringify(subscription),
+    }),
+  unsubscribePush: (endpoint: string) =>
+    request<{ ok: true }>('/push/subscriptions', {
+      method: 'DELETE', body: JSON.stringify({ endpoint }),
+    }),
 
   /* yönetim */
   adminStats: () => request<AdminStats>('/admin/stats'),

@@ -240,6 +240,18 @@ const operations: Record<string, OperationDoc> = {
   'POST /api/v1/mail/test': { summary: 'Test e-postası gönderir', tag: 'Mail' },
   'GET /api/v1/mail/log': { summary: 'Kullanıcının e-posta geçmişini döndürür', tag: 'Mail' },
   'POST /api/v1/mail/run-scheduler': { summary: 'E-posta zamanlayıcısını tetikler', tag: 'Mail' },
+  'GET /api/v1/push/config': { summary: 'Web push yapılandırmasını ve abonelik durumunu döndürür', tag: 'Push' },
+  'POST /api/v1/push/subscriptions': {
+    summary: 'Tarayıcı push aboneliğini kaydeder', tag: 'Push',
+    body: object({
+      endpoint: string({ format: 'uri', maxLength: 2048 }),
+      keys: object({ p256dh: string({ maxLength: 512 }), auth: string({ maxLength: 512 }) }, ['p256dh', 'auth']),
+    }, ['endpoint', 'keys']),
+  },
+  'DELETE /api/v1/push/subscriptions': {
+    summary: 'Tarayıcı push aboneliğini kaldırır', tag: 'Push',
+    body: object({ endpoint: string({ format: 'uri', maxLength: 2048 }) }, ['endpoint']),
+  },
   'GET /api/v1/admin/stats': { summary: 'Yönetim istatistiklerini döndürür', tag: 'Admin' },
   'GET /api/v1/admin/users': { summary: 'Kullanıcıları listeler', tag: 'Admin' },
   'GET /api/v1/admin/invites': { summary: 'Aktif davetleri listeler', tag: 'Admin' },
@@ -317,6 +329,7 @@ export async function registerOpenApi(app: FastifyInstance, uiEnabled: boolean) 
         { name: 'Habits', description: 'Tekrarlanan davranışlar' },
         { name: 'Sync', description: 'Native istemci senkronizasyonu' },
         { name: 'Mail', description: 'E-posta ve hatırlatmalar' },
+        { name: 'Push', description: 'Web push bildirim abonelikleri' },
         { name: 'Admin', description: 'Yönetim işlemleri' },
       ],
       components: {

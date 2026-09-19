@@ -42,6 +42,9 @@ test('HTTP yüzeyi sağlık, hata ve OpenAPI sözleşmesini korur', async (t) =>
     assert.ok(document.paths['/api/v1/cards']?.get);
     assert.ok(document.paths['/api/v1/boards']?.get);
     assert.ok(document.paths['/api/v1/activity']?.get);
+    assert.ok(document.paths['/api/v1/push/config']?.get);
+    assert.ok(document.paths['/api/v1/push/subscriptions']?.post);
+    assert.ok(document.paths['/api/v1/push/subscriptions']?.delete);
     assert.deepEqual(
       document.paths['/api/v1/boards/{id}/members'].post.requestBody.content['application/json'].schema.properties.role.enum,
       ['editor', 'viewer'],

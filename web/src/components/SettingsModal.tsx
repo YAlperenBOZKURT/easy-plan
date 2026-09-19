@@ -5,6 +5,11 @@ import { formatDateTime } from '../lib/dates.ts';
 import type { User } from '../lib/types.ts';
 import { useI18n } from '../lib/i18n.tsx';
 import { useAccessibility } from '../lib/accessibility.tsx';
+import {
+  browserPushState,
+  disableBrowserPush,
+  enableBrowserPush,
+} from '../lib/pushNotifications.ts';
 
 export default function SettingsModal({ user, onClose }: { user: User; onClose: () => void }) {
   const { locale, setLocale, t } = useI18n();
@@ -24,6 +29,7 @@ export default function SettingsModal({ user, onClose }: { user: User; onClose: 
   }, [onClose]);
 
   const mailLog = useQuery({ queryKey: ['mailLog'], queryFn: api.mailLog });
+  const pushState = useQuery({ queryKey: ['browserPush'], queryFn: browserPushState });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -69,6 +75,28 @@ export default function SettingsModal({ user, onClose }: { user: User; onClose: 
           : t('settings.mailFailed'),
       );
       setNotice('');
+    },
+  });
+
+  const togglePush = useMutation({
+    mutationFn: async () => {
+      if (pushState.data?.status === 'enabled') await disableBrowserPush();
+      else await enableBrowserPush();
+    },
+    onSuccess: () => {
+      setNotice(
+        pushState.data?.status === 'enabled'
+          ? t('settings.pushDisabled')
+          : t('settings.pushEnabled'),
+      );
+      setError('');
+      queryClient.invalidateQueries({ queryKey: ['browserPush'] });
+    },
+    onError: (err) => {
+      const code = err instanceof Error ? err.message : 'unknown';
+      setError(code === 'push_denied' ? t('settings.pushDenied') : t('settings.pushFailed'));
+      setNotice('');
+      queryClient.invalidateQueries({ queryKey: ['browserPush'] });
     },
   });
 
@@ -149,6 +177,41 @@ export default function SettingsModal({ user, onClose }: { user: User; onClose: 
               </div>
             </div>
             <small>{t('settings.accessibilityHint')}</small>
+          </fieldset>
+
+          <fieldset className="settings-section">
+            <legend>{t('settings.notifications')}</legend>
+            <div className="row" style={{ alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{t('settings.pushTitle')}</div>
+                <small>
+                  {pushState.data?.status === 'enabled'
+                    ? t('settings.pushActive')
+                    : pushState.data?.status === 'server-disabled'
+                      ? t('settings.pushServerDisabled')
+                      : pushState.data?.status === 'unsupported'
+                        ? t('settings.pushUnsupported')
+                        : pushState.data?.status === 'denied'
+                          ? t('settings.pushDenied')
+                          : t('settings.pushHint')}
+                </small>
+              </div>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => togglePush.mutate()}
+                disabled={
+                  pushState.isLoading ||
+                  togglePush.isPending ||
+                  !pushState.data ||
+                  ['server-disabled', 'unsupported', 'denied'].includes(pushState.data.status)
+                }
+              >
+                {pushState.data?.status === 'enabled'
+                  ? t('settings.pushTurnOff')
+                  : t('settings.pushTurnOn')}
+              </button>
+            </div>
           </fieldset>
 
           <div className="row">

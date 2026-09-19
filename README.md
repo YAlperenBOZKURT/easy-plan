@@ -24,6 +24,7 @@ The project is designed for individuals, families, and small teams that want to 
 - **Multi-user isolation** — personal data stays isolated, while shared-board cards and private images are exposed only to explicitly authorized members.
 - **Invitation-based access** — administrators invite users; public registration is not exposed.
 - **Email reminders** — schedule card reminders and daily summaries through any SMTP provider.
+- **Web push reminders** — receive server-driven card notifications in subscribed browsers, even when the app is not open.
 - **Offline-first native client** — Flutter keeps a local SQLite cache and replays queued writes when connectivity returns.
 - **Responsive clients** — React powers the web UI; Flutter targets Android and Windows from a shared codebase.
 - **Operational visibility** — structured logs, request IDs, health checks, OpenAPI documentation, and test coverage are built in.
@@ -166,6 +167,9 @@ Copy `.env.example` and keep the resulting `.env` file outside version control.
 | `SMTP_USER` | No | SMTP account username. |
 | `SMTP_PASS` | No | SMTP password or provider-issued application password. |
 | `MAIL_FROM` | No | Sender identity, for example `Planner <no-reply@example.com>`. |
+| `VAPID_PUBLIC_KEY` | No | Public VAPID key used by browsers for web push subscriptions. |
+| `VAPID_PRIVATE_KEY` | No | Private VAPID key used by the server to sign web push messages. |
+| `VAPID_SUBJECT` | No | `mailto:` or HTTPS contact URI included in VAPID claims. |
 | `LOG_LEVEL` | No | Structured log level: `trace`, `debug`, `info`, `warn`, `error`, or `fatal`. |
 | `SLOW_REQUEST_MS` | No | Requests slower than this threshold emit a warning. |
 | `API_DOCS` | No | Enables Swagger UI. Keep it disabled on public production deployments unless required. |
@@ -249,6 +253,24 @@ MAIL_FROM=Planner <no-reply@example.com>
 ```
 
 Use an application password or dedicated SMTP credential instead of a personal account password. After configuration, send a test message from the application settings.
+
+## Web push notifications
+
+Generate one VAPID key pair and keep it stable for the lifetime of the installation:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Copy the generated values to `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`, then set
+`VAPID_SUBJECT` to a monitored `mailto:` address or public HTTPS URL. Restart the
+server and enable browser notifications from Settings on each device. Except for
+local development on `localhost`, browsers require the application to be served
+over HTTPS before service workers and push subscriptions are available.
+
+The public key is intentionally returned to authenticated web clients. Keep the
+private key secret and do not rotate the pair casually; browsers must subscribe
+again after a key change.
 
 ## Quality and testing
 

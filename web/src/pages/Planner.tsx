@@ -59,9 +59,20 @@ export default function Planner({ user }: { user: User }) {
   const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const today = todayKey();
+  const [notificationTarget, setNotificationTarget] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const day = params.get('day');
+    const cardId = params.get('card');
+    const boardId = params.get('board');
+    return {
+      day: day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null,
+      cardId,
+      boardId,
+    };
+  });
 
   /** Pencerenin ilk günü — varsayılan olarak bugün, oklarla birer gün kayar. */
-  const [anchor, setAnchor] = useState(today);
+  const [anchor, setAnchor] = useState(notificationTarget.day ?? today);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [draft, setDraft] = useState<CardDraft | null>(null);
   const [showHabits, setShowHabits] = useState(false);
@@ -73,7 +84,9 @@ export default function Planner({ user }: { user: User }) {
   const [showTransfer, setShowTransfer] = useState(false);
   const [showBoards, setShowBoards] = useState(false);
   const [activityCard, setActivityCard] = useState<Card | null | undefined>(undefined);
-  const [activeBoardId, setActiveBoardId] = useState(() => localStorage.getItem('easy-plan-board') ?? '');
+  const [activeBoardId, setActiveBoardId] = useState(
+    () => notificationTarget.boardId ?? localStorage.getItem('easy-plan-board') ?? '',
+  );
   const [filters, setFilters] = useState<CardFilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<PlannerView>('week');
   const [inspect, setInspect] = useState<Card | null>(null);
@@ -168,6 +181,14 @@ export default function Planner({ user }: { user: User }) {
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
+
+  useEffect(() => {
+    if (!notificationTarget.cardId || !cards.data) return;
+    const card = cards.data.cards.find((candidate) => candidate.id === notificationTarget.cardId);
+    if (card) setInspect(card);
+    setNotificationTarget((current) => ({ ...current, cardId: null }));
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [cards.data, notificationTarget.cardId]);
 
   const tagsQuery = useQuery({ queryKey: ['tags', activeBoard?.id], queryFn: api.tags, enabled: Boolean(activeBoard) });
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);

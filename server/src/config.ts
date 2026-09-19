@@ -70,6 +70,15 @@ export const config = {
     return Boolean(this.smtp.host && this.smtp.user && this.smtp.pass && this.smtp.from);
   },
 
+  webPush: {
+    publicKey: process.env.VAPID_PUBLIC_KEY ?? '',
+    privateKey: process.env.VAPID_PRIVATE_KEY ?? '',
+    subject: process.env.VAPID_SUBJECT ?? 'mailto:admin@example.com',
+  },
+  get webPushEnabled() {
+    return Boolean(this.webPush.publicKey && this.webPush.privateKey && this.webPush.subject);
+  },
+
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '')
     .split(',')
     .map((s) => s.trim())

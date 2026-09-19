@@ -125,6 +125,17 @@ export interface ReminderRow {
   status: string | null;
 }
 
+export interface PushSubscriptionRow {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CardTemplateRow {
   id: string;
   user_id: string;
