@@ -20,6 +20,7 @@ import { habitRoutes } from './routes/habits.ts';
 import { imageRoutes } from './routes/images.ts';
 import { mailRoutes } from './routes/mail.ts';
 import { syncRoutes } from './routes/sync.ts';
+import { pushRoutes } from './routes/push.ts';
 import { registerOpenApi } from './openapi.ts';
 import { loggerOptions, registerObservability, requestId } from './observability.ts';
 import { registerSecurity } from './security.ts';
@@ -67,6 +68,7 @@ export async function buildServer(options: { logger?: boolean; docs?: boolean } 
   await app.register(habitRoutes, { prefix: '/api/v1' });
   await app.register(mailRoutes, { prefix: '/api/v1' });
   await app.register(syncRoutes, { prefix: '/api/v1' });
+  await app.register(pushRoutes, { prefix: '/api/v1' });
 
   /**
    * Görseller oturum arkasında ve sahiplik kontrollü servis edilir: URL'i bilmek
