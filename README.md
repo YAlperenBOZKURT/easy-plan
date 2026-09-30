@@ -204,6 +204,13 @@ The API origin is fixed at build/run time and cannot be changed from the login s
 
 The Flutter client stores cards in a local SQLite database and synchronizes through `GET /api/v1/changes?since=<timestamp>`. Offline mutations are queued and replayed in order after connectivity returns. Deletions are propagated as tombstones, and stale writes receive the current server record with HTTP `409`.
 
+Card mutations enter the persistent queue before delivery. Failed requests remain
+queued, and replay pauses at the first failure so dependent writes retain their
+order. While writes are pending, range loads and search use the local cache;
+server refreshes cannot overwrite pending edits or advance the sync cursor.
+Rejected requests display an error and remain queued; manual queue cancellation
+and conflict-resolution controls are planned in the next reliability step.
+
 Checklist items are part of the card aggregate, so edits are saved atomically and follow the same offline queue and delta-sync flow as the rest of the card.
 
 The native client stores short-lived access and rotating refresh JWTs through `flutter_secure_storage`. After an access token expires, the client rotates the refresh token, persists the replacement pair, and retries the original request once. The web client follows the same rotation flow while keeping both JWTs in JavaScript-inaccessible HTTP-only cookies.

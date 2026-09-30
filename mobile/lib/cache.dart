@@ -88,6 +88,45 @@ class Cache {
     await batch.commit(noResult: true);
   }
 
+  /// Sunucu kopyası ve senkron imleci yalnızca kuyruk boşken birlikte uygulanır.
+  /// Kontrol ve yazmalar aynı transaction'dadır; yeni bir yerel yazma araya
+  /// girip henüz gönderilmemiş kartın eski sunucu sürümüyle ezilmesine yol açmaz.
+  Future<bool> applyServerChanges(
+    Iterable<PlannerCard> cards, {
+    Iterable<String> deletions = const [],
+    String? serverTime,
+  }) async {
+    final db = await _open();
+    if (db == null) return true;
+    return db.transaction((transaction) async {
+      final pending = await transaction.rawQuery(
+        'SELECT COUNT(*) AS n FROM queue',
+      );
+      if ((pending.first['n'] as int) > 0) return false;
+      final batch = transaction.batch();
+      for (final card in cards) {
+        batch.insert('cards', {
+          'id': card.id,
+          'day': card.day,
+          'sort_index': card.sortIndex,
+          'updated_at': card.updatedAt,
+          'json': jsonEncode(card.toJson()),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final id in deletions) {
+        batch.delete('cards', where: 'id = ?', whereArgs: [id]);
+      }
+      if (serverTime != null) {
+        batch.insert('meta', {
+          'key': 'last_sync',
+          'value': serverTime,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+      return true;
+    });
+  }
+
   Future<void> removeCards(Iterable<String> ids) async {
     final db = await _open();
     if (db == null || ids.isEmpty) return;
@@ -204,7 +243,8 @@ class Cache {
     Map<String, dynamic>? body,
   ) async {
     final db = await _open();
-    await db?.insert('queue', {
+    if (db == null) throw StateError('Offline write queue is unavailable.');
+    await db.insert('queue', {
       'method': method,
       'path': path,
       'body': body == null ? null : jsonEncode(body),
