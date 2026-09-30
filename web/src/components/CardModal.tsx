@@ -10,9 +10,11 @@ import {
 } from '../lib/types.ts';
 import { dayName, shortDate } from '../lib/dates.ts';
 import ReminderPicker from './ReminderPicker.tsx';
-import { normalizeChecklist } from '../lib/checklist.ts';
+import { isChecklistComplete, normalizeChecklist } from '../lib/checklist.ts';
 import { deadlineFromInput, deadlineToInput } from '../lib/deadline.ts';
 import TagPicker from './TagPicker.tsx';
+import CardConflictPanel from './CardConflictPanel.tsx';
+import { conflictingCard } from '../lib/conflicts.ts';
 
 export interface CardDraft {
   card?: Card;
@@ -35,6 +37,9 @@ export default function CardModal({
   onSaved: () => void;
 }) {
   const existing = draft.card;
+  const [baseCard, setBaseCard] = useState(existing);
+  const [baseVersion, setBaseVersion] = useState(existing?.updatedAt);
+  const [conflict, setConflict] = useState<Card | null>(null);
   const [day, setDay] = useState(existing?.day ?? draft.day);
   const [title, setTitle] = useState(existing?.title ?? '');
   const [note, setNote] = useState(existing?.note ?? '');
@@ -132,33 +137,45 @@ export default function CardModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  async function save() {
+  const payload = () => ({
+    day, title: title.trim(), note: note.trim(), startTime: startTime || null,
+    endTime: endTime || null, color, priority, deadlineAt: deadlineFromInput(deadline),
+    tags, reminders, checklist: normalizeChecklist(checklist),
+    ...(!existing && selectedTemplate ? { templateId: selectedTemplate } : {}),
+    ...(resetOrder ? { manualSort: false } : {}),
+  });
+
+  const useServer = () => {
+    if (!conflict) return;
+    setDay(conflict.day); setTitle(conflict.title); setNote(conflict.note);
+    setStartTime(conflict.startTime ?? ''); setEndTime(conflict.endTime ?? '');
+    setColor(conflict.color); setPriority(conflict.priority);
+    setDeadline(deadlineToInput(conflict.deadlineAt)); setTags(conflict.tags);
+    setReminders(conflict.reminders); setChecklist(conflict.checklist);
+    setImages(conflict.images); setPending([]); setResetOrder(false);
+    setBaseVersion(conflict.updatedAt); setConflict(null); setError('');
+    setBaseCard(conflict);
+    onSaved();
+  };
+
+  async function save(version = baseVersion) {
     setBusy(true);
     setError('');
     try {
-      const payload = {
-        day,
-        title: title.trim(),
-        note: note.trim(),
-        startTime: startTime || null,
-        endTime: endTime || null,
-        color,
-        priority,
-        deadlineAt: deadlineFromInput(deadline),
-        tags,
-        reminders,
-        checklist: normalizeChecklist(checklist),
-        ...(!existing && selectedTemplate ? { templateId: selectedTemplate } : {}),
-        ...(resetOrder ? { manualSort: false } : {}),
-      };
       const saved = existing
-        ? (await api.updateCard(existing.id, payload)).card
-        : (await api.createCard(payload)).card;
+        ? (await api.updateCard(existing.id, { ...payload(), updatedAt: version })).card
+        : (await api.createCard(payload())).card;
+      // A failed image upload must not make a retry use the pre-save version.
+      setBaseVersion(saved.updatedAt);
+      setBaseCard(saved);
+      setConflict(null);
       if (pending.length > 0) await api.uploadImages(saved.id, pending);
       onSaved();
       onClose();
-    } catch {
-      setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.');
+    } catch (error) {
+      const current = conflictingCard(error);
+      if (current) { setConflict(current); setError(''); }
+      else setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.');
       setBusy(false);
     }
   }
@@ -373,7 +390,7 @@ export default function CardModal({
 
           <ReminderPicker value={reminders} onChange={setReminders} />
 
-          {existing?.manualSort && (
+          {baseCard?.manualSort && (
             <label className="row" style={{ cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -449,10 +466,14 @@ export default function CardModal({
           </div>
 
           {error && <p className="error-text" role="alert">{error}</p>}
+          {baseCard && conflict && <CardConflictPanel
+            local={{ ...baseCard, ...payload(), done: normalizeChecklist(checklist).length > 0 ? isChecklistComplete(normalizeChecklist(checklist)) : baseCard.done }} server={conflict} busy={busy}
+            onKeep={() => save(conflict.updatedAt)} onUseServer={useServer}
+          />}
         </div>
 
         <div className="modal-foot">
-          <button className="btn btn-primary" onClick={save} disabled={busy}>
+          <button className="btn btn-primary" onClick={() => save()} disabled={busy || conflict !== null}>
             {busy ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
           <button className="btn" onClick={onClose}>

@@ -157,7 +157,7 @@ export async function cardTemplateRoutes(app: FastifyInstance) {
       });
       const images = store.images.cloneForCard(card.id, store.templates.images(template.id));
       applyReminders(store, card, req.user!, dto.reminders);
-      return reply.code(201).send({ card: cardDto(card, images, store.reminders.forCard(card.id)) });
+      return reply.code(201).send({ card: cardDto(store.cards.get(card.id)!, images, store.reminders.forCard(card.id)) });
     },
   );
 

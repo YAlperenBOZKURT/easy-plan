@@ -11,6 +11,8 @@ import 'cache.dart';
 import 'dates.dart';
 import 'notifications.dart';
 import 'tags.dart';
+import 'sync_queue.dart';
+import 'localization.dart';
 
 /// Uygulama durumu. Ek paket kullanmadan ChangeNotifier + ListenableBuilder.
 class PlannerStore extends ChangeNotifier {
@@ -73,6 +75,7 @@ class PlannerStore extends ChangeNotifier {
 
   /// Gönderilmeyi bekleyen çevrimdışı değişiklik sayısı.
   int pendingWrites = 0;
+  List<PendingWrite> pendingQueue = const [];
 
   Timer? _autoSync;
   Future<bool>? _queueFlushInFlight;
@@ -208,7 +211,8 @@ class PlannerStore extends ChangeNotifier {
     if (savedRefreshToken != null) {
       // Önce yerel kopya: internet olmasa da takvim anında görünür.
       await _loadFromCache();
-      pendingWrites = await Cache.instance.pendingCount();
+      pendingQueue = await Cache.instance.pending();
+      pendingWrites = pendingQueue.length;
 
       try {
         user = await api.me();
@@ -282,6 +286,7 @@ class PlannerStore extends ChangeNotifier {
     activeBoard = null;
     offline = false;
     pendingWrites = 0;
+    pendingQueue = const [];
     _byDay.clear();
     notifyListeners();
   }
@@ -440,8 +445,18 @@ class PlannerStore extends ChangeNotifier {
         final queued = await Cache.instance.pending();
         if (queued.isEmpty) return true;
         final item = queued.first;
+        if (item.conflict) {
+          offline = false;
+          return false;
+        }
+        PlannerCard? saved;
         try {
-          await api.raw(item.method, item.path, body: item.body);
+          final result = await api.raw(item.method, item.path, body: item.body);
+          if (result is Map && result['card'] is Map) {
+            saved = PlannerCard.fromJson(
+              Map<String, dynamic>.from(result['card'] as Map),
+            );
+          }
         } on ApiException catch (e) {
           // Yanıt kaybolmuş olabilir: oluşturma/silme zaten uygulanmışsa
           // aynı kimlikle tekrar gönderilen işlem tamamlanmış sayılır.
@@ -457,20 +472,84 @@ class PlannerStore extends ChangeNotifier {
               e.statusCode == 404 &&
               e.code == 'not_found';
           if (!alreadyCreated && !alreadyDeleted) {
-            offline = true;
-            error =
-                'Değişiklikler gönderilemedi (${e.code}); kuyrukta korunuyor.';
+            await Cache.instance.recordFailure(item.id, {
+              'error': e.code,
+              ...?e.payload,
+            });
+            offline = e.code != 'stale_write';
+            error = AppStrings(appLocale).text(
+              e.code == 'stale_write' ? 'conflict.title' : 'conflict.failed',
+            );
             return false;
           }
+          if (alreadyCreated) {
+            // Recover the acknowledged version before replaying dependent edits.
+            try {
+              final result = await api.raw('GET', '/cards/${item.cardId}');
+              saved = PlannerCard.fromJson(
+                Map<String, dynamic>.from(result['card'] as Map),
+              );
+            } catch (_) {
+              offline = true;
+              return false;
+            }
+          }
         } catch (_) {
+          await Cache.instance.recordFailure(item.id, {
+            'error': 'network_error',
+          });
           offline = true;
           return false;
         }
-        await Cache.instance.dequeue(item.id);
+        await Cache.instance.completeWrite(item, saved);
       }
     } finally {
-      pendingWrites = await Cache.instance.pendingCount();
+      pendingQueue = await Cache.instance.pending();
+      pendingWrites = pendingQueue.length;
     }
+  }
+
+  Future<void> keepLocalWrite(int id) async {
+    if (boardReadOnly) return;
+    await _resolveQueuedWrite(id, discard: false);
+    await syncNow();
+    await loadRange();
+  }
+
+  Future<void> discardCardWrites(int id) async {
+    await _resolveQueuedWrite(id, discard: true);
+    await syncNow();
+    await loadRange();
+  }
+
+  Future<void> _resolveQueuedWrite(int id, {required bool discard}) async {
+    while (_queueFlushInFlight != null) {
+      await _queueFlushInFlight;
+    }
+    // Reserve the replay lock before the next async boundary. Automatic sync
+    // must not deliver a write while a user's resolution is changing the queue.
+    final operation = _applyQueueDecision(id, discard: discard);
+    _queueFlushInFlight = operation.whenComplete(() {
+      _queueFlushInFlight = null;
+    });
+    await _queueFlushInFlight;
+  }
+
+  Future<bool> _applyQueueDecision(int id, {required bool discard}) async {
+    final item = (await Cache.instance.pending())
+        .where((item) => item.id == id)
+        .firstOrNull;
+    if (item == null) return false;
+    if (discard) {
+      _localWriteRevision += 1;
+      await Cache.instance.discardCardWrites(item);
+      error = null;
+      await _loadFromCache();
+    } else {
+      if (!item.conflict) return false;
+      await Cache.instance.resolveConflict(item);
+    }
+    return _replayQueue();
   }
 
   /* --------------------------------------------------------- kartlar */
@@ -574,7 +653,8 @@ class PlannerStore extends ChangeNotifier {
       optimistic: () => _replaceLocal(updated),
       method: 'PATCH',
       path: '/cards/${card.id}',
-      body: {'done': updated.done},
+      baseCard: card,
+      body: {'done': updated.done, 'updatedAt': card.updatedAt},
     );
   }
 
@@ -590,17 +670,18 @@ class PlannerStore extends ChangeNotifier {
       checklist: checklist,
       done: done,
       templateId: null,
-      updatedAt: DateTime.now().toUtc().toIso8601String(),
     );
     final body = <String, dynamic>{
       'checklist': checklist.map((item) => item.toJson()).toList(),
       'done': done,
+      'updatedAt': card.updatedAt,
     };
     await _write(
       optimistic: () => _replaceLocal(updated),
       method: 'PATCH',
       path: '/cards/${card.id}',
       body: body,
+      baseCard: card,
     );
   }
 
@@ -610,6 +691,7 @@ class PlannerStore extends ChangeNotifier {
       optimistic: () => _removeLocal(card.id),
       method: 'DELETE',
       path: '/cards/${card.id}',
+      baseCard: card,
     );
   }
 
@@ -619,6 +701,7 @@ class PlannerStore extends ChangeNotifier {
       optimistic: () => _removeLocal(card.id),
       method: 'POST',
       path: '/cards/${card.id}/archive',
+      baseCard: card,
     );
   }
 
@@ -700,6 +783,7 @@ class PlannerStore extends ChangeNotifier {
       if (existing == null && templateId != null) 'templateId': templateId,
       if (checklist.isNotEmpty) 'done': isChecklistComplete(checklist),
       if (resetOrder) 'manualSort': false,
+      if (existing != null) 'updatedAt': existing.updatedAt,
     };
     // Çevrimdışı oluşturulan kart için kimliği istemci üretir; sunucu kabul ediyor.
     final id = existing?.id ?? newUuid();
@@ -725,7 +809,7 @@ class PlannerStore extends ChangeNotifier {
                   templateId: templateId,
                   reminders: const [],
                   images: const [],
-                  updatedAt: DateTime.now().toIso8601String(),
+                  updatedAt: '',
                 ))
             .copyWith(
               day: day,
@@ -743,16 +827,17 @@ class PlannerStore extends ChangeNotifier {
                   ? isChecklistComplete(checklist)
                   : null,
               templateId: existing == null ? templateId : null,
-              updatedAt: DateTime.now().toIso8601String(),
             );
 
+    final optimisticCard = PlannerCard.fromJson({...local.toJson(), ...body});
     await _write(
-      optimistic: () => _replaceLocal(local),
+      optimistic: () => _replaceLocal(optimisticCard),
       method: existing == null ? 'POST' : 'PATCH',
       path: existing == null ? '/cards' : '/cards/$id',
       body: body,
+      baseCard: existing,
     );
-    return local;
+    return optimisticCard;
   }
 
   /// Karta görsel yükler; kart yeni oluşturulduysa kaydedildikten sonra çağrılır.
@@ -802,7 +887,13 @@ class PlannerStore extends ChangeNotifier {
           _replaceLocal(card.copyWith(day: day, templateId: null)),
       method: 'PATCH',
       path: '/cards/${card.id}/move',
-      body: {'day': day, 'beforeId': beforeId, 'afterId': afterId},
+      body: {
+        'day': day,
+        'beforeId': beforeId,
+        'afterId': afterId,
+        'updatedAt': card.updatedAt,
+      },
+      baseCard: card,
     );
   }
 
@@ -830,9 +921,10 @@ class PlannerStore extends ChangeNotifier {
     required String method,
     required String path,
     Map<String, dynamic>? body,
+    PlannerCard? baseCard,
   }) async {
     _localWriteRevision += 1;
-    await Cache.instance.enqueue(method, path, body);
+    await Cache.instance.enqueue(method, path, body, baseCard: baseCard);
     await optimistic();
     pendingWrites = await Cache.instance.pendingCount();
     error = null;

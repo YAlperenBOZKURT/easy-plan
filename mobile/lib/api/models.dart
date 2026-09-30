@@ -428,10 +428,11 @@ class PlannerUser {
 
 /// Sunucunun döndürdüğü hata kodlarını taşır (invalid_credentials, out_of_window…).
 class ApiException implements Exception {
-  ApiException(this.statusCode, this.code, {this.requestId});
+  ApiException(this.statusCode, this.code, {this.requestId, this.payload});
   final int statusCode;
   final String code;
   final String? requestId;
+  final Map<String, dynamic>? payload;
 
   @override
   String toString() =>

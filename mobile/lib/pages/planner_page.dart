@@ -25,6 +25,7 @@ import 'data_transfer.dart';
 import 'boards.dart';
 import 'activity.dart';
 import 'accessibility_settings.dart';
+import 'sync_queue.dart';
 
 /// Ana ekran: bugünden başlayan 7 gün.
 /// Telefonda tek gün + kaydırma, geniş ekranda kolonlar yan yana.
@@ -66,7 +67,10 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
       builder: (dialogContext) => SimpleDialog(
         title: Text(strings.text('common.language')),
         children: [
-          for (final option in const [('tr', 'language.turkish'), ('en', 'language.english')])
+          for (final option in const [
+            ('tr', 'language.turkish'),
+            ('en', 'language.english'),
+          ])
             SimpleDialogOption(
               onPressed: () => Navigator.pop(dialogContext, option.$1),
               child: Row(
@@ -423,8 +427,15 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   Flexible(
                     child: Text(
                       _view == PlannerViewMode.week
-                          ? rangeLabel(store.from, store.to, languageCode: strings.locale.languageCode)
-                          : monthLabel(store.anchor, languageCode: strings.locale.languageCode),
+                          ? rangeLabel(
+                              store.from,
+                              store.to,
+                              languageCode: strings.locale.languageCode,
+                            )
+                          : monthLabel(
+                              store.anchor,
+                              languageCode: strings.locale.languageCode,
+                            ),
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13.5, color: t.textMuted),
                     ),
@@ -435,7 +446,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
             actions: [
               PopupMenuButton<String>(
                 icon: const Icon(Icons.dashboard_outlined),
-                tooltip: store.activeBoard?.name ?? strings.text('planner.boards'),
+                tooltip:
+                    store.activeBoard?.name ?? strings.text('planner.boards'),
                 onSelected: (value) async {
                   if (value == '__manage') {
                     await showBoardManager(context, store: store);
@@ -554,13 +566,22 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   }
                 },
                 itemBuilder: (_) => [
-                  PopupMenuItem(value: 'refresh', child: Text(strings.text('planner.refresh'))),
-                  PopupMenuItem(value: 'sync', child: Text(strings.text('planner.sync'))),
+                  PopupMenuItem(
+                    value: 'refresh',
+                    child: Text(strings.text('planner.refresh')),
+                  ),
+                  PopupMenuItem(
+                    value: 'sync',
+                    child: Text(strings.text('planner.sync')),
+                  ),
                   PopupMenuItem(
                     value: 'lifecycle',
                     child: Text(strings.text('planner.archiveTrash')),
                   ),
-                  PopupMenuItem(value: 'templates', child: Text(strings.text('planner.templates'))),
+                  PopupMenuItem(
+                    value: 'templates',
+                    child: Text(strings.text('planner.templates')),
+                  ),
                   PopupMenuItem(
                     value: 'transfer',
                     child: Text(strings.text('planner.transfer')),
@@ -569,13 +590,19 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                     value: 'activity',
                     child: Text(strings.text('planner.activity')),
                   ),
-                  PopupMenuItem(value: 'language', child: Text(strings.text('common.language'))),
+                  PopupMenuItem(
+                    value: 'language',
+                    child: Text(strings.text('common.language')),
+                  ),
                   PopupMenuItem(
                     value: 'accessibility',
                     child: Text(strings.text('planner.accessibility')),
                   ),
                   const PopupMenuDivider(),
-                  PopupMenuItem(value: 'logout', child: Text(strings.text('planner.logout'))),
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: Text(strings.text('planner.logout')),
+                  ),
                 ],
               ),
               const SizedBox(width: 6),
@@ -592,7 +619,8 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   onSelect: (i) {
                     setState(() => _index = i);
                     if (!wide) {
-                      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+                      if (MediaQuery.maybeOf(context)?.disableAnimations ??
+                          false) {
                         _pages.jumpToPage(i);
                       } else {
                         _pages.animateToPage(
@@ -634,7 +662,7 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                   ),
                 ),
               // Ağ yokken yerel kopyayla çalışıldığını açıkça söyle.
-              if (store.offline)
+              if (store.offline || store.pendingWrites > 0)
                 Container(
                   width: double.infinity,
                   color: t.cardColor('amber').withValues(alpha: .14),
@@ -653,12 +681,28 @@ class _PlannerPageState extends State<PlannerPage> with WidgetsBindingObserver {
                       Expanded(
                         child: Text(
                           store.pendingWrites > 0
-                              ? 'Çevrimdışı · ${store.pendingWrites} değişiklik bağlantı gelince gönderilecek'
+                              ? '${AppStrings.of(context).text('conflict.queue')} · ${store.pendingWrites}'
                               : 'Çevrimdışı · yerel kopya gösteriliyor',
                           style: TextStyle(
                             fontSize: 12.5,
                             color: t.cardColor('amber'),
                           ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: store.pendingWrites == 0
+                            ? null
+                            : () => showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                constraints: BoxConstraints(
+                                  maxHeight:
+                                      MediaQuery.sizeOf(context).height * .85,
+                                ),
+                                builder: (_) => SyncQueueSheet(store: store),
+                              ),
+                        child: Text(
+                          AppStrings.of(context).text('conflict.queue'),
                         ),
                       ),
                       TextButton(
@@ -1212,7 +1256,8 @@ class _DayStrip extends StatelessWidget {
                   return Semantics(
                     button: true,
                     selected: i == activeIndex,
-                    label: '${dayNameShort(days[i], languageCode: context.strings.locale.languageCode)}, ${dayNumber(days[i])}',
+                    label:
+                        '${dayNameShort(days[i], languageCode: context.strings.locale.languageCode)}, ${dayNumber(days[i])}',
                     child: InkWell(
                       onTap: () => onSelect(i),
                       borderRadius: BorderRadius.circular(R.md),
@@ -1244,7 +1289,8 @@ class _DayStrip extends StatelessWidget {
                             Text(
                               dayNameShort(
                                 days[i],
-                                languageCode: context.strings.locale.languageCode,
+                                languageCode:
+                                    context.strings.locale.languageCode,
                               ).toUpperCase(),
                               style: TextStyle(
                                 fontSize: 10.5,

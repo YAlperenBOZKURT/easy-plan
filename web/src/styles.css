@@ -1196,3 +1196,10 @@ html[data-text-density='comfortable'] :is(.btn, input, textarea, select) {
   .lifecycle-card { align-items: stretch; flex-direction: column; }
   .lifecycle-actions { justify-content: flex-end; }
 }
+
+.card-conflict { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.card-conflict h3 { margin-top: 0; }
+.card-conflict .row { flex-wrap: wrap; margin-top: 16px; }
+.conflict-table-wrap { overflow-x: auto; }
+.card-conflict table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.card-conflict th, .card-conflict td { padding: 8px; text-align: left; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; border-bottom: 1px solid var(--border); }

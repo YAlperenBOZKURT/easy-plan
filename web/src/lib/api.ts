@@ -187,7 +187,7 @@ export const api = {
   restoreCard: (id: string) => request<{ card: Card }>(`/cards/${id}/restore`, { method: 'POST' }),
   permanentlyDeleteCard: (id: string) =>
     request<{ ok: true }>(`/cards/${id}/permanent`, { method: 'DELETE' }),
-  moveCard: (id: string, body: { day: string; beforeId?: string | null; afterId?: string | null }) =>
+  moveCard: (id: string, body: { day: string; beforeId?: string | null; afterId?: string | null; updatedAt?: string }) =>
     request<{ card: Card }>(`/cards/${id}/move`, { method: 'PATCH', body: JSON.stringify(body) }),
   duplicateCard: (id: string, day?: string) =>
     request<{ card: Card }>(`/cards/${id}/duplicate`, {

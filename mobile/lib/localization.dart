@@ -13,6 +13,35 @@ class AppStrings {
   );
 
   static const _tr = <String, String>{
+    'conflict.title': 'Kart başka bir yerde değişti',
+    'conflict.hint':
+        'Değişikliklerin korunuyor. Kaydetmek için güncel sürümü karşılaştırıp bir seçim yap.',
+    'conflict.local': 'Senin değişikliklerin',
+    'conflict.server': 'Sunucudaki sürüm',
+    'conflict.keep': 'Benim değişikliklerimi kaydet',
+    'conflict.useServer': 'Sunucudaki sürümü kullan',
+    'conflict.retry': 'Yeniden dene',
+    'conflict.queue': 'Bekleyen değişiklikler',
+    'conflict.cancel': 'Bu kartın bekleyen değişikliklerini iptal et',
+    'conflict.cancelHint':
+        'Bu karta ait tüm bekleyen değişiklikler silinecek. Devam edilsin mi?',
+    'conflict.failed': 'Gönderilemedi; değişikliklerin korunuyor.',
+    'conflict.pending': 'Gönderilmeyi bekliyor',
+    'conflict.done': 'Tamamlandı',
+    'conflict.open': 'Tamamlanmadı',
+    'conflict.titleField': 'Başlık',
+    'conflict.note': 'Not',
+    'conflict.day': 'Gün',
+    'conflict.time': 'Saat',
+    'conflict.color': 'Renk',
+    'conflict.priority': 'Öncelik',
+    'conflict.deadline': 'Son tarih',
+    'conflict.tags': 'Etiketler',
+    'conflict.checklist': 'Kontrol listesi',
+    'conflict.reminders': 'Hatırlatmalar (dakika)',
+    'conflict.state': 'Durum',
+    'conflict.move':
+        'Kartı {day} gününe ve seçtiğin sıraya taşıma isteği korunuyor.',
     'common.close': 'Kapat',
     'common.language': 'Dil',
     'common.loading': 'Yükleniyor…',
@@ -51,7 +80,8 @@ class AppStrings {
     'accessibility.density.compact': 'Kompakt',
     'accessibility.density.standard': 'Standart',
     'accessibility.density.comfortable': 'Büyük ve rahat',
-    'accessibility.hint': 'Değişiklikler anında uygulanır ve bu cihazda saklanır.',
+    'accessibility.hint':
+        'Değişiklikler anında uygulanır ve bu cihazda saklanır.',
     'card.inspect': 'İncele',
     'card.untitled': '(başlıksız)',
     'card.tags': 'Etiketler',
@@ -115,6 +145,35 @@ class AppStrings {
   };
 
   static const _en = <String, String>{
+    'conflict.title': 'This card changed elsewhere',
+    'conflict.hint':
+        'Your changes are preserved. Compare them with the current version before saving.',
+    'conflict.local': 'Your changes',
+    'conflict.server': 'Server version',
+    'conflict.keep': 'Save my changes',
+    'conflict.useServer': 'Use server version',
+    'conflict.retry': 'Retry',
+    'conflict.queue': 'Pending changes',
+    'conflict.cancel': 'Cancel all pending changes to this card',
+    'conflict.cancelHint':
+        'All pending changes to this card will be removed. Continue?',
+    'conflict.failed': 'Could not send; your changes are preserved.',
+    'conflict.pending': 'Waiting to send',
+    'conflict.done': 'Completed',
+    'conflict.open': 'Incomplete',
+    'conflict.titleField': 'Title',
+    'conflict.note': 'Note',
+    'conflict.day': 'Day',
+    'conflict.time': 'Time',
+    'conflict.color': 'Color',
+    'conflict.priority': 'Priority',
+    'conflict.deadline': 'Deadline',
+    'conflict.tags': 'Tags',
+    'conflict.checklist': 'Checklist',
+    'conflict.reminders': 'Reminders (minutes)',
+    'conflict.state': 'Status',
+    'conflict.move':
+        'Your request to move the card to {day} and the chosen position is preserved.',
     'common.close': 'Close',
     'common.language': 'Language',
     'common.loading': 'Loading…',
@@ -153,7 +212,8 @@ class AppStrings {
     'accessibility.density.compact': 'Compact',
     'accessibility.density.standard': 'Standard',
     'accessibility.density.comfortable': 'Large and comfortable',
-    'accessibility.hint': 'Changes apply immediately and are stored on this device.',
+    'accessibility.hint':
+        'Changes apply immediately and are stored on this device.',
     'card.inspect': 'View card',
     'card.untitled': '(untitled)',
     'card.tags': 'Tags',
@@ -232,7 +292,8 @@ class AppLanguageScope extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<AppLanguageScope>();
 
   @override
-  bool updateShouldNotify(AppLanguageScope oldWidget) => locale != oldWidget.locale;
+  bool updateShouldNotify(AppLanguageScope oldWidget) =>
+      locale != oldWidget.locale;
 }
 
 extension AppStringsContext on BuildContext {

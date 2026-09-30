@@ -129,7 +129,12 @@ class ApiClient {
           'requestId': serverRequestId,
         },
       );
-      throw ApiException(response.statusCode, code, requestId: serverRequestId);
+      throw ApiException(
+        response.statusCode,
+        code,
+        requestId: serverRequestId,
+        payload: decoded is Map<String, dynamic> ? decoded : null,
+      );
     }
     return decoded;
   }
