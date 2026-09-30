@@ -42,10 +42,7 @@ class PlannerStore extends ChangeNotifier {
     if (motionPreference == value) return;
     motionPreference = value;
     notifyListeners();
-    await _storage.write(
-      key: _motionPreferenceKey,
-      value: value.storageValue,
-    );
+    await _storage.write(key: _motionPreferenceKey, value: value.storageValue);
   }
 
   Future<void> setTextDensity(TextDensity value) async {
@@ -78,6 +75,9 @@ class PlannerStore extends ChangeNotifier {
   int pendingWrites = 0;
 
   Timer? _autoSync;
+  Future<bool>? _queueFlushInFlight;
+  Future<void>? _syncInFlight;
+  int _localWriteRevision = 0;
 
   /// Başka cihazdaki değişiklikler kendiliğinden gelsin diye düzenli senkron.
   void startAutoSync({Duration every = const Duration(seconds: 20)}) {
@@ -392,19 +392,35 @@ class PlannerStore extends ChangeNotifier {
 
   /// Delta senkron: yalnızca değişenleri çeker, silinenleri tombstone'dan uygular.
   /// Öncesinde bekleyen çevrimdışı yazmalar sunucuya gönderilir.
-  Future<void> syncNow() async {
-    await _flushQueue();
+  Future<void> syncNow() {
+    return _syncInFlight ??= _syncNow().whenComplete(() {
+      _syncInFlight = null;
+    });
+  }
+
+  Future<void> _syncNow() async {
+    if (!await _flushQueue()) {
+      notifyListeners();
+      return;
+    }
+    final revision = _localWriteRevision;
     try {
       final since = await Cache.instance.lastSync;
       final delta = await api.changes(since: since);
-      await Cache.instance.saveCards(delta.cards);
-      await Cache.instance.removeCards(
-        delta.deletions
+      if (revision != _localWriteRevision ||
+          await Cache.instance.pendingCount() > 0) {
+        return;
+      }
+      final applied = await Cache.instance.applyServerChanges(
+        delta.cards,
+        deletions: delta.deletions
             .where((d) => d['entity'] == 'card')
             .map((d) => d['id'] as String),
+        serverTime: delta.serverTime,
       );
-      await Cache.instance.setLastSync(delta.serverTime);
+      if (!applied || revision != _localWriteRevision) return;
       offline = false;
+      error = null;
     } catch (_) {
       offline = true;
     }
@@ -412,20 +428,49 @@ class PlannerStore extends ChangeNotifier {
   }
 
   /// Çevrimdışıyken biriken yazmaları sırayla gönderir.
-  Future<void> _flushQueue() async {
-    final queued = await Cache.instance.pending();
-    for (final item in queued) {
-      try {
-        await api.raw(item.method, item.path, body: item.body);
+  Future<bool> _flushQueue() {
+    return _queueFlushInFlight ??= _replayQueue().whenComplete(() {
+      _queueFlushInFlight = null;
+    });
+  }
+
+  Future<bool> _replayQueue() async {
+    try {
+      while (true) {
+        final queued = await Cache.instance.pending();
+        if (queued.isEmpty) return true;
+        final item = queued.first;
+        try {
+          await api.raw(item.method, item.path, body: item.body);
+        } on ApiException catch (e) {
+          // Yanıt kaybolmuş olabilir: oluşturma/silme zaten uygulanmışsa
+          // aynı kimlikle tekrar gönderilen işlem tamamlanmış sayılır.
+          final alreadyCreated =
+              item.method == 'POST' &&
+              item.path == '/cards' &&
+              item.body?['id'] is String &&
+              e.statusCode == 409 &&
+              e.code == 'already_exists';
+          final alreadyDeleted =
+              item.method == 'DELETE' &&
+              RegExp(r'^/cards/[^/]+$').hasMatch(item.path) &&
+              e.statusCode == 404 &&
+              e.code == 'not_found';
+          if (!alreadyCreated && !alreadyDeleted) {
+            offline = true;
+            error =
+                'Değişiklikler gönderilemedi (${e.code}); kuyrukta korunuyor.';
+            return false;
+          }
+        } catch (_) {
+          offline = true;
+          return false;
+        }
         await Cache.instance.dequeue(item.id);
-      } on ApiException {
-        // Sunucu reddetti (ör. kart silinmiş): tekrar denemenin anlamı yok.
-        await Cache.instance.dequeue(item.id);
-      } catch (_) {
-        return; // hâlâ çevrimdışı: kalanları sonraya bırak
       }
+    } finally {
+      pendingWrites = await Cache.instance.pendingCount();
     }
-    pendingWrites = await Cache.instance.pendingCount();
   }
 
   /* --------------------------------------------------------- kartlar */
@@ -433,10 +478,22 @@ class PlannerStore extends ChangeNotifier {
   Future<void> loadRange() async {
     loading = true;
     notifyListeners();
+    final revision = _localWriteRevision;
     try {
+      pendingWrites = await Cache.instance.pendingCount();
+      if (pendingWrites > 0) {
+        final cached = await Cache.instance.cardsBetween(dataFrom, dataTo);
+        if (revision == _localWriteRevision) _fill(cached);
+        return;
+      }
       final cards = await api.cards(dataFrom, dataTo);
+      if (revision != _localWriteRevision ||
+          await Cache.instance.pendingCount() > 0) {
+        return;
+      }
+      final applied = await Cache.instance.applyServerChanges(cards);
+      if (!applied || revision != _localWriteRevision) return;
       _fill(cards);
-      await Cache.instance.saveCards(cards);
       // Görünen haftanın hatırlatmaları telefonda yerel bildirim olarak kurulur.
       unawaited(Notifications.instance.reschedule(cards));
       offline = false;
@@ -457,10 +514,20 @@ class PlannerStore extends ChangeNotifier {
   Future<({List<PlannerCard> cards, bool offline})> searchCards(
     String query,
   ) async {
+    if (await Cache.instance.pendingCount() > 0) {
+      return (cards: await Cache.instance.searchCards(query), offline: true);
+    }
+    final revision = _localWriteRevision;
     try {
       final cards = await api.searchCards(query);
-      // Arama sonucunu bekletmeden göster; önbellek yazımı arka planda tamamlanır.
-      unawaited(Cache.instance.saveCards(cards).catchError((_) {}));
+      if (revision != _localWriteRevision ||
+          await Cache.instance.pendingCount() > 0) {
+        return (cards: await Cache.instance.searchCards(query), offline: true);
+      }
+      final applied = await Cache.instance.applyServerChanges(cards);
+      if (!applied || revision != _localWriteRevision) {
+        return (cards: await Cache.instance.searchCards(query), offline: true);
+      }
       return (cards: cards, offline: false);
     } catch (_) {
       return (cards: await Cache.instance.searchCards(query), offline: true);
@@ -505,7 +572,6 @@ class PlannerStore extends ChangeNotifier {
     final updated = card.copyWith(done: !card.done, templateId: null);
     await _write(
       optimistic: () => _replaceLocal(updated),
-      send: () => api.updateCard(card.id, {'done': updated.done}),
       method: 'PATCH',
       path: '/cards/${card.id}',
       body: {'done': updated.done},
@@ -532,7 +598,6 @@ class PlannerStore extends ChangeNotifier {
     };
     await _write(
       optimistic: () => _replaceLocal(updated),
-      send: () => api.updateCard(card.id, body),
       method: 'PATCH',
       path: '/cards/${card.id}',
       body: body,
@@ -543,10 +608,6 @@ class PlannerStore extends ChangeNotifier {
     if (boardReadOnly) return;
     await _write(
       optimistic: () => _removeLocal(card.id),
-      send: () async {
-        await api.deleteCard(card.id);
-        return null;
-      },
       method: 'DELETE',
       path: '/cards/${card.id}',
     );
@@ -556,10 +617,6 @@ class PlannerStore extends ChangeNotifier {
     if (boardReadOnly) return;
     await _write(
       optimistic: () => _removeLocal(card.id),
-      send: () async {
-        await api.archiveCard(card.id);
-        return null;
-      },
       method: 'POST',
       path: '/cards/${card.id}/archive',
     );
@@ -569,8 +626,7 @@ class PlannerStore extends ChangeNotifier {
     if (boardReadOnly) return;
     try {
       final duplicate = await api.duplicateCard(card.id);
-      _replaceLocal(duplicate);
-      await Cache.instance.saveCards([duplicate]);
+      await _replaceLocal(duplicate);
       offline = false;
       error = null;
       notifyListeners();
@@ -692,9 +748,6 @@ class PlannerStore extends ChangeNotifier {
 
     await _write(
       optimistic: () => _replaceLocal(local),
-      send: () => existing == null
-          ? api.createCard(body)
-          : api.updateCard(existing.id, body),
       method: existing == null ? 'POST' : 'PATCH',
       path: existing == null ? '/cards' : '/cards/$id',
       body: body,
@@ -747,8 +800,6 @@ class PlannerStore extends ChangeNotifier {
     await _write(
       optimistic: () =>
           _replaceLocal(card.copyWith(day: day, templateId: null)),
-      send: () =>
-          api.moveCard(card.id, day: day, beforeId: beforeId, afterId: afterId),
       method: 'PATCH',
       path: '/cards/${card.id}/move',
       body: {'day': day, 'beforeId': beforeId, 'afterId': afterId},
@@ -757,45 +808,39 @@ class PlannerStore extends ChangeNotifier {
 
   /* ----------------------------------------------- yazma (çevrimdışı destekli) */
 
-  void _replaceLocal(PlannerCard card) {
+  Future<void> _replaceLocal(PlannerCard card) async {
     for (final list in _byDay.values) {
       list.removeWhere((c) => c.id == card.id);
     }
     (_byDay[card.day] ??= []).add(card);
     _byDay[card.day]?.sort((a, b) => a.sortIndex.compareTo(b.sortIndex));
-    unawaited(Cache.instance.saveCards([card]));
+    await Cache.instance.saveCards([card]);
   }
 
-  void _removeLocal(String id) {
+  Future<void> _removeLocal(String id) async {
     for (final list in _byDay.values) {
       list.removeWhere((c) => c.id == id);
     }
-    unawaited(Cache.instance.removeCards([id]));
+    await Cache.instance.removeCards([id]);
   }
 
-  /// Önce ekranda uygula, sonra gönder. Ağ yoksa istek kuyruğa yazılır.
+  /// İsteği kalıcı kuyruğa yaz, yerelde uygula ve sırayla göndermeyi dene.
   Future<void> _write({
-    required void Function() optimistic,
-    required Future<Object?> Function() send,
+    required Future<void> Function() optimistic,
     required String method,
     required String path,
     Map<String, dynamic>? body,
   }) async {
-    optimistic();
+    _localWriteRevision += 1;
+    await Cache.instance.enqueue(method, path, body);
+    await optimistic();
+    pendingWrites = await Cache.instance.pendingCount();
+    error = null;
     notifyListeners();
-    try {
-      await send();
+    if (await _flushQueue()) {
       offline = false;
       await loadRange();
-    } on ApiException catch (e) {
-      error = 'İşlem yapılamadı (${e.code}).';
-      notifyListeners();
-    } catch (_) {
-      // Ağ yok: değişiklik yerelde duruyor, istek kuyruğa alınıyor.
-      await Cache.instance.enqueue(method, path, body);
-      pendingWrites = await Cache.instance.pendingCount();
-      offline = true;
-      notifyListeners();
     }
+    notifyListeners();
   }
 }
