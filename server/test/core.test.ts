@@ -66,6 +66,24 @@ test('elle taşınan kartın sırası saat değişse de korunur, sıfırlanınca
   assert.equal(reset.sort_index, 420, 'sıfırlanınca yeniden saate göre hesaplanmalı');
 });
 
+test('kart sürümleri saat ilerlemese bile her değişiklikte artar', () => {
+  const db = makeDb();
+  try {
+    const user = makeUser(db, 'version-user', 'version@example.com');
+    const store = repo(db, user.id);
+    const card = store.cards.create({ day: '2026-09-30', title: 'Test' });
+    db.prepare('UPDATE cards SET updated_at = ? WHERE id = ?').run('2099-01-01T00:00:00.000Z', card.id);
+    const first = store.cards.update(card.id, { title: 'First' })!;
+    const second = store.cards.update(card.id, { title: 'Second' })!;
+    assert.equal(first.updated_at, '2099-01-01T00:00:00.001Z');
+    assert.equal(second.updated_at, '2099-01-01T00:00:00.002Z');
+    store.reminders.replace(card.id, [{ offset: 30, fireAt: '2099-01-01T01:00:00.000Z' }]);
+    assert.equal(store.cards.get(card.id)!.updated_at, '2099-01-01T00:00:00.003Z');
+    store.reminders.replace(card.id, [{ offset: 30, fireAt: '2099-01-01T01:00:00.000Z' }]);
+    assert.equal(store.cards.get(card.id)!.updated_at, '2099-01-01T00:00:00.003Z', 'identical reminders keep the version');
+  } finally { db.close(); }
+});
+
 test('kart arşiv ve çöp kutusu yaşam döngüsünde güvenle geri yüklenir', () => {
   const db = makeDb();
   const user = makeUser(db, 'lifecycle-user', 'lifecycle@example.com');

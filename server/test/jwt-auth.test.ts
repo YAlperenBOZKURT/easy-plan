@@ -205,6 +205,56 @@ test('JWT access/refresh güvenlik akışı', async (t) => {
     assert.equal(activity.json().activities[0].cardTitle, 'Ortak kart');
   });
 
+  await t.test('iki cihaz ve paylaşılan pano eski kart sürümünü ezemez', async () => {
+    const login = async (email: string, password: string) => (await app.inject({
+      method: 'POST', url: '/api/v1/auth/token', payload: { email, password },
+    })).json().accessToken as string;
+    const owner = { authorization: `Bearer ${await login('jwt-user@example.com', 'correct horse battery staple')}` };
+    const editor = { authorization: `Bearer ${await login('collaborator@example.com', 'another correct horse battery staple')}` };
+    const board = (await app.inject({ method: 'POST', url: '/api/v1/boards', headers: owner, payload: { name: 'Çakışma testi' } })).json().board;
+    await app.inject({ method: 'POST', url: `/api/v1/boards/${board.id}/members`, headers: owner,
+      payload: { email: 'collaborator@example.com', role: 'editor' } });
+    const a = { ...owner, 'x-board-id': board.id as string };
+    const b = { ...editor, 'x-board-id': board.id as string };
+    const created = await app.inject({ method: 'POST', url: '/api/v1/cards', headers: a,
+      payload: { day: '2026-09-30', title: 'Orijinal', startTime: '12:00', reminders: [60] } });
+    assert.equal(created.statusCode, 201, created.body);
+    const original = created.json().card;
+    const url = `/api/v1/cards/${original.id}`;
+    const read = await app.inject({ method: 'GET', url, headers: b });
+    assert.equal(read.json().card.updatedAt, original.updatedAt, 'create returns the final reminder version');
+    const first = await app.inject({ method: 'PATCH', url, headers: a,
+      payload: { title: 'Cihaz A', updatedAt: original.updatedAt } });
+    assert.equal(first.statusCode, 200, first.body);
+    const current = first.json().card;
+    assert.ok(Date.parse(current.updatedAt) > Date.parse(original.updatedAt));
+    for (const path of [url, `${url}/move`]) {
+      const stale = await app.inject({ method: 'PATCH', url: path, headers: b,
+        payload: { title: 'Cihaz B', day: '2026-10-01', updatedAt: original.updatedAt } });
+      assert.equal(stale.statusCode, 409, stale.body);
+      assert.equal(stale.json().error, 'stale_write');
+      assert.equal(stale.json().card.title, 'Cihaz A');
+      assert.equal(stale.json().card.day, original.day);
+      assert.deepEqual(stale.json().card.reminders, [60]);
+    }
+    const future = await app.inject({ method: 'PATCH', url, headers: b,
+      payload: { title: 'Future', updatedAt: '2099-01-01T00:00:00.000Z' } });
+    assert.equal(future.statusCode, 409);
+    const invalid = await app.inject({ method: 'PATCH', url, headers: b,
+      payload: { title: 'Invalid', updatedAt: 'not-a-date' } });
+    assert.equal(invalid.statusCode, 400);
+    const reminderEdit = await app.inject({ method: 'PATCH', url, headers: b,
+      payload: { reminders: [180], updatedAt: current.updatedAt } });
+    assert.equal(reminderEdit.statusCode, 200, reminderEdit.body);
+    assert.ok(Date.parse(reminderEdit.json().card.updatedAt) > Date.parse(current.updatedAt));
+    const moved = await app.inject({ method: 'PATCH', url: `${url}/move`, headers: a,
+      payload: { day: '2026-10-01', updatedAt: reminderEdit.json().card.updatedAt } });
+    assert.equal(moved.statusCode, 200, moved.body);
+    assert.equal((await app.inject({ method: 'GET', url, headers: a })).json().card.updatedAt, moved.json().card.updatedAt);
+    const isolated = await app.inject({ method: 'GET', url, headers: owner });
+    assert.equal(isolated.statusCode, 404, 'a different board cannot read the card');
+  });
+
   await t.test('şablona multipart görsel yüklenir ve şablon cevabında görünür', async () => {
     const login = await app.inject({
       method: 'POST',

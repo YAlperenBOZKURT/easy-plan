@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { requireUser } from '../auth.ts';
 import { config } from '../config.ts';
 import { db } from '../db.ts';
@@ -8,7 +8,7 @@ import { applyReminders, sanitizeOffsets } from '../reminders.ts';
 import { indexBetween } from '../sorting.ts';
 import { removeImageFiles } from '../storage.ts';
 import { addYears, isValidDay, isValidInstant, isValidTime, today } from '../time.ts';
-import { CARD_COLORS, CARD_PRIORITIES } from '../types.ts';
+import { CARD_COLORS, CARD_PRIORITIES, type CardRow } from '../types.ts';
 import { isChecklistComplete, sanitizeChecklist } from '../checklist.ts';
 import { sanitizeTags } from '../tags.ts';
 import { MAX_SEARCH_RESULTS, readSearchQuery } from '../search.ts';
@@ -20,6 +20,21 @@ export const storeFor = (req: FastifyRequest): Repo => {
   const access = requestBoardAccess(db(), req);
   return repo(db(), req.user!.id, access.board.id, access.membership.role);
 };
+
+function rejectStaleWrite(reply: FastifyReply, store: Repo, card: CardRow, version: unknown): boolean {
+  // Older clients may omit the version; supplied versions must match exactly.
+  if (version === undefined) return false;
+  if (typeof version !== 'string' || !isValidInstant(version)) {
+    reply.code(400).send({ error: 'invalid_fields', fields: ['updatedAt'] });
+    return true;
+  }
+  if (Date.parse(version) === Date.parse(card.updated_at)) return false;
+  reply.code(409).send({
+    error: 'stale_write',
+    card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)),
+  });
+  return true;
+}
 
 /** Gezinme ve veri penceresi: bugünden ±1 yıl. */
 export function withinWindow(day: string, tz: string): boolean {
@@ -154,6 +169,13 @@ export async function cardRoutes(app: FastifyInstance) {
     return { cards: cards.map((card) => cardDto(card, images, reminders)) };
   });
 
+  app.get<{ Params: { id: string } }>('/cards/:id', async (req, reply) => {
+    const store = storeFor(req);
+    const card = store.cards.get(req.params.id);
+    if (!card) return reply.code(404).send({ error: 'not_found' });
+    return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
+  });
+
   app.post<{ Body: Record<string, unknown> }>('/cards', async (req, reply) => {
     const { out, errors } = readCardBody(req.body);
     if (errors.length > 0) return reply.code(400).send({ error: 'invalid_fields', fields: errors });
@@ -206,7 +228,7 @@ export async function cardRoutes(app: FastifyInstance) {
     });
 
     return reply.code(201).send({
-      card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)),
+      card: cardDto(store.cards.get(card.id)!, store.images.forCard(card.id), store.reminders.forCard(card.id)),
     });
   });
 
@@ -244,7 +266,7 @@ export async function cardRoutes(app: FastifyInstance) {
         cardTitle: card.title,
         details: { sourceCardId: source.id },
       });
-      return reply.code(201).send({ card: cardDto(card, images, store.reminders.forCard(card.id)) });
+      return reply.code(201).send({ card: cardDto(store.cards.get(card.id)!, images, store.reminders.forCard(card.id)) });
     },
   );
 
@@ -255,14 +277,7 @@ export async function cardRoutes(app: FastifyInstance) {
       const current = store.cards.get(req.params.id);
       if (!current) return reply.code(404).send({ error: 'not_found' });
 
-      // Çevrimdışı senkron: elimizdeki sürüm daha yeniyse gelen yazma yok sayılır.
-      const clientUpdatedAt = req.body?.updatedAt;
-      if (typeof clientUpdatedAt === 'string' && current.updated_at > clientUpdatedAt) {
-        return reply.code(409).send({
-          error: 'stale_write',
-          card: cardDto(current, store.images.forCard(current.id), store.reminders.forCard(current.id)),
-        });
-      }
+      if (rejectStaleWrite(reply, store, current, req.body?.updatedAt)) return;
 
       const { out, errors } = readCardBody(req.body);
       if (errors.length > 0) return reply.code(400).send({ error: 'invalid_fields', fields: errors });
@@ -296,7 +311,7 @@ export async function cardRoutes(app: FastifyInstance) {
         });
       }
 
-      return { card: cardDto(card, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
+      return { card: cardDto(store.cards.get(card.id)!, store.images.forCard(card.id), store.reminders.forCard(card.id)) };
     },
   );
 
@@ -367,11 +382,12 @@ export async function cardRoutes(app: FastifyInstance) {
    */
   app.patch<{
     Params: { id: string };
-    Body: { day?: string; beforeId?: string | null; afterId?: string | null };
+    Body: { day?: string; beforeId?: string | null; afterId?: string | null; updatedAt?: string };
   }>('/cards/:id/move', async (req, reply) => {
     const store = storeFor(req);
     const card = store.cards.get(req.params.id);
     if (!card) return reply.code(404).send({ error: 'not_found' });
+    if (rejectStaleWrite(reply, store, card, req.body?.updatedAt)) return;
 
     const day = req.body?.day ?? card.day;
     if (!isValidDay(day)) return reply.code(400).send({ error: 'invalid_day' });
@@ -398,6 +414,6 @@ export async function cardRoutes(app: FastifyInstance) {
       cardTitle: moved.title,
       details: { fromDay: card.day, toDay: moved.day },
     });
-    return { card: cardDto(moved, store.images.forCard(moved.id), store.reminders.forCard(moved.id)) };
+    return { card: cardDto(store.cards.get(moved.id)!, store.images.forCard(moved.id), store.reminders.forCard(moved.id)) };
   });
 }

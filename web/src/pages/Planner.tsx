@@ -15,6 +15,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { api } from '../lib/api.ts';
+import { conflictingCard, type CardWriteConflict } from '../lib/conflicts.ts';
+import CardConflictPanel from '../components/CardConflictPanel.tsx';
 import { addDays, addYears, dayNameShort, dayNumber, rangeLabel, todayKey } from '../lib/dates.ts';
 import { centeredColumnScrollLeft, closestDayToViewportCenter } from '../lib/mobileDayNavigation.ts';
 import { priorityLabel, type Board, type Card, type User } from '../lib/types.ts';
@@ -75,6 +77,9 @@ export default function Planner({ user }: { user: User }) {
   const [anchor, setAnchor] = useState(notificationTarget.day ?? today);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [draft, setDraft] = useState<CardDraft | null>(null);
+  const [writeConflict, setWriteConflict] = useState<CardWriteConflict | null>(null);
+  const [conflictBusy, setConflictBusy] = useState(false);
+  const [conflictError, setConflictError] = useState('');
   const [showHabits, setShowHabits] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -116,6 +121,7 @@ export default function Planner({ user }: { user: User }) {
     setOpenCardId(null);
     setInspect(null);
     setDraft(null);
+    setWriteConflict(null);
   };
 
   useEffect(() => {
@@ -211,8 +217,9 @@ export default function Planner({ user }: { user: User }) {
   ]);
 
   const toggleDone = useMutation({
-    mutationFn: (card: Card) => api.updateCard(card.id, { done: !card.done }),
+    mutationFn: (card: Card) => api.updateCard(card.id, { done: !card.done, updatedAt: card.updatedAt }),
     onSuccess: refresh,
+    onError: (error, card) => handleConflict(error, card, { done: !card.done }),
   });
 
   const toggleChecklist = useMutation({
@@ -221,9 +228,14 @@ export default function Planner({ user }: { user: User }) {
       return api.updateCard(card.id, {
         checklist,
         done: isChecklistComplete(checklist),
+        updatedAt: card.updatedAt,
       });
     },
     onSuccess: refresh,
+    onError: (error, { card, itemId }) => {
+      const checklist = toggleChecklistItem(card.checklist, itemId);
+      handleConflict(error, card, { checklist, done: isChecklistComplete(checklist) });
+    },
   });
 
   const removeCard = useMutation({
@@ -247,17 +259,42 @@ export default function Planner({ user }: { user: User }) {
   };
 
   const move = useMutation({
-    mutationFn: (input: { id: string; day: string; beforeId: string | null; afterId: string | null }) =>
-      api.moveCard(input.id, { day: input.day, beforeId: input.beforeId, afterId: input.afterId }),
+    mutationFn: (input: { card: Card; day: string; beforeId: string | null; afterId: string | null }) =>
+      api.moveCard(input.card.id, { day: input.day, beforeId: input.beforeId, afterId: input.afterId, updatedAt: input.card.updatedAt }),
     onSuccess: refresh,
-    onError: refresh,
+    onError: (error, { card, ...position }) => {
+      handleConflict(error, card, { day: position.day }, position);
+      void refresh();
+    },
   });
+
+  function handleConflict(error: unknown, card: Card, patch: Record<string, unknown>, position?: CardWriteConflict['move']) {
+    const server = conflictingCard(error);
+    if (server) {
+      setConflictError('');
+      setWriteConflict({ local: { ...card, ...patch }, server, patch, move: position });
+    }
+  }
+
+  async function keepLocal() {
+    if (!writeConflict) return;
+    setConflictBusy(true); setConflictError('');
+    try {
+      if (writeConflict.move) await api.moveCard(writeConflict.local.id, { ...writeConflict.move, updatedAt: writeConflict.server.updatedAt });
+      else await api.updateCard(writeConflict.local.id, { ...writeConflict.patch, updatedAt: writeConflict.server.updatedAt });
+      setWriteConflict(null); await refresh();
+    } catch (error) {
+      const server = conflictingCard(error);
+      if (server) setWriteConflict({ ...writeConflict, server });
+      else setConflictError(t('error.generic'));
+    } finally { setConflictBusy(false); }
+  }
 
   /* ------------------------------------------------------------- klavye */
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (draft || showFilters || showHabits || showSettings || showSearch || showTemplates || showTransfer || showBoards) return;
+      if (draft || writeConflict || showFilters || showHabits || showSettings || showSearch || showTemplates || showTransfer || showBoards) return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
       if (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
@@ -271,7 +308,7 @@ export default function Planner({ user }: { user: User }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [anchor, draft, showFilters, showHabits, showSearch, showSettings, showTemplates, view]);
+  }, [anchor, draft, writeConflict, showFilters, showHabits, showSearch, showSettings, showTemplates, showTransfer, showBoards, view]);
 
   /* ------------------------------------------- mobil: kaydırma ↔ gün şeridi */
 
@@ -593,7 +630,7 @@ export default function Planner({ user }: { user: User }) {
       return;
     }
 
-    move.mutate({ id: card.id, day: targetDay, beforeId, afterId });
+    move.mutate({ card, day: targetDay, beforeId, afterId });
   }
 
   /* ------------------------------------------------------------- görünüm */
@@ -977,6 +1014,14 @@ export default function Planner({ user }: { user: User }) {
       )}
       {showHabits && <HabitModal onClose={() => setShowHabits(false)} />}
       {showSettings && <SettingsModal user={user} onClose={() => setShowSettings(false)} />}
+      {writeConflict && <div className="overlay"><div className="modal" role="dialog" aria-modal="true" aria-label={t('conflict.title')}>
+        <div className="modal-body"><CardConflictPanel local={writeConflict.local} server={writeConflict.server}
+          move={Boolean(writeConflict.move)}
+          busy={conflictBusy} onKeep={keepLocal}
+          onUseServer={() => { setWriteConflict(null); void refresh(); }} />
+          {conflictError && <p role="alert" className="error-text">{conflictError}</p>}
+        </div>
+      </div></div>}
       {showLifecycle && activeBoard && (
         <CardLifecycleModal
           boardId={activeBoard.id}

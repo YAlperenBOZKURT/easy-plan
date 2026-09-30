@@ -38,11 +38,17 @@ export function repo(
       throw error;
     }
   };
-  const touch = (cardId: string, at = nowIso(), detachTemplate = true) =>
+  const nextVersion = (previous: string, at = nowIso()) =>
+    new Date(Math.max(Date.parse(at), Date.parse(previous) + 1)).toISOString();
+  const touch = (cardId: string, at = nowIso(), detachTemplate = true) => {
+    const row = db.prepare('SELECT updated_at FROM cards WHERE id = ? AND board_id = ?')
+      .get(cardId, boardId) as { updated_at: string } | undefined;
+    if (!row) return;
     db.prepare(
       `UPDATE cards SET updated_at = ?${detachTemplate ? ', template_id = NULL' : ''}
        WHERE id = ? AND board_id = ?`,
-    ).run(at, cardId, boardId);
+    ).run(nextVersion(row.updated_at, at), cardId, boardId);
+  };
 
   const tombstone = (entity: 'card' | 'habit', id: string, at = nowIso()) =>
     db
@@ -228,7 +234,7 @@ export function repo(
       if (sets.length === 0) return current;
       if (!options.preserveTemplate && current.template_id) sets.push('template_id = NULL');
       sets.push('updated_at = ?');
-      values.push(nowIso(), id, boardId);
+      values.push(nextVersion(current.updated_at), id, boardId);
       db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ? AND board_id = ?`).run(...values);
       return cards.get(id);
     },
@@ -248,7 +254,7 @@ export function repo(
       assertBoardWrite();
       const card = cards.get(id);
       if (!card) return undefined;
-      const at = nowIso();
+      const at = nextVersion(card.updated_at);
       db.prepare(
         'UPDATE cards SET archived_at = ?, trashed_at = NULL, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
       ).run(at, at, id, boardId);
@@ -260,7 +266,7 @@ export function repo(
       assertBoardWrite();
       const card = cards.getAny(id);
       if (!card || card.trashed_at) return undefined;
-      const at = nowIso();
+      const at = nextVersion(card.updated_at);
       db.prepare(
         'UPDATE cards SET archived_at = NULL, trashed_at = ?, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
       ).run(at, at, id, boardId);
@@ -272,7 +278,7 @@ export function repo(
       assertBoardWrite();
       const card = cards.getAny(id);
       if (!card || (!card.archived_at && !card.trashed_at)) return undefined;
-      const at = nowIso();
+      const at = nextVersion(card.updated_at);
       db.prepare(
         'UPDATE cards SET archived_at = NULL, trashed_at = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
       ).run(at, id, boardId);
@@ -300,10 +306,11 @@ export function repo(
 
     linkTemplate(id: string, templateId: string): CardRow | undefined {
       assertBoardWrite();
-      if (!cards.get(id)) return undefined;
+      const current = cards.get(id);
+      if (!current) return undefined;
       db.prepare(
         'UPDATE cards SET template_id = ?, updated_at = ? WHERE id = ? AND board_id = ?',
-      ).run(templateId, nowIso(), id, boardId);
+      ).run(templateId, nextVersion(current.updated_at), id, boardId);
       return cards.get(id);
     },
 
@@ -599,10 +606,12 @@ export function repo(
       const existing = reminders.forCard(cardId);
       const reminderOwner = cards.getAny(cardId)?.user_id ?? userId;
       const wantedOffsets = new Set(wanted.map((w) => w.offset));
+      let changed = false;
 
       for (const row of existing) {
         if (!wantedOffsets.has(row.offset_minutes)) {
           db.prepare('DELETE FROM card_reminders WHERE id = ?').run(row.id);
+          changed = true;
         }
       }
       for (const item of wanted) {
@@ -612,13 +621,16 @@ export function repo(
             `INSERT INTO card_reminders (id, card_id, user_id, offset_minutes, fire_at, sent_at, status)
              VALUES (?, ?, ?, ?, ?, NULL, NULL)`,
           ).run(newId(), cardId, reminderOwner, item.offset, item.fireAt);
+          changed = true;
         } else if (found.fire_at !== item.fireAt && found.sent_at === null) {
           db.prepare('UPDATE card_reminders SET fire_at = ? WHERE id = ?').run(
             item.fireAt,
             found.id,
           );
+          changed = true;
         }
       }
+      if (changed) touch(cardId, nowIso(), false);
     },
 
     pendingCount(): number {

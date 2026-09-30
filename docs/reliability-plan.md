@@ -9,7 +9,7 @@ and relevant platform checks before moving to the next step.
      authentication, conflict, rate-limit, and server errors.
    - Prevent simultaneous replay and server refreshes overwriting pending edits.
    - Verify recovery, ambiguous successful requests, and concurrent sync calls.
-2. **Concurrent edits and conflict resolution**
+2. **Concurrent edits and conflict resolution** — `fix/card-conflict-resolution`
    - Send the original server version with web and native edits.
    - Preserve the server record and local draft when a stale write is rejected.
    - Offer retry, discard, and explicit conflict-resolution controls.
@@ -31,5 +31,7 @@ and relevant platform checks before moving to the next step.
    - Decide on licensing, add release notes, and verify a clean installation.
    - Add cross-client end-to-end scenarios and run the complete quality gate.
 
-Current scope: step 1 only. Retained rejected requests are surfaced as a blocked
-queue; resolution controls belong to step 2. PR creation follows user review.
+Step 1 is merged. Current scope: step 2. Version checks cover card edits,
+completion/checklist changes, and moves. Native conflicts and their baselines
+persist across restarts; cancellation removes all dependent writes for that card.
+Older clients that omit `updatedAt` remain compatible. PR creation follows user review.

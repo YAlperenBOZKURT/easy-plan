@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -10,6 +10,7 @@ import 'api/models.dart';
 import 'app_logger.dart';
 import 'search.dart';
 import 'tags.dart';
+import 'sync_queue.dart';
 
 /// Yerel kopya ve çevrimdışı yazma kuyruğu.
 ///
@@ -33,11 +34,26 @@ class Cache {
         databaseFactory = databaseFactoryFfi;
       }
       final dir = await getDatabasesPath();
-      _db = await openDatabase(
-        p.join(dir, 'planner_cache.db'),
-        version: 1,
-        onCreate: (db, _) async {
-          await db.execute('''
+      _db = await _openAt(p.join(dir, 'planner_cache.db'));
+      return _db;
+    } catch (error, stack) {
+      AppLogger.error('cache_open_failed', error, stack);
+      _initFailed = true;
+      return null;
+    }
+  }
+
+  Future<Database> _openAt(String path) => openDatabase(
+    path,
+    version: 2,
+    onUpgrade: (db, oldVersion, _) async {
+      if (oldVersion < 2) {
+        await db.execute('ALTER TABLE queue ADD COLUMN base_card TEXT');
+        await db.execute('ALTER TABLE queue ADD COLUMN failure TEXT');
+      }
+    },
+    onCreate: (db, _) async {
+      await db.execute('''
             CREATE TABLE cards (
               id TEXT PRIMARY KEY,
               day TEXT NOT NULL,
@@ -46,29 +62,24 @@ class Cache {
               json TEXT NOT NULL
             )
           ''');
-          await db.execute('CREATE INDEX idx_cards_day ON cards(day)');
-          // Çevrimdışı yapılan yazmalar: sırayla tekrar gönderilir.
-          await db.execute('''
+      await db.execute('CREATE INDEX idx_cards_day ON cards(day)');
+      // Çevrimdışı yapılan yazmalar: sırayla tekrar gönderilir.
+      await db.execute('''
             CREATE TABLE queue (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               method TEXT NOT NULL,
               path TEXT NOT NULL,
               body TEXT,
+              base_card TEXT,
+              failure TEXT,
               created_at TEXT NOT NULL
             )
           ''');
-          await db.execute(
-            'CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
-          );
-        },
+      await db.execute(
+        'CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
       );
-      return _db;
-    } catch (error, stack) {
-      AppLogger.error('cache_open_failed', error, stack);
-      _initFailed = true;
-      return null;
-    }
-  }
+    },
+  );
 
   /* ------------------------------------------------------------- kartlar */
 
@@ -240,42 +251,162 @@ class Cache {
   Future<void> enqueue(
     String method,
     String path,
-    Map<String, dynamic>? body,
-  ) async {
+    Map<String, dynamic>? body, {
+    PlannerCard? baseCard,
+  }) async {
     final db = await _open();
     if (db == null) throw StateError('Offline write queue is unavailable.');
     await db.insert('queue', {
       'method': method,
       'path': path,
       'body': body == null ? null : jsonEncode(body),
+      'base_card': baseCard == null ? null : jsonEncode(baseCard.toJson()),
       'created_at': DateTime.now().toIso8601String(),
     });
   }
 
-  Future<
-    List<({int id, String method, String path, Map<String, dynamic>? body})>
-  >
-  pending() async {
+  Future<List<PendingWrite>> pending() async {
     final db = await _open();
     if (db == null) return const [];
     final rows = await db.query('queue', orderBy: 'id');
-    return rows
-        .map(
-          (row) => (
-            id: row['id']! as int,
-            method: row['method']! as String,
-            path: row['path']! as String,
-            body: row['body'] == null
-                ? null
-                : jsonDecode(row['body']! as String) as Map<String, dynamic>,
-          ),
-        )
-        .toList();
+    return rows.map(PendingWrite.fromRow).toList();
   }
 
   Future<void> dequeue(int id) async {
     final db = await _open();
     await db?.delete('queue', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> recordFailure(int id, Map<String, dynamic> failure) async {
+    final db = await _open();
+    await db?.update(
+      'queue',
+      {'failure': jsonEncode(failure)},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> resolveConflict(PendingWrite item) async {
+    final db = await _open();
+    if (db == null) return;
+    await db.transaction((txn) async {
+      final related = (await txn.query('queue', orderBy: 'id'))
+          .map(PendingWrite.fromRow)
+          .where((entry) => entry.cardId == item.cardId);
+      for (final entry in related) {
+        if (entry.body?['updatedAt'] != item.body?['updatedAt']) continue;
+        await txn.update(
+          'queue',
+          {
+            'body': jsonEncode({
+              ...?entry.body,
+              'updatedAt': item.serverCard!.updatedAt,
+            }),
+            if (entry.id == item.id) 'failure': null,
+          },
+          where: 'id = ?',
+          whereArgs: [entry.id],
+        );
+      }
+    });
+  }
+
+  /// Acknowledgement and dependent version updates are atomic. Unrelated edits
+  /// keep their original version, so a genuine remote conflict remains visible.
+  Future<void> completeWrite(PendingWrite item, PlannerCard? saved) async {
+    final db = await _open();
+    if (db == null) return;
+    await db.transaction((txn) async {
+      await txn.delete('queue', where: 'id = ?', whereArgs: [item.id]);
+      if (saved == null) return;
+      final rows = await txn.query('queue', orderBy: 'id');
+      var hasPending = false;
+      for (final row in rows) {
+        final body = row['body'] == null
+            ? null
+            : jsonDecode(row['body'] as String) as Map<String, dynamic>;
+        final path = row['path'] as String;
+        if (path != '/cards/${saved.id}' &&
+            !path.startsWith('/cards/${saved.id}/')) {
+          continue;
+        }
+        hasPending = true;
+        await txn.update(
+          'queue',
+          {'base_card': jsonEncode(saved.toJson())},
+          where: 'id = ?',
+          whereArgs: [row['id']],
+        );
+        if (body != null &&
+            body['updatedAt'] == (item.body?['updatedAt'] ?? '')) {
+          body['updatedAt'] = saved.updatedAt;
+          await txn.update(
+            'queue',
+            {'body': jsonEncode(body)},
+            where: 'id = ?',
+            whereArgs: [row['id']],
+          );
+        }
+      }
+      // Preserve the accumulated local draft when another operation is queued.
+      final cached = await txn.query(
+        'cards',
+        where: 'id = ?',
+        whereArgs: [saved.id],
+      );
+      final card = hasPending && cached.isNotEmpty
+          ? PlannerCard.fromJson(
+              jsonDecode(cached.first['json'] as String)
+                  as Map<String, dynamic>,
+            ).copyWith(updatedAt: saved.updatedAt)
+          : saved;
+      if (card.archivedAt != null || card.trashedAt != null) {
+        await txn.delete('cards', where: 'id = ?', whereArgs: [card.id]);
+      } else if (!hasPending || cached.isNotEmpty) {
+        await txn.insert('cards', {
+          'id': card.id,
+          'day': card.day,
+          'sort_index': card.sortIndex,
+          'updated_at': card.updatedAt,
+          'json': jsonEncode(card.toJson()),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  /// Cancel all dependent writes for this card and restore the first baseline.
+  Future<PlannerCard?> discardCardWrites(PendingWrite selected) async {
+    final db = await _open();
+    if (db == null) return null;
+    return db.transaction((txn) async {
+      final all = (await txn.query('queue', orderBy: 'id'))
+          .map(PendingWrite.fromRow)
+          .where((item) => item.cardId == selected.cardId)
+          .toList();
+      if (!all.any((item) => item.id == selected.id)) return null;
+      final restored =
+          selected.serverCard ??
+          all.map((item) => item.serverCard).nonNulls.lastOrNull ??
+          all.first.original;
+      for (final item in all) {
+        await txn.delete('queue', where: 'id = ?', whereArgs: [item.id]);
+      }
+      await txn.delete('cards', where: 'id = ?', whereArgs: [selected.cardId]);
+      if (restored != null &&
+          restored.archivedAt == null &&
+          restored.trashedAt == null) {
+        await txn.insert('cards', {
+          'id': restored.id,
+          'day': restored.day,
+          'sort_index': restored.sortIndex,
+          'updated_at': restored.updatedAt,
+          'json': jsonEncode(restored.toJson()),
+        });
+      }
+      await txn.delete('meta', where: 'key = ?', whereArgs: ['last_sync']);
+      return restored;
+    });
   }
 
   Future<int> pendingCount() async {
@@ -286,26 +417,17 @@ class Cache {
   }
 
   /// Testler için: bellekte çalışan kopya.
-  static Future<void> useInMemory() async {
+  static Future<void> useInMemory() => useForTesting();
+
+  @visibleForTesting
+  static Future<void> useForTesting({
+    String path = inMemoryDatabasePath,
+  }) async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    instance._db = await databaseFactory.openDatabase(
-      inMemoryDatabasePath,
-      options: OpenDatabaseOptions(
-        version: 1,
-        onCreate: (db, _) async {
-          await db.execute(
-            'CREATE TABLE cards (id TEXT PRIMARY KEY, day TEXT NOT NULL, sort_index REAL NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT \'\', json TEXT NOT NULL)',
-          );
-          await db.execute(
-            'CREATE TABLE queue (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, path TEXT NOT NULL, body TEXT, created_at TEXT NOT NULL)',
-          );
-          await db.execute(
-            'CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
-          );
-        },
-      ),
-    );
+    await instance._db?.close();
+    instance._initFailed = false;
+    instance._db = await instance._openAt(path);
   }
 }
 
