@@ -31,7 +31,13 @@ and relevant platform checks before moving to the next step.
    - Decide on licensing, add release notes, and verify a clean installation.
    - Add cross-client end-to-end scenarios and run the complete quality gate.
 
-Step 1 is merged. Current scope: step 2. Version checks cover card edits,
-completion/checklist changes, and moves. Native conflicts and their baselines
-persist across restarts; cancellation removes all dependent writes for that card.
-Older clients that omit `updatedAt` remain compatible. PR creation follows user review.
+Steps 1 and 2 are merged. Step 3 is implemented on
+`fix/shared-board-deletion-sync` and awaits user review. Card tombstones are
+board-scoped and visible to current members, including viewers. Restores clear
+the board's tombstone even when a different member restores the card; lifecycle
+changes and tombstone writes commit together. Habit tombstones remain private.
+Migration 015 repairs old hidden/restored records, recovers deleted-card boards
+from activity history, and re-emits tombstones for existing sync cursors.
+
+Next scope after step 3 merges: step 4, shared-board background jobs.
+PR creation follows user review.

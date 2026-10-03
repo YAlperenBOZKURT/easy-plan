@@ -1,4 +1,5 @@
 import type { Db } from './db.ts';
+import { transaction } from './db.ts';
 import { newId, nowIso } from './ids.ts';
 import { defaultSortIndex } from './sorting.ts';
 import { parseTags, uniqueTags } from './tags.ts';
@@ -18,10 +19,8 @@ import type {
 /**
  * Kullanıcıya bağlı veri erişimi.
  *
- * Uygulamanın hiçbir yerinde cards/habits/card_images tablolarına doğrudan
- * dokunulmaz; hepsi buradan geçer ve her sorgu user_id ile sınırlanır. Böylece
- * "WHERE user_id = ?" yazmayı unutmak mümkün değildir — çok kullanıcılı bir
- * kurulumda en kolay yapılan hata budur.
+ * Kartlar ve silme kayıtları seçilen panoyla, özel davranışlar kullanıcıyla
+ * sınırlanır. HTTP çağrıları repo'yu oluşturmadan önce pano üyeliğini doğrular.
  */
 export function repo(
   db: Db,
@@ -53,10 +52,11 @@ export function repo(
   const tombstone = (entity: 'card' | 'habit', id: string, at = nowIso()) =>
     db
       .prepare(
-        `INSERT INTO deletions (entity, id, user_id, deleted_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT(entity, id) DO UPDATE SET deleted_at = excluded.deleted_at`,
+        `INSERT INTO deletions (entity, id, user_id, board_id, deleted_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(entity, id) DO UPDATE SET
+           board_id = excluded.board_id, deleted_at = excluded.deleted_at`,
       )
-      .run(entity, id, userId, at);
+      .run(entity, id, userId, entity === 'card' ? boardId : null, at);
 
   const cards = {
     range(from: string, to: string): CardRow[] {
@@ -245,8 +245,10 @@ export function repo(
       const card = cards.getAny(id);
       if (!card) return [];
       const files = images.forCard(id);
-      db.prepare('DELETE FROM cards WHERE id = ? AND board_id = ?').run(id, boardId);
-      tombstone('card', id);
+      transaction(db, () => {
+        db.prepare('DELETE FROM cards WHERE id = ? AND board_id = ?').run(id, boardId);
+        tombstone('card', id, nextVersion(card.updated_at));
+      });
       return files;
     },
 
@@ -255,10 +257,12 @@ export function repo(
       const card = cards.get(id);
       if (!card) return undefined;
       const at = nextVersion(card.updated_at);
-      db.prepare(
-        'UPDATE cards SET archived_at = ?, trashed_at = NULL, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
-      ).run(at, at, id, boardId);
-      tombstone('card', id, at);
+      transaction(db, () => {
+        db.prepare(
+          'UPDATE cards SET archived_at = ?, trashed_at = NULL, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
+        ).run(at, at, id, boardId);
+        tombstone('card', id, at);
+      });
       return cards.getAny(id);
     },
 
@@ -267,10 +271,12 @@ export function repo(
       const card = cards.getAny(id);
       if (!card || card.trashed_at) return undefined;
       const at = nextVersion(card.updated_at);
-      db.prepare(
-        'UPDATE cards SET archived_at = NULL, trashed_at = ?, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
-      ).run(at, at, id, boardId);
-      tombstone('card', id, at);
+      transaction(db, () => {
+        db.prepare(
+          'UPDATE cards SET archived_at = NULL, trashed_at = ?, template_id = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
+        ).run(at, at, id, boardId);
+        tombstone('card', id, at);
+      });
       return cards.getAny(id);
     },
 
@@ -279,10 +285,12 @@ export function repo(
       const card = cards.getAny(id);
       if (!card || (!card.archived_at && !card.trashed_at)) return undefined;
       const at = nextVersion(card.updated_at);
-      db.prepare(
-        'UPDATE cards SET archived_at = NULL, trashed_at = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
-      ).run(at, id, boardId);
-      db.prepare("DELETE FROM deletions WHERE entity = 'card' AND id = ? AND user_id = ?").run(id, userId);
+      transaction(db, () => {
+        db.prepare(
+          'UPDATE cards SET archived_at = NULL, trashed_at = NULL, updated_at = ? WHERE id = ? AND board_id = ?',
+        ).run(at, id, boardId);
+        db.prepare("DELETE FROM deletions WHERE entity = 'card' AND id = ? AND board_id = ?").run(id, boardId);
+      });
       return cards.get(id);
     },
 
@@ -803,10 +811,15 @@ export function repo(
     since(at: string) {
       return db
         .prepare(
-          `SELECT entity, id, deleted_at FROM deletions WHERE user_id = ? AND deleted_at > ?
-           ORDER BY deleted_at`,
+          `SELECT entity, id, deleted_at FROM deletions
+           WHERE entity = 'card' AND board_id = ? AND deleted_at > ?
+             AND EXISTS (SELECT 1 FROM board_members WHERE board_id = ? AND user_id = ?)
+           UNION ALL
+           SELECT entity, id, deleted_at FROM deletions
+           WHERE entity = 'habit' AND user_id = ? AND deleted_at > ?
+           ORDER BY deleted_at, id`,
         )
-        .all(userId, at) as { entity: string; id: string; deleted_at: string }[];
+        .all(boardId, at, boardId, userId, userId, at) as { entity: string; id: string; deleted_at: string }[];
     },
   };
 
