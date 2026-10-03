@@ -208,8 +208,21 @@ Card mutations enter the persistent queue before delivery. Failed requests remai
 queued, and replay pauses at the first failure so dependent writes retain their
 order. While writes are pending, range loads and search use the local cache;
 server refreshes cannot overwrite pending edits or advance the sync cursor.
-Rejected requests display an error and remain queued; manual queue cancellation
-and conflict-resolution controls are planned in the next reliability step.
+Rejected requests display an error and remain queued. The pending-changes screen
+offers retry, cancellation, and explicit choices between local and server versions.
+
+Card deletion tombstones are scoped to the selected board and its current
+members, so archive, trash, and permanent deletion reach owners, editors, and
+viewers regardless of who created or changed the card. Restoring a card clears
+its board tombstone and sends the active card again. Membership is checked for
+every sync request; users without membership receive `403`. Habit deletions stay
+private to their owner. The sync response format is unchanged.
+
+Migration 015 repairs legacy hidden-card tombstones and stale tombstones left
+after restores by another member. Existing sync cursors receive the repaired
+deletions again. For older permanently deleted cards, board scope is recovered
+from activity history where available; records without a surviving card or
+activity history retain their legacy personal-board scope.
 
 Checklist items are part of the card aggregate, so edits are saved atomically and follow the same offline queue and delta-sync flow as the rest of the card.
 
