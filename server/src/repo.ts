@@ -14,6 +14,7 @@ import type {
   ChecklistItem,
   HabitRow,
   ReminderRow,
+  UserRow,
 } from './types.ts';
 
 /**
@@ -245,11 +246,13 @@ export function repo(
       const card = cards.getAny(id);
       if (!card) return [];
       const files = images.forCard(id);
-      transaction(db, () => {
-        db.prepare('DELETE FROM cards WHERE id = ? AND board_id = ?').run(id, boardId);
+      const removed = transaction(db, () => {
+        const result = db.prepare('DELETE FROM cards WHERE id = ? AND board_id = ?').run(id, boardId);
+        if (result.changes === 0) return false;
         tombstone('card', id, nextVersion(card.updated_at));
+        return true;
       });
-      return files;
+      return removed ? files : [];
     },
 
     archive(id: string): CardRow | undefined {
@@ -453,8 +456,8 @@ export function repo(
           .prepare('SELECT 1 FROM card_images WHERE file = ? LIMIT 1')
           .get(row.file);
         const usedByTemplate = db
-          .prepare('SELECT 1 FROM card_template_images WHERE user_id = ? AND file = ? LIMIT 1')
-          .get(userId, row.file);
+          .prepare('SELECT 1 FROM card_template_images WHERE file = ? LIMIT 1')
+          .get(row.file);
         return !usedByCard && !usedByTemplate;
       });
     },
@@ -585,6 +588,14 @@ export function repo(
   };
 
   const reminders = {
+    /** Kartın oluşturucusu alıcıdır; düzenleyen üyenin saat dilimi kullanılmaz. */
+    owner(cardId: string): UserRow | undefined {
+      return db.prepare(
+        `SELECT u.* FROM users u JOIN cards c ON c.user_id = u.id
+         WHERE c.id = ? AND c.board_id = ?`,
+      ).get(cardId, boardId) as UserRow | undefined;
+    },
+
     forCards(cardIds: string[]): ReminderRow[] {
       if (cardIds.length === 0) return [];
       const holes = cardIds.map(() => '?').join(',');

@@ -274,6 +274,20 @@ MAIL_FROM=Planner <no-reply@example.com>
 
 Use an application password or dedicated SMTP credential instead of a personal account password. After configuration, send a test message from the application settings.
 
+Card reminders on personal and shared boards target the **card creator**, not
+every board member. The creator must have an active account and current board
+membership at delivery time. Another member editing the card does not change
+the recipient or the creator's timezone used to schedule it. Completed,
+archived, trashed, or deleted cards are not delivered. Daily email summaries
+continue to cover the user's personal board only.
+
+Background cleanup uses each card's actual board, including shared cards whose
+creator has left or become inactive. Expired trash and old habit-generated
+cards are counted only after deletion. Image files are removed only when no
+card or template references them, including another member's private template.
+Scheduler ticks run sequentially; overlapping manual reminder runs within the
+same server process share the in-flight delivery.
+
 ## Web push notifications
 
 Generate one VAPID key pair and keep it stable for the lifetime of the installation:

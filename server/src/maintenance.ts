@@ -4,7 +4,7 @@ import { repo } from './repo.ts';
 import { applyReminders } from './reminders.ts';
 import { removeImageFiles } from './storage.ts';
 import { addDays, addYears, today, weekdayOf } from './time.ts';
-import type { HabitRow, UserRow } from './types.ts';
+import type { CardImageRow, HabitRow, UserRow } from './types.ts';
 
 /**
  * Davranışlardan kart üretimi ve eski kayıtların temizliği.
@@ -63,61 +63,74 @@ export function materializeHabit(database: Db, user: UserRow, habit: HabitRow, n
   return created;
 }
 
+type PurgeCandidate = { id: string; user_id: string; board_id: string };
+
+/** Bakım sistem işi olarak kartın kendi panosunda çalışır, kişisel panoda değil. */
+async function purgeCards(database: Db, candidates: PurgeCandidate[]): Promise<number> {
+  const stores = new Map<string, ReturnType<typeof repo>>();
+  const files: CardImageRow[] = [];
+  let removed = 0;
+  for (const card of candidates) {
+    const key = `${card.board_id}:${card.user_id}`;
+    const store = stores.get(key) ?? repo(database, card.user_id, card.board_id);
+    stores.set(key, store);
+    if (!store.cards.getAny(card.id)) continue;
+    files.push(...store.cards.remove(card.id));
+    if (!store.cards.getAny(card.id)) removed += 1;
+  }
+  // References can belong to a different member's private template.
+  const store = stores.values().next().value;
+  if (store) await removeImageFiles(store.images.unreferenced(files));
+  return removed;
+}
+
 /** 1 yıldan eski davranış kartlarını siler. Elle yazılan kartlara dokunmaz. */
 export async function purgeOldHabitCards(database: Db, user: UserRow, now = new Date()): Promise<number> {
   const cutoff = addYears(today(user.timezone || config.defaultTz, now), -config.windowYears);
   const doomed = database
     .prepare(
-      `SELECT id FROM cards WHERE user_id = ? AND habit_id IS NOT NULL AND day < ?
+      `SELECT id, user_id, board_id FROM cards WHERE user_id = ? AND habit_id IS NOT NULL AND day < ?
        AND archived_at IS NULL AND trashed_at IS NULL`,
     )
-    .all(user.id, cutoff) as { id: string }[];
-  if (doomed.length === 0) return 0;
-
-  const store = repo(database, user.id);
-  const files = [];
-  for (const row of doomed) files.push(...store.cards.remove(row.id));
-  await removeImageFiles(store.images.unreferenced(files));
-  return doomed.length;
+    .all(user.id, cutoff) as PurgeCandidate[];
+  return purgeCards(database, doomed);
 }
 
 /** Saklama süresi dolan çöp kartlarını ve görsellerini kalıcı olarak temizler. */
 export async function purgeExpiredTrash(
   database: Db,
-  user: UserRow,
+  user?: UserRow,
   now = new Date(),
 ): Promise<number> {
   const cutoff = new Date(now.getTime() - config.trashRetentionDays * 86_400_000).toISOString();
   const doomed = database
-    .prepare('SELECT id FROM cards WHERE user_id = ? AND trashed_at IS NOT NULL AND trashed_at <= ?')
-    .all(user.id, cutoff) as { id: string }[];
-  if (doomed.length === 0) return 0;
-
-  const store = repo(database, user.id);
-  const files = [];
-  for (const row of doomed) files.push(...store.cards.remove(row.id));
-  await removeImageFiles(store.images.unreferenced(files));
-  return doomed.length;
+    .prepare(
+      `SELECT id, user_id, board_id FROM cards
+       WHERE (? IS NULL OR user_id = ?) AND trashed_at IS NOT NULL AND trashed_at <= ?`,
+    )
+    .all(user?.id ?? null, user?.id ?? null, cutoff) as PurgeCandidate[];
+  return purgeCards(database, doomed);
 }
 
 export async function runMaintenance(database: Db = db(), now = new Date()) {
-  const users = database.prepare('SELECT * FROM users WHERE active = 1').all() as unknown as UserRow[];
+  const users = database.prepare('SELECT * FROM users').all() as unknown as UserRow[];
   let created = 0;
   let purged = 0;
-  let purgedTrash = 0;
 
   for (const user of users) {
-    const habits = database
-      .prepare('SELECT * FROM habits WHERE user_id = ? AND active = 1')
-      .all(user.id) as unknown as HabitRow[];
-    for (const habit of habits) created += materializeHabit(database, user, habit, now);
+    if (user.active === 1) {
+      const habits = database
+        .prepare('SELECT * FROM habits WHERE user_id = ? AND active = 1')
+        .all(user.id) as unknown as HabitRow[];
+      for (const habit of habits) created += materializeHabit(database, user, habit, now);
+    }
     purged += await purgeOldHabitCards(database, user, now);
-    purgedTrash += await purgeExpiredTrash(database, user, now);
   }
+  const purgedTrash = await purgeExpiredTrash(database, undefined, now);
 
   database
     .prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .run('last_maintenance', now.toISOString());
 
-  return { created, purged, purgedTrash, users: users.length };
+  return { created, purged, purgedTrash, users: users.filter((user) => user.active === 1).length };
 }

@@ -3,13 +3,12 @@ import type { FastifyBaseLogger } from 'fastify';
 import { config } from './config.ts';
 import { parseChecklist } from './checklist.ts';
 import { db, type Db } from './db.ts';
-import { nowIso } from './ids.ts';
 import { runMaintenance } from './maintenance.ts';
 import { escapeHtml, layout, sendMail } from './mailer.ts';
 import { repo } from './repo.ts';
 import { parseTags } from './tags.ts';
 import { today } from './time.ts';
-import type { CardImageRow, CardRow, UserRow } from './types.ts';
+import type { CardImageRow, CardRow, ReminderRow, UserRow } from './types.ts';
 import { reminderPushPayload, sendPushToUser } from './push.ts';
 
 /**
@@ -119,9 +118,51 @@ const attachmentsFor = (images: CardImageRow[]) =>
 
 /* ------------------------------------------------------------- hatırlatmalar */
 
-export async function processReminders(database: Db = db(), now = new Date()) {
+interface ReminderDelivery {
+  mailEnabled?: boolean;
+  pushEnabled?: boolean;
+  sendMail?: typeof sendMail;
+  sendPush?: typeof sendPushToUser;
+}
+
+const runningReminders = new WeakMap<Db, Promise<Awaited<ReturnType<typeof processDueReminders>>>>();
+
+/** Otomatik döngü ve elle tetikleme aynı teslimatı iki kez başlatamaz. */
+export function processReminders(database: Db = db(), now = new Date(), delivery: ReminderDelivery = {}) {
+  const running = runningReminders.get(database);
+  if (running) return running;
+  const task = Promise.resolve().then(() => processDueReminders(database, now, delivery))
+    .finally(() => runningReminders.delete(database));
+  runningReminders.set(database, task);
+  return task;
+}
+
+function reminderContext(database: Db, row: Pick<ReminderRow, 'id' | 'card_id' | 'user_id' | 'fire_at'>) {
+  const pending = database.prepare(
+    'SELECT 1 FROM card_reminders WHERE id = ? AND fire_at = ? AND sent_at IS NULL',
+  ).get(row.id, row.fire_at);
+  if (!pending) return undefined;
+  const user = database.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(row.user_id) as
+    | UserRow
+    | undefined;
+  if (!user) return undefined;
+  const card = database.prepare(
+    `SELECT c.* FROM cards c JOIN board_members bm
+       ON bm.board_id = c.board_id AND bm.user_id = c.user_id
+     WHERE c.id = ? AND c.user_id = ? AND c.done = 0
+       AND c.archived_at IS NULL AND c.trashed_at IS NULL`,
+  ).get(row.card_id, user.id) as CardRow | undefined;
+  if (!card) return undefined;
+  return { user, card, store: repo(database, user.id, card.board_id) };
+}
+
+async function processDueReminders(database: Db, now: Date, delivery: ReminderDelivery) {
+  const mailEnabled = delivery.mailEnabled ?? config.mailEnabled;
+  const pushEnabled = delivery.pushEnabled ?? config.webPushEnabled;
+  const deliverMail = delivery.sendMail ?? sendMail;
+  const deliverPush = delivery.sendPush ?? sendPushToUser;
   // Hiçbir teslimat kanalı yoksa kayıtlar bekler; sonradan yapılandırma yapılabilir.
-  if (!config.mailEnabled && !config.webPushEnabled) {
+  if (!mailEnabled && !pushEnabled) {
     return { sent: 0, pushed: 0, skipped: 0, missed: 0, due: 0, disabled: true };
   }
 
@@ -129,14 +170,15 @@ export async function processReminders(database: Db = db(), now = new Date()) {
     .prepare(
       `SELECT r.id, r.card_id, r.user_id, r.offset_minutes, r.fire_at
        FROM card_reminders r WHERE r.sent_at IS NULL AND r.fire_at <= ?
+         AND (? = 1 OR EXISTS (SELECT 1 FROM push_subscriptions s WHERE s.user_id = r.user_id))
        ORDER BY r.fire_at LIMIT 200`,
     )
-    .all(now.toISOString()) as { id: string; card_id: string; user_id: string; offset_minutes: number; fire_at: string }[];
+    .all(now.toISOString(), mailEnabled ? 1 : 0) as unknown as ReminderRow[];
 
-  const mark = (id: string, status: string) =>
+  const mark = (row: Pick<ReminderRow, 'id' | 'fire_at'>, status: string) =>
     database
-      .prepare('UPDATE card_reminders SET sent_at = ?, status = ? WHERE id = ?')
-      .run(nowIso(), status, id);
+      .prepare('UPDATE card_reminders SET sent_at = ?, status = ? WHERE id = ? AND sent_at IS NULL AND fire_at = ?')
+      .run(now.toISOString(), status, row.id, row.fire_at);
 
   let sent = 0;
   let pushed = 0;
@@ -146,33 +188,24 @@ export async function processReminders(database: Db = db(), now = new Date()) {
   for (const row of due) {
     // Sunucu uzun süre kapalı kaldıysa geçmiş hatırlatmalar toplu mail yağmuruna dönüşmesin.
     if (now.getTime() - new Date(row.fire_at).getTime() > MISSED_AFTER_MS) {
-      mark(row.id, 'missed');
+      mark(row, 'missed');
       missed += 1;
       continue;
     }
 
-    const user = database.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) as
-      | UserRow
-      | undefined;
-    const store = user ? repo(database, user.id) : undefined;
-    const card = store?.cards.get(row.card_id);
-    if (!user || !card || user.active !== 1) {
-      mark(row.id, 'skipped');
+    const context = reminderContext(database, row);
+    if (!context) {
+      mark(row, 'skipped');
       skipped += 1;
       continue;
     }
-    // Kart tamamlandıysa hatırlatma gönderilmez.
-    if (card.done === 1) {
-      mark(row.id, 'skipped');
-      skipped += 1;
-      continue;
-    }
+    const { user, card, store } = context;
 
     const label = offsetLabel(row.offset_minutes);
     let mailSent = false;
-    if (config.mailEnabled) {
-      const images = store!.images.forCard(card.id);
-      const result = await sendMail({
+    if (mailEnabled) {
+      const images = store.images.forCard(card.id);
+      const result = await deliverMail({
         to: user.email,
         subject: `⏰ ${label} kaldı · ${card.title || 'Easy Plan'}`,
         kind: 'reminder',
@@ -184,11 +217,15 @@ export async function processReminders(database: Db = db(), now = new Date()) {
       mailSent = result.sent;
       if (mailSent) sent += 1;
     }
-    const push = await sendPushToUser(database, user.id, reminderPushPayload(card, `${label} kaldı`));
+    // SMTP sırasında üyelik/kart durumu değişmişse ikinci kanala özel veri gönderme.
+    const current = pushEnabled ? reminderContext(database, row) : undefined;
+    const push = current
+      ? await deliverPush(database, current.user.id, reminderPushPayload(current.card, `${label} kaldı`))
+      : { sent: 0, failed: 0, removed: 0, subscriptions: 0 };
     pushed += push.sent;
     const delivered = mailSent || push.sent > 0;
-    const unavailable = !config.mailEnabled && push.subscriptions === 0;
-    if (!unavailable) mark(row.id, delivered ? 'sent' : 'error');
+    const unavailable = !mailEnabled && push.subscriptions === 0;
+    if (!unavailable) mark(row, delivered ? 'sent' : 'error');
   }
 
   return { sent, pushed, skipped, missed, due: due.length };
@@ -262,14 +299,25 @@ export function startScheduler(
   database: Db = db(),
   log: Pick<FastifyBaseLogger, 'error' | 'debug'> = console,
 ) {
-  const run = () => {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const run = async () => {
     const startedAt = Date.now();
-    tick(database)
-      .then(() => log.debug({ durationMs: Date.now() - startedAt }, 'scheduler tick completed'))
-      .catch((err) => log.error({ err }, 'scheduler tick failed'));
+    try {
+      await tick(database);
+      log.debug({ durationMs: Date.now() - startedAt }, 'scheduler tick completed');
+    } catch (err) {
+      log.error({ err }, 'scheduler tick failed');
+    } finally {
+      if (!stopped) {
+        timer = setTimeout(run, TICK_MS);
+        timer.unref();
+      }
+    }
   };
-  run();
-  const timer = setInterval(run, TICK_MS);
-  timer.unref();
-  return () => clearInterval(timer);
+  void run();
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
 }

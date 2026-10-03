@@ -28,8 +28,9 @@ export function applyReminders(
   user: Pick<UserRow, 'timezone'>,
   offsets: number[],
 ) {
+  const owner = store.reminders.owner(card.id) ?? user;
   store.reminders.replace(
     card.id,
-    offsets.map((offset) => ({ offset, fireAt: fireAtFor(card, user, offset) })),
+    offsets.map((offset) => ({ offset, fireAt: fireAtFor(card, owner, offset) })),
   );
 }
