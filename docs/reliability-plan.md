@@ -39,5 +39,17 @@ changes and tombstone writes commit together. Habit tombstones remain private.
 Migration 015 repairs old hidden/restored records, recovers deleted-card boards
 from activity history, and re-emits tombstones for existing sync cursors.
 
-Next scope after step 3 merges: step 4, shared-board background jobs.
+Step 3 is preserved in local commit `c399778`. Step 4 is implemented on
+`fix/shared-board-background-jobs`, branched from step 3, and awaits user review.
+Reminder delivery resolves the card's actual board and targets its active,
+current-member creator using that creator's timezone. Cleanup covers personal
+and shared cards, including inactive/departed creators, counts actual deletions,
+and preserves images referenced by another member's card or template. Scheduler
+ticks are sequential and concurrent reminder runs share one delivery.
+Regression tests cover recipient isolation, membership revocation, rescheduling,
+channel failures, batch starvation, cleanup counts, image retention, and stop.
+
+Merge step 3 before step 4 (or initially target the step 4 PR at step 3's branch).
+Next scope after those reviews: step 5, native reminder scheduling. Real Android
+device verification remains outstanding and is not claimed by server tests.
 PR creation follows user review.
