@@ -17,6 +17,7 @@ export function cardDto(card: CardRow, images: CardImageRow[] = [], reminders: R
   return {
     id: card.id,
     boardId: card.board_id,
+    creatorId: card.user_id,
     day: card.day,
     title: card.title,
     note: card.note,

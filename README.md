@@ -288,6 +288,29 @@ card or template references them, including another member's private template.
 Scheduler ticks run sequentially; overlapping manual reminder runs within the
 same server process share the in-flight delivery.
 
+## Native reminders
+
+Android reminders use all cached cards on the **selected board**, independently
+of the week/month currently displayed. Only the signed-in card creator's active,
+unfinished cards are eligible. The `/changes` response supplies `reminderSettings`
+(recipient, board, IANA timezone and untimed-card default); cards include
+`creatorId`. The client persists these settings for offline use.
+
+The nearest 64 future reminders are reconciled with pending OS alarms. Stable
+IDs and payloads preserve unchanged alarms across refreshes and app restarts.
+Completion, archive/trash/delete and time changes also update alarms offline.
+Switching boards or signing out clears the previous schedule. Android receivers
+restore pending alarms after reboot and app updates. Schedules are refreshed on
+startup, sync and returning to the foreground, including when connectivity fails.
+
+The app must reconnect to learn about another device's edits or revoked board
+membership; previously cached alarms can still fire while it is offline or
+closed. Later reminders beyond the 64-alarm limit are added on the next app
+refresh. Android uses inexact alarms and delivery depends on notification
+permission and device power settings. See the
+[plugin scheduling documentation](https://pub.dev/packages/flutter_local_notifications)
+and [physical-device verification guide](docs/native-reminder-verification.md).
+
 ## Web push notifications
 
 Generate one VAPID key pair and keep it stable for the lifetime of the installation:

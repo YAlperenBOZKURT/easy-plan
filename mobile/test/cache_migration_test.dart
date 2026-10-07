@@ -46,8 +46,17 @@ void main() {
           'title': 'Pending',
         }),
       });
+      await old.insert('meta', {
+        'key': 'last_sync',
+        'value': '2026-09-30T08:00:00.000Z',
+      });
       await old.close();
       await Cache.useForTesting(path: path);
+      expect(
+        await Cache.instance.lastSync,
+        isNull,
+        reason: 'upgrade refetches creator IDs and reminder settings',
+      );
       final pending = (await Cache.instance.pending()).single;
       expect(pending.body!['title'], 'Pending');
       expect(pending.baseCard, isNull);

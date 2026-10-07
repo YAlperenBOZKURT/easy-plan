@@ -2,6 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { requireUser } from '../auth.ts';
 import { cardDto, habitDto } from '../dto.ts';
 import { storeFor } from './cards.ts';
+import { config } from '../config.ts';
+import { requestBoardAccess } from '../boards.ts';
+import { db } from '../db.ts';
 
 /**
  * Delta senkron ucu — Flutter istemcisi için.
@@ -28,6 +31,12 @@ export async function syncRoutes(app: FastifyInstance) {
 
     return {
       serverTime,
+      reminderSettings: {
+        userId: req.user!.id,
+        boardId: requestBoardAccess(db(), req).board.id,
+        timezone: req.user!.timezone || config.defaultTz,
+        defaultCardTime: config.defaultCardTime,
+      },
       cards: cards.map((card) => cardDto(card, images, reminders)),
       habits: store.habits.changedSince(since).map(habitDto),
       deletions: store.deletions.since(since).map((d) => ({
