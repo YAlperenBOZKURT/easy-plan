@@ -28,12 +28,12 @@ final release-readiness stage; implementation and automated checks can proceed.
    - Schedule upcoming reminders independently of the visible date range.
    - Handle completion, deletion, account/board changes, timezone, and restart.
    - Verify scheduling on a real Android device.
-6. **Release readiness**
+6. **Release readiness** — `fix/release-readiness`
    - Configure production Android signing and finalize product labels/icons.
    - Decide on licensing, add release notes, and verify a clean installation.
    - Add cross-client end-to-end scenarios and run the complete quality gate.
 
-Steps 1–4 are merged into main. Card tombstones are
+Steps 1–5 are merged into main. Card tombstones are
 board-scoped and visible to current members, including viewers. Restores clear
 the board's tombstone even when a different member restores the card; lifecycle
 changes and tombstone writes commit together. Habit tombstones remain private.
@@ -48,7 +48,7 @@ ticks are sequential and concurrent reminder runs share one delivery.
 Regression tests cover recipient isolation, membership revocation, rescheduling,
 channel failures, batch starvation, cleanup counts, image retention, and stop.
 
-Step 5 is implemented on `fix/native-reminder-scheduling`, based on merged main.
+Step 5 was merged through PR #20.
 Native scheduling uses the entire selected-board cache, its authenticated
 recipient, creator IDs, and server-provided timezone/default time. It reconciles
 the nearest 64 future alarms with durable OS requests and preserves unchanged
@@ -69,3 +69,17 @@ Real Android delivery/reboot verification is deferred to step 6 at the user's
 request. Follow `docs/native-reminder-verification.md` when a device is available;
 unit tests and APK builds do not claim physical-device delivery. Include these
 checks in the final release gate. PR creation follows user review.
+
+Step 6 preparation is implemented on `fix/release-readiness`. Android uses a
+dedicated release signing configuration with mandatory credentials and explicit
+HTTPS API origin; debug builds retain development HTTP access. Easy Plan product
+labels and original calendar/check icons cover Android, web and Windows, including
+adaptive/monochrome Android resources. The user's chosen MIT license is included
+with their copyright, alongside Unreleased notes and signing/clean-install guidance.
+
+The cross-client integration runner starts an isolated real HTTP server and uses
+the actual web API and Flutter API/Store for offline conflict resolution, replay,
+image transfer, lifecycle deltas, creator isolation and membership revocation.
+CI runs this scenario and verifies Android release configuration with disposable
+test credentials. Production signing, clean installation/upgrade, actual UI/device
+checks and publication remain in `docs/release-readiness.md` as open final gates.

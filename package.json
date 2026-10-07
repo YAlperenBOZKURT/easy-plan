@@ -1,6 +1,7 @@
 {
   "name": "planner",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "server",
@@ -16,6 +17,9 @@
     "test:server": "npm run test --workspace server",
     "test:web": "npm run test --workspace web",
     "test:mobile": "cd mobile && flutter test",
+    "test:e2e": "node --import tsx scripts/test-cross-client.mjs",
+    "icons": "node scripts/generate-icons.mjs",
+    "check:android-release": "node scripts/check-android-release.mjs",
     "test:coverage": "npm-run-all --serial test:coverage:server test:coverage:web test:coverage:mobile",
     "test:coverage:server": "npm run test:coverage --workspace server",
     "test:coverage:web": "npm run test:coverage --workspace web",
@@ -23,7 +27,7 @@
     "typecheck": "npm-run-all --serial typecheck:node analyze:mobile",
     "typecheck:node": "npm run typecheck --workspace server && npm run typecheck --workspace web",
     "analyze:mobile": "cd mobile && flutter analyze",
-    "quality": "npm-run-all --serial typecheck test build",
+    "quality": "npm-run-all --serial typecheck test build test:e2e",
     "sifre": "npm run sifre --workspace server"
   },
   "devDependencies": {

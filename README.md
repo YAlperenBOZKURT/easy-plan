@@ -1,6 +1,9 @@
-# Planner
+# Easy Plan
 
-Planner is a self-hosted, multi-user planning application for the web, mobile, and desktop. It combines a rolling calendar, flexible task cards, recurring habits, reminders, image attachments, offline-first native clients, and a privacy-conscious administration panel in one deployable project.
+Easy Plan is a self-hosted, multi-user planning application for the web, mobile, and desktop. It combines a rolling calendar, flexible task cards, recurring habits, reminders, image attachments, offline-first native clients, and a privacy-conscious administration panel in one deployable project.
+
+Licensed under [MIT](LICENSE). See [release preparation](docs/release-readiness.md)
+for Android signing, product assets, release notes and the final device checklist.
 
 The project is designed for individuals, families, and small teams that want to keep their planning data on infrastructure they control.
 
@@ -344,10 +347,13 @@ Available commands:
 | `npm run test:server` | Server unit and HTTP contract tests |
 | `npm run test:web` | React and browser-client tests |
 | `npm run test:mobile` | Flutter unit and widget tests for mobile/desktop |
+| `npm run test:e2e` | Actual web/native API and offline Store integration on an isolated HTTP server |
 | `npm run test:coverage` | Coverage reports for all platforms |
 | `npm run typecheck` | TypeScript checks and Flutter analysis |
 | `npm run build` | Production web build |
-| `npm run quality` | Static analysis, all tests, and production web build |
+| `npm run quality` | Static analysis, all tests, production web build and cross-client integration |
+| `npm run check:android-release` | Signing/HTTPS rejection checks and verification-only signed Android bundle |
+| `npm run icons` | Regenerate launcher/web/Windows icons from the original SVG |
 
 Live API smoke tests are skipped unless these variables are provided to the Flutter test process:
 
@@ -357,7 +363,9 @@ PLANNER_EMAIL
 PLANNER_PASSWORD
 ```
 
-GitHub Actions runs server/web checks and Flutter checks in separate jobs for every pull request and push to `main`.
+GitHub Actions runs server/web, Flutter, cross-client integration and Android
+release-configuration checks in separate jobs for every pull request and push to
+`main`. Android CI uses a temporary test certificate and never publishes artifacts.
 
 ## Observability and health checks
 

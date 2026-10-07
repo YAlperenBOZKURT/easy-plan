@@ -1,4 +1,4 @@
-# Planner Native Client
+# Easy Plan Native Client
 
 This directory contains the shared Flutter client for Planner's mobile and desktop targets. Android and Windows are the currently configured platforms; the application architecture is also suitable for additional Flutter targets.
 
@@ -64,6 +64,11 @@ The smoke tests are skipped when these values are absent; unit, widget, offline,
 
 ## Production builds
 
+Configure the upload key first using [release preparation](../docs/release-readiness.md).
+Release builds reject missing signing credentials and require an explicit HTTPS
+origin. `android/key.properties.example` documents the local configuration;
+environment variables are supported for build services.
+
 Android application bundle:
 
 ```bash
@@ -77,3 +82,8 @@ flutter build windows --release --dart-define=PLANNER_API_URL=https://planner.ex
 ```
 
 Production clients should use an HTTPS API URL with a valid certificate.
+
+The actual web/native API and offline Store integration test needs no account
+credentials. Run `npm run test:e2e` from the repo root. Android signing and API
+origin guards are verified with `npm run check:android-release`; its short-lived
+test key and test bundle are removed and must never be distributed.

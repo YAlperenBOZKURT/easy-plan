@@ -5,7 +5,8 @@
     <!-- Sunucuya bağlanmak için -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="planner"
+        android:label="Easy Plan"
+        android:usesCleartextTraffic="false"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

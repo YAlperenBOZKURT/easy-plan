@@ -1,0 +1,6 @@
+# Copy to key.properties (ignored). Paths are relative to mobile/android,
+# or use an absolute path with forward slashes on Windows.
+storeFile=C:/private/easy-plan-upload.jks
+storePassword=
+keyAlias=upload
+keyPassword=
