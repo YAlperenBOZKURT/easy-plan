@@ -42,7 +42,57 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.44.6'
           cache: true
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test --coverage
+
+  cross-client:
+    name: Web and native integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.6'
+          cache: true
+      - run: npm ci
+      - run: flutter pub get
+        working-directory: mobile
+      - run: npm run build
+      - run: npm run test:e2e
+
+  android-release:
+    name: Android release configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.6'
+          cache: true
+      - run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+      - run: npm ci
+      - run: flutter pub get
+        working-directory: mobile
+      - run: flutter build apk --debug --no-pub
+        working-directory: mobile
+      - run: npm run check:android-release

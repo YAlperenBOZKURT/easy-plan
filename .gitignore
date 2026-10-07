@@ -8,6 +8,9 @@ node_modules/
 !.env.example
 !.env.*.example
 *.local
+**/key.properties
+*.jks
+*.keystore
 
 # Application data and local databases
 data/
