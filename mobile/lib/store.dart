@@ -16,7 +16,11 @@ import 'localization.dart';
 
 /// Uygulama durumu. Ek paket kullanmadan ChangeNotifier + ListenableBuilder.
 class PlannerStore extends ChangeNotifier {
-  PlannerStore();
+  PlannerStore({Notifications? notifications})
+    : notifications = notifications ?? Notifications.instance;
+  final Notifications notifications;
+  int _notificationReadRevision = 0;
+  bool _notificationsBlocked = false;
 
   static const _storage = FlutterSecureStorage();
   static const _legacyTokenKey = 'planner_token';
@@ -38,6 +42,7 @@ class PlannerStore extends ChangeNotifier {
     appLocale = next;
     notifyListeners();
     await _storage.write(key: _languageKey, value: languageCode);
+    await refreshNotifications();
   }
 
   Future<void> setMotionPreference(MotionPreference value) async {
@@ -96,8 +101,42 @@ class PlannerStore extends ChangeNotifier {
   /// Delta senkron + görünen aralığı tazele (elle "Senkronize et" ile aynı iş).
   Future<void> refreshFromServer() async {
     if (user == null) return;
+    await refreshNotifications();
     await syncNow();
     await loadRange();
+  }
+
+  Future<void> refreshNotifications({bool restoreCachedSession = false}) async {
+    if (!notifications.enabled || _notificationsBlocked) return;
+    final request = ++_notificationReadRevision;
+    final revision = _localWriteRevision;
+    final snapshot = await Cache.instance.reminderSnapshot();
+    if (request != _notificationReadRevision ||
+        revision != _localWriteRevision) {
+      return;
+    }
+    final settings = snapshot.settings;
+    final authenticated =
+        user?.id == settings?.userId ||
+        (restoreCachedSession && api.refreshToken != null);
+    if (settings == null ||
+        !authenticated ||
+        settings.boardId != api.activeBoardId) {
+      await notifications.clear();
+      return;
+    }
+    await notifications.reconcile(
+      snapshot.cards,
+      settings,
+      language: appLocale.languageCode,
+    );
+  }
+
+  Future<void> _resetNotifications() {
+    _notificationsBlocked = true;
+    _localWriteRevision += 1;
+    _notificationReadRevision += 1;
+    return notifications.clear();
   }
 
   @override
@@ -210,7 +249,7 @@ class PlannerStore extends ChangeNotifier {
 
     if (savedRefreshToken != null) {
       // Önce yerel kopya: internet olmasa da takvim anında görünür.
-      await _loadFromCache();
+      await _loadFromCache(restoreCachedSession: true);
       pendingQueue = await Cache.instance.pending();
       pendingWrites = pendingQueue.length;
 
@@ -223,16 +262,35 @@ class PlannerStore extends ChangeNotifier {
         await syncNow();
         await loadRange();
         return;
-      } on ApiException {
-        await _clearTokens();
+      } on ApiException catch (e) {
+        if (e.statusCode >= 500 || e.statusCode == 429) {
+          offline = true;
+          final cached = await Cache.instance.reminderSnapshot();
+          user = PlannerUser(
+            id: cached.settings?.userId ?? '',
+            email: '',
+            name: '',
+            role: 'user',
+          );
+        } else {
+          await _resetNotifications();
+          await _clearTokens();
+        }
       } catch (_) {
         // Sunucuya ulaşılamıyor: jetonu koru, çevrimdışı devam et.
         offline = true;
-        if (_byDay.values.any((list) => list.isNotEmpty)) {
-          user = PlannerUser(id: '', email: '', name: '', role: 'user');
+        final cached = await Cache.instance.reminderSnapshot();
+        if (cached.settings != null || cached.cards.isNotEmpty) {
+          user = PlannerUser(
+            id: cached.settings?.userId ?? '',
+            email: '',
+            name: '',
+            role: 'user',
+          );
         }
       }
     }
+    if (savedRefreshToken == null) await _resetNotifications();
     booting = false;
     notifyListeners();
   }
@@ -250,11 +308,27 @@ class PlannerStore extends ChangeNotifier {
         onAuthenticationFailed: _handleAuthenticationFailed,
       );
       final result = await api.login(email.trim(), password);
+      final cached = await Cache.instance.reminderSnapshot();
+      if (cached.settings != null &&
+          cached.settings!.userId != result.user.id) {
+        if (await Cache.instance.pendingCount() > 0) {
+          error =
+              'Önceki hesabın bekleyen değişiklikleri var. Önce o hesapla giriş yap.';
+          return false;
+        }
+        await _resetNotifications();
+        await Cache.instance.clear();
+        _byDay.clear();
+      }
       api.accessToken = result.accessToken;
       api.refreshToken = result.refreshToken;
       user = result.user;
+      if (cached.settings?.userId == result.user.id) {
+        api.activeBoardId = cached.settings!.boardId;
+      }
       await loadBoards();
       await _storeTokens(result.accessToken, result.refreshToken);
+      await syncNow();
       await loadRange();
       return true;
     } on ApiException catch (e) {
@@ -274,6 +348,9 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    stopAutoSync();
+    user = null;
+    await _resetNotifications();
     try {
       await api.logout();
     } catch (_) {
@@ -306,9 +383,10 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> _handleAuthenticationFailed() async {
-    await _clearTokens();
     user = null;
     stopAutoSync();
+    await _resetNotifications();
+    await _clearTokens();
     notifyListeners();
   }
 
@@ -321,6 +399,14 @@ class PlannerStore extends ChangeNotifier {
     activeBoard = loaded.where((board) => board.id == preferred).firstOrNull;
     activeBoard ??= loaded.where((board) => board.personal).firstOrNull;
     activeBoard ??= loaded.firstOrNull;
+    if (api.activeBoardId != null && api.activeBoardId != activeBoard?.id) {
+      if (await Cache.instance.pendingCount() > 0) {
+        throw ApiException(403, 'board_forbidden');
+      }
+      await _resetNotifications();
+      await Cache.instance.clearBoardData();
+      _byDay.clear();
+    }
     api.activeBoardId = activeBoard?.id;
     if (activeBoard case final board?) {
       await _storage.write(key: _boardKey, value: board.id);
@@ -337,12 +423,14 @@ class PlannerStore extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    await _resetNotifications();
     activeBoard = board;
     api.activeBoardId = board.id;
     await _storage.write(key: _boardKey, value: board.id);
     _byDay.clear();
     await Cache.instance.clearBoardData();
     notifyListeners();
+    await _syncInFlight;
     await syncNow();
     await loadRange();
     return true;
@@ -355,6 +443,7 @@ class PlannerStore extends ChangeNotifier {
 
   Future<void> deleteBoard(PlannerBoard board) async {
     await api.deleteBoard(board.id);
+    await _resetNotifications();
     api.activeBoardId = null;
     activeBoard = null;
     _byDay.clear();
@@ -368,6 +457,7 @@ class PlannerStore extends ChangeNotifier {
     final currentUser = user;
     if (currentUser == null) return;
     await api.removeBoardMember(board.id, currentUser.id);
+    await _resetNotifications();
     api.activeBoardId = null;
     activeBoard = null;
     _byDay.clear();
@@ -379,9 +469,10 @@ class PlannerStore extends ChangeNotifier {
 
   /* --------------------------------------------------------- senkron */
 
-  Future<void> _loadFromCache() async {
+  Future<void> _loadFromCache({bool restoreCachedSession = false}) async {
     final cached = await Cache.instance.cardsBetween(dataFrom, dataTo);
     _fill(cached);
+    await refreshNotifications(restoreCachedSession: restoreCachedSession);
     notifyListeners();
   }
 
@@ -404,11 +495,12 @@ class PlannerStore extends ChangeNotifier {
   }
 
   Future<void> _syncNow() async {
+    final revision = _localWriteRevision;
     if (!await _flushQueue()) {
       notifyListeners();
       return;
     }
-    final revision = _localWriteRevision;
+    if (revision != _localWriteRevision) return;
     try {
       final since = await Cache.instance.lastSync;
       final delta = await api.changes(since: since);
@@ -422,10 +514,23 @@ class PlannerStore extends ChangeNotifier {
             .where((d) => d['entity'] == 'card')
             .map((d) => d['id'] as String),
         serverTime: delta.serverTime,
+        reminderSettings: delta.reminderSettings,
+        replaceAll: since == null && delta.reminderSettings != null,
       );
       if (!applied || revision != _localWriteRevision) return;
+      if (delta.reminderSettings != null &&
+          delta.reminderSettings!.userId == user?.id &&
+          delta.reminderSettings!.boardId == api.activeBoardId) {
+        _notificationsBlocked = false;
+      }
+      await refreshNotifications();
       offline = false;
       error = null;
+    } on ApiException catch (e) {
+      if (e.statusCode == 403 || e.statusCode == 401) {
+        await _resetNotifications();
+      }
+      offline = true;
     } catch (_) {
       offline = true;
     }
@@ -472,6 +577,9 @@ class PlannerStore extends ChangeNotifier {
               e.statusCode == 404 &&
               e.code == 'not_found';
           if (!alreadyCreated && !alreadyDeleted) {
+            if (e.statusCode == 401 || e.statusCode == 403) {
+              await _resetNotifications();
+            }
             await Cache.instance.recordFailure(item.id, {
               'error': e.code,
               ...?e.payload,
@@ -506,6 +614,7 @@ class PlannerStore extends ChangeNotifier {
     } finally {
       pendingQueue = await Cache.instance.pending();
       pendingWrites = pendingQueue.length;
+      await refreshNotifications();
     }
   }
 
@@ -573,11 +682,13 @@ class PlannerStore extends ChangeNotifier {
       final applied = await Cache.instance.applyServerChanges(cards);
       if (!applied || revision != _localWriteRevision) return;
       _fill(cards);
-      // Görünen haftanın hatırlatmaları telefonda yerel bildirim olarak kurulur.
-      unawaited(Notifications.instance.reschedule(cards));
+      await refreshNotifications();
       offline = false;
       error = null;
     } on ApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _resetNotifications();
+      }
       error = 'Kartlar alınamadı (${e.code}).';
     } catch (_) {
       // Ağ yok: yerel kopyayla devam.
@@ -585,6 +696,7 @@ class PlannerStore extends ChangeNotifier {
       error = null;
       _fill(await Cache.instance.cardsBetween(dataFrom, dataTo));
     } finally {
+      await refreshNotifications();
       loading = false;
       notifyListeners();
     }
@@ -607,7 +719,13 @@ class PlannerStore extends ChangeNotifier {
       if (!applied || revision != _localWriteRevision) {
         return (cards: await Cache.instance.searchCards(query), offline: true);
       }
+      await refreshNotifications();
       return (cards: cards, offline: false);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _resetNotifications();
+      }
+      return (cards: await Cache.instance.searchCards(query), offline: true);
     } catch (_) {
       return (cards: await Cache.instance.searchCards(query), offline: true);
     }
@@ -793,6 +911,8 @@ class PlannerStore extends ChangeNotifier {
         (existing ??
                 PlannerCard(
                   id: id,
+                  boardId: api.activeBoardId,
+                  creatorId: user?.id,
                   day: day,
                   title: '',
                   note: '',
@@ -906,6 +1026,7 @@ class PlannerStore extends ChangeNotifier {
     (_byDay[card.day] ??= []).add(card);
     _byDay[card.day]?.sort((a, b) => a.sortIndex.compareTo(b.sortIndex));
     await Cache.instance.saveCards([card]);
+    await refreshNotifications();
   }
 
   Future<void> _removeLocal(String id) async {
@@ -913,6 +1034,7 @@ class PlannerStore extends ChangeNotifier {
       list.removeWhere((c) => c.id == id);
     }
     await Cache.instance.removeCards([id]);
+    await refreshNotifications();
   }
 
   /// İsteği kalıcı kuyruğa yaz, yerelde uygula ve sırayla göndermeyi dene.

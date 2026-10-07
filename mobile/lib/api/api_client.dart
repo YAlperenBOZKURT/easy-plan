@@ -7,6 +7,7 @@ import 'package:http_parser/http_parser.dart';
 
 import '../app_logger.dart';
 import 'models.dart';
+import '../reminder_schedule.dart';
 
 /// Sunucuyla konuşan tek katman.
 ///
@@ -607,6 +608,7 @@ class ApiClient {
       String serverTime,
       List<PlannerCard> cards,
       List<Map<String, dynamic>> deletions,
+      ReminderSettings? reminderSettings,
     })
   >
   changes({String? since}) async {
@@ -619,6 +621,11 @@ class ApiClient {
             as Map<String, dynamic>;
     return (
       serverTime: json['serverTime'] as String,
+      reminderSettings: json['reminderSettings'] is Map<String, dynamic>
+          ? ReminderSettings.fromJson(
+              json['reminderSettings'] as Map<String, dynamic>,
+            )
+          : null,
       cards: (json['cards'] as List)
           .map((e) => PlannerCard.fromJson(e as Map<String, dynamic>))
           .toList(),

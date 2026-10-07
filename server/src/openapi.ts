@@ -240,6 +240,7 @@ const operations: Record<string, OperationDoc> = {
   'POST /api/v1/maintenance/run': { summary: 'Bakım görevlerini çalıştırır', tag: 'System' },
   'GET /api/v1/changes': {
     summary: 'Native istemci için delta senkron verisi döndürür', tag: 'Sync',
+    description: 'Kartlar creatorId içerir. reminderSettings seçili pano, oturum kullanıcısı, IANA saat dilimi ve saatsiz kart başlangıcını bildirir; native hatırlatmalar bu kapsamdan hesaplanır.',
     querystring: object({ since: string({ format: 'date-time' }) }),
   },
   'POST /api/v1/mail/test': { summary: 'Test e-postası gönderir', tag: 'Mail' },

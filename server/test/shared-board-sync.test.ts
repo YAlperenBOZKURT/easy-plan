@@ -19,7 +19,8 @@ const [{ buildServer }, { createUser, createSession }, { db, openDb, closeDb }, 
 
 const epoch = '1970-01-01T00:00:00.000Z';
 type Changes = {
-  cards: Array<{ id: string }>;
+  cards: Array<{ id: string; creatorId: string }>;
+  reminderSettings: { userId: string; boardId: string; timezone: string; defaultCardTime: string };
   deletions: Array<{ entity: string; id: string; deletedAt: string }>;
 };
 
@@ -92,6 +93,23 @@ test('shared-board lifecycle changes reach all current members without leaking b
     assert.equal(response.statusCode, 200, response.body);
     return response.json();
   };
+
+  await t.test('native reminder settings use the recipient context while cards retain their creator', async () => {
+    db().prepare('UPDATE users SET timezone = ? WHERE id = ?').run('America/New_York', editor.id);
+    const card = await createCard(editor.id, sharedId);
+    const ownerDelta = await changes(owner.id, sharedId);
+    const editorDelta = await changes(editor.id, sharedId);
+    assert.equal(ownerDelta.cards.find((row) => row.id === card.id)!.creatorId, editor.id);
+    assert.equal(editorDelta.cards.find((row) => row.id === card.id)!.creatorId, editor.id);
+    assert.equal(ownerDelta.reminderSettings.userId, owner.id);
+    assert.equal(editorDelta.reminderSettings.userId, editor.id);
+    assert.equal(editorDelta.reminderSettings.timezone, 'America/New_York');
+    assert.equal(editorDelta.reminderSettings.boardId, sharedId);
+    assert.match(editorDelta.reminderSettings.defaultCardTime, /^\d{2}:\d{2}$/);
+    const unchanged = await changes(editor.id, sharedId, '2099-01-01T00:00:00.000Z');
+    assert.equal(unchanged.cards.length, 0);
+    assert.equal(unchanged.reminderSettings.timezone, 'America/New_York', 'settings are refreshed even with no card delta');
+  });
 
   await t.test('owner archives; a different editor restores for owner, editor, and viewer', async () => {
     const card = await createCard(owner.id, sharedId);

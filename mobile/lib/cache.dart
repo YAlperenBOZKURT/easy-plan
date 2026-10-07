@@ -11,6 +11,7 @@ import 'app_logger.dart';
 import 'search.dart';
 import 'tags.dart';
 import 'sync_queue.dart';
+import 'reminder_schedule.dart';
 
 /// Yerel kopya ve çevrimdışı yazma kuyruğu.
 ///
@@ -45,11 +46,15 @@ class Cache {
 
   Future<Database> _openAt(String path) => openDatabase(
     path,
-    version: 2,
+    version: 3,
     onUpgrade: (db, oldVersion, _) async {
       if (oldVersion < 2) {
         await db.execute('ALTER TABLE queue ADD COLUMN base_card TEXT');
         await db.execute('ALTER TABLE queue ADD COLUMN failure TEXT');
+      }
+      if (oldVersion < 3) {
+        // Fetch creator IDs and authoritative reminder settings on upgrade.
+        await db.delete('meta', where: 'key = ?', whereArgs: ['last_sync']);
       }
     },
     onCreate: (db, _) async {
@@ -106,6 +111,8 @@ class Cache {
     Iterable<PlannerCard> cards, {
     Iterable<String> deletions = const [],
     String? serverTime,
+    ReminderSettings? reminderSettings,
+    bool replaceAll = false,
   }) async {
     final db = await _open();
     if (db == null) return true;
@@ -115,6 +122,7 @@ class Cache {
       );
       if ((pending.first['n'] as int) > 0) return false;
       final batch = transaction.batch();
+      if (replaceAll) batch.delete('cards');
       for (final card in cards) {
         batch.insert('cards', {
           'id': card.id,
@@ -131,6 +139,12 @@ class Cache {
         batch.insert('meta', {
           'key': 'last_sync',
           'value': serverTime,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      if (reminderSettings != null) {
+        batch.insert('meta', {
+          'key': 'reminder_settings',
+          'value': jsonEncode(reminderSettings.toJson()),
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
       await batch.commit(noResult: true);
@@ -164,6 +178,36 @@ class Cache {
           ),
         )
         .toList();
+  }
+
+  /// The settings and all cached cards are read together, outside viewport bounds.
+  Future<({ReminderSettings? settings, List<PlannerCard> cards})>
+  reminderSnapshot() async {
+    final db = await _open();
+    if (db == null) return (settings: null, cards: <PlannerCard>[]);
+    return db.transaction((txn) async {
+      final meta = await txn.query(
+        'meta',
+        where: 'key = ?',
+        whereArgs: ['reminder_settings'],
+      );
+      final rows = await txn.query('cards');
+      return (
+        settings: meta.isEmpty
+            ? null
+            : ReminderSettings.fromJson(
+                jsonDecode(meta.first['value'] as String)
+                    as Map<String, dynamic>,
+              ),
+        cards: rows
+            .map(
+              (row) => PlannerCard.fromJson(
+                jsonDecode(row['json'] as String) as Map<String, dynamic>,
+              ),
+            )
+            .toList(),
+      );
+    });
   }
 
   Future<List<PlannerCard>> searchCards(String query) async {
@@ -244,6 +288,7 @@ class Cache {
     if (db == null) return;
     await db.delete('cards');
     await db.delete('meta', where: 'key = ?', whereArgs: ['last_sync']);
+    await db.delete('meta', where: 'key = ?', whereArgs: ['reminder_settings']);
   }
 
   /* --------------------------------------------------------------- kuyruk */

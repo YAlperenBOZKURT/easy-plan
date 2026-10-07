@@ -75,6 +75,7 @@ class PlannerCard {
   PlannerCard({
     required this.id,
     this.boardId,
+    this.creatorId,
     required this.day,
     required this.title,
     required this.note,
@@ -99,6 +100,7 @@ class PlannerCard {
 
   final String id;
   final String? boardId;
+  final String? creatorId;
   final String day; // 'YYYY-MM-DD'
   final String title;
   final String note;
@@ -133,6 +135,7 @@ class PlannerCard {
   Map<String, dynamic> toJson() => {
     'id': id,
     'boardId': boardId,
+    'creatorId': creatorId,
     'day': day,
     'title': title,
     'note': note,
@@ -175,6 +178,7 @@ class PlannerCard {
   }) => PlannerCard(
     id: id,
     boardId: boardId,
+    creatorId: creatorId,
     day: day ?? this.day,
     title: title ?? this.title,
     note: note ?? this.note,
@@ -204,6 +208,7 @@ class PlannerCard {
   factory PlannerCard.fromJson(Map<String, dynamic> json) => PlannerCard(
     id: json['id'] as String,
     boardId: json['boardId'] as String?,
+    creatorId: json['creatorId'] as String?,
     day: json['day'] as String,
     title: (json['title'] as String?) ?? '',
     note: (json['note'] as String?) ?? '',
