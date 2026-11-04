@@ -1,4 +1,4 @@
-import { mkdir, rm, unlink } from 'node:fs/promises';
+import { mkdir, unlink } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import sharp from 'sharp';
 import { config } from './config.ts';
@@ -50,11 +50,6 @@ export async function removeImageFiles(rows: Pick<CardImageRow, 'file' | 'thumb'
       ),
     ),
   );
-}
-
-/** Hesap silinince kullanıcının tüm görsel klasörü kaldırılır. */
-export async function removeUserFiles(userId: string) {
-  await rm(resolve(config.uploadsDir, userId), { recursive: true, force: true }).catch(() => undefined);
 }
 
 /**

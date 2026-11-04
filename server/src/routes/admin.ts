@@ -5,7 +5,9 @@ import { db } from '../db.ts';
 import { nowIso } from '../ids.ts';
 import { button, escapeHtml, layout, sendMail } from '../mailer.ts';
 import { createInvite, findUserByEmail, requireAdmin } from '../auth.ts';
-import { removeUserFiles } from '../storage.ts';
+import { removeImageFiles } from '../storage.ts';
+import { repo } from '../repo.ts';
+import type { CardImageRow } from '../types.ts';
 
 /**
  * Yönetim uçları. Bilinçli sınır: burada yalnızca SAYILAR ve hesap bilgileri
@@ -175,10 +177,20 @@ export async function adminRoutes(app: FastifyInstance) {
     if (target.id === req.user!.id) return reply.code(400).send({ error: 'cannot_delete_self' });
     if (target.role === 'admin' && countAdmins() <= 1) return reply.code(400).send({ error: 'last_admin' });
 
-    // Kartlar, resim satırları, hatırlatmalar ve oturumlar ON DELETE CASCADE ile gider;
-    // diskteki dosyaları ayrıca temizliyoruz.
-    db().prepare('DELETE FROM users WHERE id = ?').run(target.id);
-    await removeUserFiles(target.id);
+    const database = db();
+    const store = repo(database, req.user!.id);
+    // Include images removed through cards and owned boards, even when another
+    // member uploaded them. Collect paths before the cascading database delete.
+    const images = database.prepare(
+      `SELECT i.file, i.thumb FROM card_images i
+       JOIN cards c ON c.id = i.card_id JOIN boards b ON b.id = c.board_id
+       WHERE i.user_id = ? OR c.user_id = ? OR b.owner_id = ?
+       UNION SELECT file, thumb FROM card_template_images WHERE user_id = ?`,
+    ).all(target.id, target.id, target.id, target.id) as Pick<CardImageRow, 'file' | 'thumb'>[];
+    database.prepare('DELETE FROM users WHERE id = ?').run(target.id);
+    // Upload directories can contain files retained by other users' cards or
+    // templates. Only remove files with no surviving reference, wherever stored.
+    await removeImageFiles(store.images.unreferenced(images));
     return { ok: true };
   });
 
